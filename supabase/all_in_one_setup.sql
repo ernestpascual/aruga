@@ -1,0 +1,893 @@
+-- ============================================================================
+-- ARUGA ALL-IN-ONE MASTER SUPABASE SETUP SCRIPT
+-- Paste and run this script in your Supabase SQL Editor (https://supabase.com/dashboard).
+-- Safe for repeated runs: idempotency guards (IF NOT EXISTS, ON CONFLICT, DO NOTHING)
+-- prevent any duplicate tables, columns, rows, or trigger violations.
+-- ============================================================================
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- ============================================================================
+-- SECTION 1: DATABASE TABLES & CONSTRAINTS
+-- ============================================================================
+
+-- 1. Profiles Table
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('therapist', 'client')),
+  display_name TEXT NOT NULL,
+  discipline TEXT CHECK (discipline IN ('SLP', 'OT', 'PT') OR discipline IS NULL),
+  client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia') OR client_category IS NULL),
+  
+  -- Therapist specific fields
+  license_number TEXT,
+  facility_name TEXT,
+  specialties TEXT,
+  phone TEXT,
+  office_hours TEXT,
+  caseload_focus TEXT,
+  bio TEXT,
+
+  -- Client specific fields (Adult, Adolescent, Pedia)
+  age INTEGER,
+  date_of_birth TEXT,
+  primary_condition TEXT,
+  caregiver_name TEXT,
+  caregiver_relationship TEXT,
+  emergency_phone TEXT,
+  therapy_goals TEXT,
+  preferred_schedule TEXT,
+  sensory_preferences TEXT,
+  school_or_workplace TEXT,
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 2. Patients Table (Enforces UNIQUE email & client_user_id)
+CREATE TABLE IF NOT EXISTS public.patients (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  therapist_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  client_user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  name VARCHAR(150) NOT NULL,
+  age INTEGER NOT NULL DEFAULT 1,
+  gender VARCHAR(50) NOT NULL DEFAULT 'Unspecified',
+  condition VARCHAR(255) NOT NULL DEFAULT 'General Occupational Therapy',
+  email VARCHAR(255) NOT NULL UNIQUE,
+  caregiver_name TEXT,
+  client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia') OR client_category IS NULL),
+  invitation_status TEXT NOT NULL DEFAULT 'accepted',
+  invitation_sent_at TIMESTAMPTZ DEFAULT NOW(),
+  -- SECURITY: short-lived bootstrap secret only; nulled on first login via /api/auth/clear-temp-credentials.
+  -- Owning therapist only (RLS). Production: replace with invite/reset-password flow.
+  temporary_password TEXT,
+  first_login_at TIMESTAMPTZ,
+  credentials_cleared_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Safe migrations for existing databases
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS temporary_password TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS first_login_at TIMESTAMPTZ;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS credentials_cleared_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_patients_therapist ON public.patients(therapist_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_patients_client_user_idx ON public.patients(client_user_id) WHERE client_user_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_patients_email_idx ON public.patients(email);
+
+-- 3. Home Programs & Program Steps
+CREATE TABLE IF NOT EXISTS public.home_programs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
+  creator_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  title VARCHAR(200) NOT NULL,
+  main_instructions TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'assigned' CHECK (status IN ('draft', 'assigned', 'archived')),
+  assigned_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_home_programs_patient ON public.home_programs(patient_id);
+CREATE INDEX IF NOT EXISTS idx_home_programs_creator ON public.home_programs(creator_id);
+
+CREATE TABLE IF NOT EXISTS public.program_steps (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  program_id UUID NOT NULL REFERENCES public.home_programs(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL DEFAULT 1,
+  title VARCHAR(150),
+  instructions TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_program_step_position UNIQUE (program_id, position)
+);
+
+CREATE INDEX IF NOT EXISTS idx_program_steps_program ON public.program_steps(program_id);
+
+-- 4. Submissions & Step Reviews
+CREATE TABLE IF NOT EXISTS public.submissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  program_id UUID NOT NULL UNIQUE REFERENCES public.home_programs(id) ON DELETE CASCADE,
+  patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
+  client_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  state TEXT NOT NULL DEFAULT 'submitted' CHECK (state IN ('draft', 'submitted', 'reviewed')),
+  consent_therapist BOOLEAN NOT NULL DEFAULT true,
+  consent_meta_ai BOOLEAN NOT NULL DEFAULT true,
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_submissions_patient ON public.submissions(patient_id);
+
+CREATE TABLE IF NOT EXISTS public.step_submissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  submission_id UUID NOT NULL REFERENCES public.submissions(id) ON DELETE CASCADE,
+  program_step_id UUID NOT NULL REFERENCES public.program_steps(id) ON DELETE CASCADE,
+  video_path TEXT,
+  media_meta JSONB NOT NULL DEFAULT '{}'::jsonb,
+  client_comment TEXT,
+  skipped BOOLEAN NOT NULL DEFAULT false,
+  skip_reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_step_submission UNIQUE (submission_id, program_step_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_step_submissions_submission ON public.step_submissions(submission_id);
+
+CREATE TABLE IF NOT EXISTS public.submission_reviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  submission_id UUID NOT NULL UNIQUE REFERENCES public.submissions(id) ON DELETE CASCADE,
+  therapist_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  overall_feedback TEXT,
+  status TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published')),
+  published_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.step_reviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  review_id UUID NOT NULL REFERENCES public.submission_reviews(id) ON DELETE CASCADE,
+  step_submission_id UUID NOT NULL REFERENCES public.step_submissions(id) ON DELETE CASCADE,
+  therapist_note TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_step_review UNIQUE (review_id, step_submission_id)
+);
+
+-- 5. AI Analyses & Audit Logs
+CREATE TABLE IF NOT EXISTS public.ai_analyses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  step_submission_id UUID NOT NULL REFERENCES public.step_submissions(id) ON DELETE CASCADE,
+  analysis_kind TEXT NOT NULL DEFAULT 'full_review',
+  model_id TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL UNIQUE,
+  prompt_version TEXT NOT NULL DEFAULT 'v1',
+  processing_status TEXT NOT NULL DEFAULT 'completed',
+  spark_results JSONB,
+  sam_results JSONB,
+  artifact_path TEXT,
+  confirmed_observations JSONB DEFAULT '[]'::jsonb,
+  timing_ms INTEGER,
+  sanitized_error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_ai_analyses_step UNIQUE (step_submission_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.audit_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  action TEXT NOT NULL,
+  affected_resource TEXT NOT NULL,
+  resource_id TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_actor ON public.audit_events(actor_id);
+
+-- 6. Therapist-to-Client 1-on-1 Messages
+CREATE TABLE IF NOT EXISTS public.messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  body TEXT NOT NULL CHECK (LENGTH(body) > 0 AND LENGTH(body) <= 4000),
+  referenced_program_id UUID REFERENCES public.home_programs(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_patient ON public.messages(patient_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created ON public.messages(created_at);
+
+-- 7. SAM Test Results (Per User)
+CREATE TABLE IF NOT EXISTS public.sam_test_results (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  prompt TEXT NOT NULL,
+  file_name TEXT,
+  duration_seconds NUMERIC,
+  object_concepts JSONB NOT NULL DEFAULT '[]'::jsonb,
+  tracks JSONB NOT NULL DEFAULT '[]'::jsonb,
+  boxes JSONB NOT NULL DEFAULT '[]'::jsonb,
+  svg_paths JSONB NOT NULL DEFAULT '[]'::jsonb,
+  billed_requests INTEGER DEFAULT 1,
+  model_id TEXT,
+  latency_ms INTEGER,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sam_results_user ON public.sam_test_results(user_id);
+CREATE INDEX IF NOT EXISTS idx_sam_results_created ON public.sam_test_results(created_at);
+
+-- 8. Ask OT Multiple Conversations & Messages
+CREATE TABLE IF NOT EXISTS public.ot_conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL DEFAULT 'New Conversation',
+  model_id TEXT NOT NULL DEFAULT 'meta/llama-3.3-70b-instruct',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ot_conv_user ON public.ot_conversations(user_id);
+
+CREATE TABLE IF NOT EXISTS public.ot_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID NOT NULL REFERENCES public.ot_conversations(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  sam_result JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ot_msg_conv ON public.ot_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_ot_msg_created ON public.ot_messages(created_at);
+
+-- ============================================================================
+-- SECTION 2: ROW LEVEL SECURITY (RLS) POLICIES — RESTRICTIVE (safe for public repo)
+-- No anon access. Authenticated users only see rows they own/are assigned to.
+-- service_role bypasses RLS by default; no permissive USING (true) policies.
+-- ============================================================================
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.patients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.home_programs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.program_steps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.submissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.step_submissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.submission_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.step_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_analyses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sam_test_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ot_conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ot_messages ENABLE ROW LEVEL SECURITY;
+
+-- Cleanup: remove legacy permissive policies if this DB ran the old script
+DO $$
+DECLARE
+  tbl text;
+BEGIN
+  FOR tbl IN SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "Allow all for authenticated users" ON public.%I', tbl);
+    EXECUTE format('DROP POLICY IF EXISTS "Allow all for service role" ON public.%I', tbl);
+    EXECUTE format('DROP POLICY IF EXISTS "Allow public read" ON public.%I', tbl);
+  END LOOP;
+END $$;
+
+-- Helpers (TEXT-role compatible)
+CREATE OR REPLACE FUNCTION public.current_user_role()
+RETURNS TEXT AS $$
+  SELECT role FROM public.profiles WHERE id = auth.uid();
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.therapist_owns_patient(p_patient_id UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (SELECT 1 FROM public.patients WHERE id = p_patient_id AND therapist_id = auth.uid());
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+
+-- PROFILES
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (id = auth.uid());
+DROP POLICY IF EXISTS "Therapists can view client profiles" ON public.profiles;
+CREATE POLICY "Therapists can view client profiles" ON public.profiles FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.patients WHERE client_user_id = profiles.id AND therapist_id = auth.uid())
+);
+DROP POLICY IF EXISTS "Clients can view assigned therapist profile" ON public.profiles;
+CREATE POLICY "Clients can view assigned therapist profile" ON public.profiles FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.patients WHERE therapist_id = profiles.id AND client_user_id = auth.uid())
+);
+DROP POLICY IF EXISTS "Users can update own display name" ON public.profiles;
+CREATE POLICY "Users can update own display name" ON public.profiles FOR UPDATE USING (id = auth.uid())
+  WITH CHECK (id = auth.uid() AND role = (SELECT role FROM public.profiles WHERE id = auth.uid()));
+
+-- PATIENTS (note: temporary_password visible only to owning therapist via this policy; cleared on first login)
+DROP POLICY IF EXISTS "Therapists manage own patients" ON public.patients;
+CREATE POLICY "Therapists manage own patients" ON public.patients FOR ALL USING (therapist_id = auth.uid()) WITH CHECK (therapist_id = auth.uid());
+DROP POLICY IF EXISTS "Clients view own patient record" ON public.patients;
+CREATE POLICY "Clients view own patient record" ON public.patients FOR SELECT USING (client_user_id = auth.uid());
+
+-- HOME PROGRAMS
+DROP POLICY IF EXISTS "Therapists manage programs" ON public.home_programs;
+CREATE POLICY "Therapists manage programs" ON public.home_programs FOR ALL USING (therapist_owns_patient(patient_id))
+  WITH CHECK (therapist_owns_patient(patient_id) AND creator_id = auth.uid());
+DROP POLICY IF EXISTS "Clients view assigned programs" ON public.home_programs;
+CREATE POLICY "Clients view assigned programs" ON public.home_programs FOR SELECT USING (
+  status IN ('assigned', 'archived') AND EXISTS (SELECT 1 FROM public.patients WHERE id = home_programs.patient_id AND client_user_id = auth.uid())
+);
+
+-- PROGRAM STEPS
+DROP POLICY IF EXISTS "Therapists manage program steps" ON public.program_steps;
+CREATE POLICY "Therapists manage program steps" ON public.program_steps FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.home_programs hp WHERE hp.id = program_steps.program_id AND public.therapist_owns_patient(hp.patient_id))
+);
+DROP POLICY IF EXISTS "Clients view assigned program steps" ON public.program_steps;
+CREATE POLICY "Clients view assigned program steps" ON public.program_steps FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.home_programs hp JOIN public.patients p ON p.id = hp.patient_id
+    WHERE hp.id = program_steps.program_id AND hp.status IN ('assigned', 'archived') AND p.client_user_id = auth.uid())
+);
+
+-- SUBMISSIONS
+DROP POLICY IF EXISTS "Therapists view submissions" ON public.submissions;
+CREATE POLICY "Therapists view submissions" ON public.submissions FOR SELECT USING (public.therapist_owns_patient(patient_id));
+DROP POLICY IF EXISTS "Clients manage own submissions" ON public.submissions;
+CREATE POLICY "Clients manage own submissions" ON public.submissions FOR SELECT USING (client_id = auth.uid());
+DROP POLICY IF EXISTS "Clients update draft submission" ON public.submissions;
+CREATE POLICY "Clients update draft submission" ON public.submissions FOR UPDATE USING (client_id = auth.uid() AND state = 'draft')
+  WITH CHECK (client_id = auth.uid() AND state = 'draft');
+
+-- STEP SUBMISSIONS
+DROP POLICY IF EXISTS "Therapists view step submissions" ON public.step_submissions;
+CREATE POLICY "Therapists view step submissions" ON public.step_submissions FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.submissions s WHERE s.id = step_submissions.submission_id AND public.therapist_owns_patient(s.patient_id))
+);
+DROP POLICY IF EXISTS "Clients view own step submissions" ON public.step_submissions;
+CREATE POLICY "Clients view own step submissions" ON public.step_submissions FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.submissions s WHERE s.id = step_submissions.submission_id AND s.client_id = auth.uid())
+);
+DROP POLICY IF EXISTS "Clients modify draft step submissions" ON public.step_submissions;
+CREATE POLICY "Clients modify draft step submissions" ON public.step_submissions FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM public.submissions s WHERE s.id = step_submissions.submission_id AND s.client_id = auth.uid() AND s.state = 'draft')
+);
+DROP POLICY IF EXISTS "Clients update draft step submissions" ON public.step_submissions;
+CREATE POLICY "Clients update draft step submissions" ON public.step_submissions FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM public.submissions s WHERE s.id = step_submissions.submission_id AND s.client_id = auth.uid() AND s.state = 'draft')
+);
+
+-- SUBMISSION REVIEWS
+DROP POLICY IF EXISTS "Therapists manage reviews" ON public.submission_reviews;
+CREATE POLICY "Therapists manage reviews" ON public.submission_reviews FOR ALL USING (therapist_id = auth.uid()) WITH CHECK (therapist_id = auth.uid());
+DROP POLICY IF EXISTS "Clients view published reviews" ON public.submission_reviews;
+CREATE POLICY "Clients view published reviews" ON public.submission_reviews FOR SELECT USING (
+  status = 'published' AND EXISTS (SELECT 1 FROM public.submissions s WHERE s.id = submission_reviews.submission_id AND s.client_id = auth.uid())
+);
+
+-- STEP REVIEWS
+DROP POLICY IF EXISTS "Therapists manage step reviews" ON public.step_reviews;
+CREATE POLICY "Therapists manage step reviews" ON public.step_reviews FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.submission_reviews r WHERE r.id = step_reviews.review_id AND r.therapist_id = auth.uid())
+);
+DROP POLICY IF EXISTS "Clients view published step reviews" ON public.step_reviews;
+CREATE POLICY "Clients view published step reviews" ON public.step_reviews FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.submission_reviews r JOIN public.submissions s ON s.id = r.submission_id
+    WHERE r.id = step_reviews.review_id AND r.status = 'published' AND s.client_id = auth.uid())
+);
+
+-- MESSAGES
+DROP POLICY IF EXISTS "Therapists view and send thread messages" ON public.messages;
+CREATE POLICY "Therapists view and send thread messages" ON public.messages FOR ALL USING (public.therapist_owns_patient(patient_id))
+  WITH CHECK (public.therapist_owns_patient(patient_id) AND sender_id = auth.uid());
+DROP POLICY IF EXISTS "Clients view and send thread messages" ON public.messages;
+CREATE POLICY "Clients view and send thread messages" ON public.messages FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.patients WHERE id = messages.patient_id AND client_user_id = auth.uid())
+) WITH CHECK (
+  EXISTS (SELECT 1 FROM public.patients WHERE id = messages.patient_id AND client_user_id = auth.uid()) AND sender_id = auth.uid()
+);
+
+-- AI ANALYSES (therapist-only)
+DROP POLICY IF EXISTS "Therapists view and manage ai analyses" ON public.ai_analyses;
+CREATE POLICY "Therapists view and manage ai analyses" ON public.ai_analyses FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.step_submissions ss JOIN public.submissions s ON s.id = ss.submission_id
+    WHERE ss.id = ai_analyses.step_submission_id AND public.therapist_owns_patient(s.patient_id))
+);
+
+-- AUDIT EVENTS
+DROP POLICY IF EXISTS "Audit events viewable by involved actors" ON public.audit_events;
+CREATE POLICY "Audit events viewable by involved actors" ON public.audit_events FOR SELECT USING (actor_id = auth.uid());
+DROP POLICY IF EXISTS "Audit events insertable by authenticated users" ON public.audit_events;
+CREATE POLICY "Audit events insertable by authenticated users" ON public.audit_events FOR INSERT WITH CHECK (actor_id = auth.uid());
+
+-- SAM TEST RESULTS (owner-only)
+DROP POLICY IF EXISTS "Users manage own sam results" ON public.sam_test_results;
+CREATE POLICY "Users manage own sam results" ON public.sam_test_results FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+-- OT CONVERSATIONS / MESSAGES (owner-only)
+DROP POLICY IF EXISTS "Users manage own ot conversations" ON public.ot_conversations;
+CREATE POLICY "Users manage own ot conversations" ON public.ot_conversations FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS "Users view own ot messages" ON public.ot_messages;
+CREATE POLICY "Users view own ot messages" ON public.ot_messages FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.ot_conversations c WHERE c.id = ot_messages.conversation_id AND c.user_id = auth.uid())
+);
+DROP POLICY IF EXISTS "Users insert own ot messages" ON public.ot_messages;
+CREATE POLICY "Users insert own ot messages" ON public.ot_messages FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM public.ot_conversations c WHERE c.id = ot_messages.conversation_id AND c.user_id = auth.uid())
+);
+
+-- ============================================================================
+-- SECTION 3: AUTOMATIC TRIGGERS & ANTI-DUPLICATION FUNCTIONS
+-- ============================================================================
+
+-- Automatic Updated_At Trigger Function
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS trigger AS $$
+BEGIN
+  new.updated_at = NOW();
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql;
+
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename IN (
+    'profiles', 'patients', 'home_programs', 'submissions', 'submission_reviews', 'ai_analyses', 'ot_conversations'
+  )
+  LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS trigger_updated_at_%I ON public.%I', t, t);
+    EXECUTE format('CREATE TRIGGER trigger_updated_at_%I BEFORE UPDATE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at()', t, t);
+  END LOOP;
+END $$;
+
+-- Automatic Profile and Patient Provisioning on Signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+DECLARE
+  v_role TEXT;
+  v_name TEXT;
+  v_category TEXT;
+BEGIN
+  v_role := COALESCE(new.raw_user_meta_data->>'role', 'client');
+  v_name := COALESCE(
+    new.raw_user_meta_data->>'name',
+    new.raw_user_meta_data->>'display_name',
+    split_part(new.email, '@', 1)
+  );
+  v_category := new.raw_user_meta_data->>'client_category';
+
+  -- Upsert Profile (Prevents duplicate profiles by ID)
+  INSERT INTO public.profiles (
+    id,
+    display_name,
+    role,
+    client_category,
+    created_at,
+    updated_at
+  ) VALUES (
+    new.id,
+    v_name,
+    v_role,
+    v_category,
+    NOW(),
+    NOW()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    display_name = COALESCE(EXCLUDED.display_name, public.profiles.display_name),
+    role = COALESCE(EXCLUDED.role, public.profiles.role),
+    client_category = COALESCE(EXCLUDED.client_category, public.profiles.client_category),
+    updated_at = NOW();
+
+  -- If Client, ensure linked patient record without duplication
+  IF (v_role = 'client') THEN
+    INSERT INTO public.patients (
+      client_user_id,
+      name,
+      email,
+      client_category,
+      condition,
+      invitation_status,
+      created_at,
+      updated_at
+    ) VALUES (
+      new.id,
+      v_name,
+      LOWER(TRIM(new.email)),
+      v_category,
+      'Personalized Rehabilitation Care',
+      'accepted',
+      NOW(),
+      NOW()
+    )
+    ON CONFLICT (email) DO UPDATE SET
+      client_user_id = EXCLUDED.client_user_id,
+      client_category = COALESCE(EXCLUDED.client_category, public.patients.client_category),
+      name = COALESCE(EXCLUDED.name, public.patients.name),
+      updated_at = NOW();
+  END IF;
+
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Deduplicated Chat Message Sender (RPC)
+CREATE OR REPLACE FUNCTION public.send_chat_message_deduped(
+  p_patient_id UUID,
+  p_sender_id UUID,
+  p_body TEXT,
+  p_referenced_program_id UUID DEFAULT NULL
+)
+RETURNS UUID AS $$
+DECLARE
+  v_existing_id UUID;
+  v_new_id UUID;
+BEGIN
+  SELECT id INTO v_existing_id
+  FROM public.messages
+  WHERE patient_id = p_patient_id
+    AND sender_id = p_sender_id
+    AND body = p_body
+    AND created_at >= (NOW() - INTERVAL '3 seconds')
+  LIMIT 1;
+
+  IF v_existing_id IS NOT NULL THEN
+    RETURN v_existing_id;
+  END IF;
+
+  INSERT INTO public.messages (
+    patient_id,
+    sender_id,
+    body,
+    referenced_program_id,
+    created_at
+  ) VALUES (
+    p_patient_id,
+    p_sender_id,
+    p_body,
+    p_referenced_program_id,
+    NOW()
+  )
+  RETURNING id INTO v_new_id;
+
+  RETURN v_new_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Deduplicated Ask OT Message Sender (RPC)
+CREATE OR REPLACE FUNCTION public.send_ot_message_deduped(
+  p_conversation_id UUID,
+  p_role TEXT,
+  p_content TEXT,
+  p_attachments JSONB DEFAULT '[]'::jsonb,
+  p_sam_result JSONB DEFAULT NULL
+)
+RETURNS UUID AS $$
+DECLARE
+  v_existing_id UUID;
+  v_new_id UUID;
+BEGIN
+  SELECT id INTO v_existing_id
+  FROM public.ot_messages
+  WHERE conversation_id = p_conversation_id
+    AND role = p_role
+    AND content = p_content
+    AND created_at >= (NOW() - INTERVAL '2 seconds')
+  LIMIT 1;
+
+  IF v_existing_id IS NOT NULL THEN
+    RETURN v_existing_id;
+  END IF;
+
+  INSERT INTO public.ot_messages (
+    conversation_id,
+    role,
+    content,
+    attachments,
+    sam_result,
+    created_at
+  ) VALUES (
+    p_conversation_id,
+    p_role,
+    p_content,
+    COALESCE(p_attachments, '[]'::jsonb),
+    p_sam_result,
+    NOW()
+  )
+  RETURNING id INTO v_new_id;
+
+  UPDATE public.ot_conversations
+  SET updated_at = NOW()
+  WHERE id = p_conversation_id;
+
+  RETURN v_new_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Deduplicated SAM Test Result Recorder (RPC)
+CREATE OR REPLACE FUNCTION public.save_sam_result_deduped(
+  p_user_id UUID,
+  p_prompt TEXT,
+  p_file_name TEXT,
+  p_duration_seconds NUMERIC,
+  p_object_concepts JSONB DEFAULT '[]'::jsonb,
+  p_tracks JSONB DEFAULT '[]'::jsonb,
+  p_boxes JSONB DEFAULT '[]'::jsonb,
+  p_svg_paths JSONB DEFAULT '[]'::jsonb,
+  p_billed_requests INTEGER DEFAULT 1,
+  p_model_id TEXT DEFAULT 'sam-3.1',
+  p_latency_ms INTEGER DEFAULT 0
+)
+RETURNS UUID AS $$
+DECLARE
+  v_existing_id UUID;
+  v_new_id UUID;
+BEGIN
+  SELECT id INTO v_existing_id
+  FROM public.sam_test_results
+  WHERE user_id = p_user_id
+    AND prompt = p_prompt
+    AND file_name = p_file_name
+    AND created_at >= (NOW() - INTERVAL '5 seconds')
+  LIMIT 1;
+
+  IF v_existing_id IS NOT NULL THEN
+    RETURN v_existing_id;
+  END IF;
+
+  INSERT INTO public.sam_test_results (
+    user_id,
+    prompt,
+    file_name,
+    duration_seconds,
+    object_concepts,
+    tracks,
+    boxes,
+    svg_paths,
+    billed_requests,
+    model_id,
+    latency_ms,
+    created_at
+  ) VALUES (
+    p_user_id,
+    p_prompt,
+    p_file_name,
+    p_duration_seconds,
+    COALESCE(p_object_concepts, '[]'::jsonb),
+    COALESCE(p_tracks, '[]'::jsonb),
+    COALESCE(p_boxes, '[]'::jsonb),
+    COALESCE(p_svg_paths, '[]'::jsonb),
+    p_billed_requests,
+    p_model_id,
+    p_latency_ms,
+    NOW()
+  )
+  RETURNING id INTO v_new_id;
+
+  RETURN v_new_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================================
+-- SECTION 4: STORAGE BUCKETS SETUP (PRIVATE: no public read for PHI videos)
+-- ============================================================================
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES 
+  ('program-videos', 'program-videos', false, 104857600, ARRAY['video/mp4', 'video/webm', 'video/quicktime', 'image/jpeg', 'image/png']),
+  ('chat-attachments', 'chat-attachments', false, 52428800, ARRAY['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'])
+ON CONFLICT (id) DO UPDATE SET
+  public = false,
+  file_size_limit = EXCLUDED.file_size_limit,
+  allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+DROP POLICY IF EXISTS "Public view for program videos" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated view for program media" ON storage.objects;
+CREATE POLICY "Authenticated view for program media"
+  ON storage.objects FOR SELECT
+  TO authenticated
+  USING (bucket_id IN ('program-videos', 'chat-attachments'));
+
+DROP POLICY IF EXISTS "Authenticated upload for program videos" ON storage.objects;
+CREATE POLICY "Authenticated upload for program videos"
+  ON storage.objects FOR INSERT
+  TO authenticated
+  WITH CHECK (bucket_id IN ('program-videos', 'chat-attachments'));
+
+DROP POLICY IF EXISTS "Authenticated update for program videos" ON storage.objects;
+CREATE POLICY "Authenticated update for program videos"
+  ON storage.objects FOR UPDATE
+  TO authenticated
+  USING (bucket_id IN ('program-videos', 'chat-attachments'))
+  WITH CHECK (bucket_id IN ('program-videos', 'chat-attachments'));
+
+DROP POLICY IF EXISTS "Authenticated delete for program media" ON storage.objects;
+CREATE POLICY "Authenticated delete for program media"
+  ON storage.objects FOR DELETE
+  TO authenticated
+  USING (bucket_id IN ('program-videos', 'chat-attachments'));
+
+DROP POLICY IF EXISTS "Service role full access storage" ON storage.objects;
+CREATE POLICY "Service role full access storage"
+  ON storage.objects FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+-- ============================================================================
+-- SECTION 5: INITIAL CLINICAL CASELOAD & EXERCISE PROTOCOLS (IDEMPOTENT SEED)
+-- ============================================================================
+
+-- 1. Demo Patient Caseload (Required first for foreign key integrity)
+INSERT INTO public.patients (
+  id,
+  name,
+  age,
+  gender,
+  condition,
+  email,
+  caregiver_name,
+  client_category,
+  invitation_status,
+  created_at,
+  updated_at
+) VALUES
+  (
+    '33333333-3333-4333-8333-333333333333',
+    'Marcus Vance (Adult Rehab Demo)',
+    58,
+    'Male',
+    'Right ischemic CVA with upper extremity hemiparesis',
+    'marcus.vance.demo@aruga-health.local',
+    'Eleanor Vance (Spouse)',
+    'adult',
+    'accepted',
+    NOW() - INTERVAL '20 days',
+    NOW()
+  ),
+  (
+    '44444444-4444-4444-8444-444444444444',
+    'Leo Chen (Pediatric Demo)',
+    6,
+    'Male',
+    'Pediatric Bilateral Coordination Delay & Pincer Grasp Development',
+    'leo.chen.demo@aruga-health.local',
+    'Sarah Chen (Mother)',
+    'pedia',
+    'accepted',
+    NOW() - INTERVAL '15 days',
+    NOW()
+  ),
+  (
+    '55555555-5555-4555-8555-555555555555',
+    'Maya Lin (Adolescent Demo)',
+    15,
+    'Female',
+    'Dynamic Tripod Grasp Fatigue & Academic Handwriting Posture',
+    'maya.lin.demo@aruga-health.local',
+    'David Lin (Father)',
+    'adolescent',
+    'accepted',
+    NOW() - INTERVAL '10 days',
+    NOW()
+  )
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  condition = EXCLUDED.condition,
+  client_category = EXCLUDED.client_category,
+  updated_at = NOW();
+
+-- 2. Clinical Home Programs
+-- Adult Home Program 1
+INSERT INTO public.home_programs (
+  id, patient_id, title, main_instructions, status, assigned_at, created_at, updated_at
+) VALUES (
+  '11111111-1111-4111-8111-111111111111',
+  '33333333-3333-4333-8333-333333333333',
+  'Grip & Pinch Functional Re-education',
+  'Perform 3 tabletop repetitions for each step. Ensure your elbow rests gently on the table and maintain neutral wrist alignment.',
+  'assigned', NOW() - INTERVAL '2 days', NOW() - INTERVAL '3 days', NOW()
+) ON CONFLICT (id) DO NOTHING;
+
+-- Adult Home Program 2
+INSERT INTO public.home_programs (
+  id, patient_id, title, main_instructions, status, assigned_at, created_at, updated_at
+) VALUES (
+  '44444444-4444-4444-8444-444444444444',
+  '33333333-3333-4333-8333-333333333333',
+  'Tabletop Grasp & Precision Release Routine',
+  'Perform these 3 coordinated tabletop exercises once daily in a seated position with good posture. Keep forearm supported and record a 10-20 second clip.',
+  'assigned', NOW() - INTERVAL '5 days', NOW() - INTERVAL '6 days', NOW()
+) ON CONFLICT (id) DO NOTHING;
+
+-- Pediatric Home Program
+INSERT INTO public.home_programs (
+  id, patient_id, title, main_instructions, status, assigned_at, created_at, updated_at
+) VALUES (
+  '22222222-2222-4222-8222-222222222222',
+  '44444444-4444-4444-8444-444444444444',
+  'Playful Pincer Grasp & Bilateral Toy Routine',
+  'Engage in 3 fun play exercises using dough, pegs, and toy containers. Support the childs posture and take breaks if hands fatigue.',
+  'assigned', NOW() - INTERVAL '1 day', NOW() - INTERVAL '2 days', NOW()
+) ON CONFLICT (id) DO NOTHING;
+
+-- Adolescent Home Program
+INSERT INTO public.home_programs (
+  id, patient_id, title, main_instructions, status, assigned_at, created_at, updated_at
+) VALUES (
+  '33333333-4444-4333-8333-333333333333',
+  '55555555-5555-4555-8555-555555555555',
+  'School Ergonomics & Fine Motor Endurance',
+  'Focus on dynamic tripod pencil grasp, keyboard positioning, and forearm stability for academic tasks.',
+  'assigned', NOW(), NOW(), NOW()
+) ON CONFLICT (id) DO NOTHING;
+
+-- 3. Program Steps
+INSERT INTO public.program_steps (id, program_id, position, title, instructions)
+VALUES
+  ('77777771-7777-4777-8777-777777777771', '11111111-1111-4111-8111-111111111111', 1, 'Cylinder Cup Grasp & Lift', 'Reach forward with an open hand, grasp the lightweight cup, lift 3 inches off the tabletop, hold for 3 seconds, and set down smoothly without tipping.'),
+  ('77777772-7777-4777-8777-777777777772', '11111111-1111-4111-8111-111111111111', 2, 'Block Stacking Sequence', 'Pick up small 1-inch wooden blocks one at a time using your index finger and thumb (pincer grasp) and build a stable 3-block tower.'),
+  ('77777773-7777-4777-8777-777777777773', '11111111-1111-4111-8111-111111111111', 3, 'Forearm Supination with Washcloth', 'Hold the folded washcloth flat on the tabletop. Slowly rotate your forearm so your palm faces upward, pausing 3 seconds before neutral.'),
+  ('77777771-7777-4777-8777-777777777781', '44444444-4444-4444-8444-444444444444', 1, 'Cylindrical Cup Lift and Transfer', 'Place a lightweight plastic cup 6 inches in front of you. Reach forward using full active extension, grasp with all digits, lift 3 inches vertically, hold for 2 seconds, and place back down gently.'),
+  ('77777772-7777-4777-8777-777777777782', '44444444-4444-4444-8444-444444444444', 2, 'Small Block Lateral Stacking', 'Pick up the wooden block using a three-jaw chuck. Move it across your midline to the target marker on your left, then release cleanly.'),
+  ('77777773-7777-4777-8777-777777777783', '44444444-4444-4444-8444-444444444444', 3, 'Forearm Supination with Washcloth', 'Hold the folded washcloth flat on the tabletop. Slowly rotate your forearm so your palm faces fully upward, pausing for 3 seconds before returning to neutral.'),
+  ('77777774-7777-4777-8777-777777777774', '22222222-2222-4222-8222-222222222222', 1, 'Peg Pick & Color Sort', 'Have the child pick up 5 large colorful pegs one by one using thumb and index finger tip-to-tip, placing them into corresponding slots.'),
+  ('77777775-7777-4777-8777-777777777775', '22222222-2222-4222-8222-222222222222', 2, 'Clay Pinch & Squash', 'Roll 3 small balls of therapy putty. Ask the child to use thumb and pointer finger to pinch each into a pancake.'),
+  ('77777776-7777-4777-8777-777777777776', '22222222-2222-4222-8222-222222222222', 3, 'Twist-Top Container', 'Hold a small plastic container steady with the non-dominant hand while unscrewing the lid using the dominant hand fingers.'),
+  ('77777777-7777-4777-8777-777777777777', '33333333-4444-4333-8333-333333333333', 1, 'Tripod Grip Writing Drill', 'Complete 10 lines of continuous loop patterns on lined paper maintaining relaxed pencil pressure and open web space.'),
+  ('77777778-7777-4777-8777-777777777778', '33333333-4444-4333-8333-333333333333', 2, 'Adaptive Scissors Precision Cut', 'Cut along complex geometric zig-zag paths using adaptive loop scissors, turning paper with non-dominant hand.'),
+  ('77777779-7777-4777-8777-777777777779', '33333333-4444-4333-8333-333333333333', 3, 'Keyboard Ergonomic Posture', 'Type for 5 minutes with wrists neutral, elbows at 90 degrees, and periodic 30-second finger extensor stretches.')
+ON CONFLICT (id) DO NOTHING;
+
+-- 4. Initial Submissions & Step Submissions
+INSERT INTO public.submissions (
+  id, program_id, patient_id, state, consent_therapist, consent_meta_ai, submitted_at, created_at, updated_at
+) VALUES (
+  '55555555-5555-4555-8555-555555555555',
+  '44444444-4444-4444-8444-444444444444',
+  '33333333-3333-4333-8333-333333333333',
+  'submitted', true, true, NOW() - INTERVAL '1 day', NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day'
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.step_submissions (
+  id, submission_id, program_step_id, video_path, client_comment, skipped, skip_reason
+) VALUES
+  ('88888881-8888-4888-8888-888888888881', '55555555-5555-4555-8555-555555555555', '77777771-7777-4777-8777-777777777781', 'demo/cup_grasp_transfer.mp4', 'Felt smoother than last week! Finger extension still feels stiff right before touching the cup.', false, null),
+  ('88888882-8888-4888-8888-888888888882', '55555555-5555-4555-8555-555555555555', '77777772-7777-4777-8777-777777777782', 'demo/block_stacking.mp4', 'Stacking was harder with the left hand, had to re-adjust grip twice.', false, null),
+  ('88888883-8888-4888-8888-888888888883', '55555555-5555-4555-8555-555555555555', '77777773-7777-4777-8777-777777777783', null, null, true, 'Forearm felt fatigued from physical therapy session earlier in the day.')
+ON CONFLICT (id) DO NOTHING;
+
+-- 5. Submission Review & Step Review
+INSERT INTO public.submission_reviews (
+  id, submission_id, overall_feedback, status, created_at, updated_at
+) VALUES (
+  '66666666-6666-4666-8666-666666666666',
+  '55555555-5555-4555-8555-555555555555',
+  'Wonderful effort this week Marcus! Your digit extension trajectory is improving consistently. Keep monitoring forearm stability.',
+  'draft', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '6 hours'
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.step_reviews (
+  id, review_id, step_submission_id, therapist_note
+) VALUES (
+  '99999991-9999-4999-8999-999999999991',
+  '66666666-6666-4666-8666-666666666666',
+  '88888881-8888-4888-8888-888888888881',
+  'Notice how your thumb abducts smoothly at 0:04. Try to pause for an extra full second before the lift.'
+) ON CONFLICT (id) DO NOTHING;
+
+-- 6. Sample 1-on-1 Messages
+INSERT INTO public.messages (id, patient_id, body, referenced_program_id, created_at)
+VALUES
+  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '33333333-3333-4333-8333-333333333333', 'Hi Dr. Ramos, I completed my tabletop routine this morning. My wrist felt a lot more stable during the cup lift.', '44444444-4444-4444-8444-444444444444', NOW() - INTERVAL '1 day'),
+  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '33333333-3333-4333-8333-333333333333', 'Great job Marcus! I reviewed your video. Your finger aperture was much cleaner today. Keep practicing step 1 daily.', '44444444-4444-4444-8444-444444444444', NOW() - INTERVAL '18 hours'),
+  ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', '44444444-4444-4444-8444-444444444444', 'Hello Dr. Ramos, Leo really enjoyed the putty exercises today! He managed to make 5 mini pancakes with his index finger.', '22222222-2222-4222-8222-222222222222', NOW() - INTERVAL '10 hours')
+ON CONFLICT (id) DO NOTHING;
