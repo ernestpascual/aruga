@@ -87,7 +87,7 @@ export default function LandingPage() {
         style={{ backgroundColor: headerBg, borderBottomColor: headerBorder }}
         className="fixed top-0 inset-x-0 z-50 w-full border-b pt-3 sm:pt-4 pb-2 sm:pb-3"
       >
-        <div className="container mx-auto flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] h-12 sm:h-14 px-4 sm:px-6 max-w-7xl">
+        <div className="container mx-auto flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] h-12 sm:h-14 px-5 sm:px-6 max-w-7xl">
           <div className="flex justify-start shrink-0">
             <Link href="/" className="group flex items-center">
               <span
@@ -155,7 +155,7 @@ export default function LandingPage() {
 
 
             {/* Headline — middle left */}
-            <div className="absolute inset-0 flex flex-col justify-center z-10 px-5 sm:px-8 lg:px-12 gap-6">
+            <div className="absolute inset-0 flex flex-col justify-center z-10 px-6 sm:px-8 lg:px-12 gap-6">
               <h1 className="text-[32px] sm:text-[44px] lg:text-[52px] font-semibold leading-[0.9] tracking-[-0.02em] text-white max-w-[560px]">
                 Therapy doesn&apos;t<br />stop at the<br />clinic door.
               </h1>
@@ -185,7 +185,7 @@ export default function LandingPage() {
           </div>
 
           {/* Below hero — full width, no card */}
-          <div className="w-full bg-[#F6F3EF] px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+          <div className="w-full bg-[#F6F3EF] px-5 sm:px-6 lg:px-8 py-8 sm:py-10">
             <div className="flex items-center gap-2 text-[10px] tracking-[0.12em] uppercase text-black/40"><span>✱</span> Ready to see what your body’s been trying to tell you?</div>
             <h2 className="mt-3 text-[22px] sm:text-[30px] font-bold leading-[1.1] tracking-[-0.02em] text-black max-w-xl">A simple, supervised home-program — for people and practitioners.</h2>
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
@@ -260,7 +260,7 @@ export default function LandingPage() {
       <section id="disciplines" className="bg-white border-b border-black/10">
 
         {/* Big headline like "Protein Sequencing by Expansion" */}
-        <div className="container mx-auto px-4 sm:px-6 max-w-7xl py-10 sm:py-14">
+        <div className="container mx-auto px-5 sm:px-6 max-w-7xl py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black">
             <span className="block text-3xl sm:text-5xl lg:text-6xl">Built for OT, PT</span>
             <span className="block text-3xl sm:text-5xl lg:text-6xl text-black/30">and Speech —</span>
@@ -305,7 +305,7 @@ export default function LandingPage() {
 
       {/* LIFESPAN — editorial */}
       <section id="lifespan" className="bg-white border-b border-black/10">
-        <div className="container mx-auto px-4 sm:px-6 max-w-7xl py-10 sm:py-14">
+        <div className="container mx-auto px-5 sm:px-6 max-w-7xl py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">Adapted for every<br/><span className="text-black/25">milestone & generation.</span></h2>
           <p className="mt-4 max-w-2xl text-xs sm:text-sm text-black/50 leading-relaxed">Aruga keeps therapy going at home — simple steps, quick photo or clip, and clear feedback from your clinician.</p>
           <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-0 border border-black/10 divide-y md:divide-y-0 md:divide-x divide-black/10">
@@ -337,7 +337,7 @@ export default function LandingPage() {
 
       {/* SOAP */}
       <section id="soap-notes" className="bg-white border-b border-black/10">
-        <div className="container mx-auto px-4 sm:px-6 max-w-7xl py-10 sm:py-14">
+        <div className="container mx-auto px-5 sm:px-6 max-w-7xl py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">Clinical notes.<br/><span className="text-black/25">Telehealth & assessments.</span></h2>
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-0 border border-black/10 divide-y lg:divide-y-0 lg:divide-x divide-black/10">
             <div className="p-6 sm:p-8 space-y-4">
@@ -378,7 +378,7 @@ export default function LandingPage() {
 
       {/* SAFETY — breaker */}
       <section id="safety" className="bg-black border-y border-white/10">
-        <div className="container mx-auto px-4 sm:px-6 max-w-7xl py-10 sm:py-12">
+        <div className="container mx-auto px-5 sm:px-6 max-w-7xl py-10 sm:py-12">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
             <div className="shrink-0">
               <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-tight">Safe and private<br/><span className="text-white/40">by design.</span></h2>
@@ -407,7 +407,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="bg-white py-10 px-4 sm:px-6 border-t border-black/10">
+      <footer className="bg-white py-10 px-5 sm:px-6 border-t border-black/10">
         <div className="container mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="font-aruga text-lg font-normal tracking-wide" style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}>Aruga</div>
           <div className="text-[11px] font-mono text-black/25">© 2026 Aruga • All rights reserved.</div>

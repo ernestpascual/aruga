@@ -20,4 +20,10 @@ Whenever performing, generating, or updating audits (e.g. within the `audit/` fo
    - Must include dynamic interactive features: live compute/cost sliders, interactive searchable checklists with completion metrics, tabbed views, tier comparators, and print/PDF optimization.
    - Must be fully self-contained (embedded CSS and vanilla JS, zero external runtime build dependencies).
 4. **Never Deliver a Markdown Audit Without its Interactive HTML Companion**.
+5. **Versioning & Archival (Timestamped, Old → LATEST)**:
+   - Every audit/canvas/HIPAA artifact MUST be timestamped `MMDDYYHHMM` in its filename (e.g. `audit_report_1101260151.md`, `HIPAA_COMPLIANCE_AUDIT_1101260151.html`, `BUSINESS_MODEL_CANVAS_V2_1031261420.md`).
+   - Before publishing a new version, move ALL superseded timestamped versions of the same family to the `old/` subdirectory — `audit/old/` for audits/HIPAA/canvas history and `docs/old/` for any versioned docs — preserving their full timestamped filenames (never rename or overwrite history).
+   - The root of `audit/` and the root of `docs/` must contain ONLY the latest authoritative version of each family. `audit/` keeps the latest timestamped pair as source of truth (e.g. `audit_report_1101260151.*`, `HIPAA_COMPLIANCE_AUDIT_1101260151.*`, `BUSINESS_MODEL_CANVAS_V2_1031261420.*`); `docs/` holds a stable `*_LATEST.*` convenience copy (e.g. `docs/AUDIT_REPORT_LATEST.*`, `docs/HIPAA_AUDIT_LATEST.*`, `docs/BUSINESS_MODEL_CANVAS_LATEST.*`) synced from `audit/`.
+   - Update cross-links when archiving: previous-version references in the new audit must point to `old/` (e.g. `old/audit_report_1031262200.md`) and `README.md` / index pages must point to the new latest. Never leave dangling links to moved files.
+   - Maintain `audit/old/README.md` and `docs/old/README.md` as the archive index describing what was archived, when, and what is now latest.
 

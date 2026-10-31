@@ -33,8 +33,16 @@ import {
   Clock,
   Timer,
   History,
+  ArrowLeft,
+  Beaker,
+  Target,
+  Film,
+  Settings2,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/supabase/auth-context";
 import {
   SAM_ENGINES,
@@ -226,6 +234,7 @@ export default function SamTestPage() {
   const [durationSeconds, setDurationSeconds] = useState<number | undefined>(undefined);
   const [videoSize, setVideoSize] = useState<{ width: number; height: number } | null>(null);
   const [maskStyles, setMaskStyles] = useState<Record<string, MaskStyle>>({});
+  const [isolatedLabel, setIsolatedLabel] = useState<string | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -359,6 +368,7 @@ export default function SamTestPage() {
     setError(null);
     setResult(null);
     setActiveRunId(null);
+    setIsolatedLabel(null);
     if (!file.type.startsWith("video/")) {
       setError("Please choose a valid video file.");
       return;
@@ -574,21 +584,72 @@ export default function SamTestPage() {
     return active;
   })();
 
-  const visibleActiveBoxes = activeBoxes.filter((b) => styleFor(b.label).visible);
+  // Isolate logic: when isolatedLabel set, only that label is visible + black bg highlight
+  const effectiveVisibleBoxes = isolatedLabel
+    ? activeBoxes.filter((b) => b.label === isolatedLabel)
+    : activeBoxes.filter((b) => styleFor(b.label).visible);
+  const visibleActiveBoxes = effectiveVisibleBoxes;
   const activeFrames = new Set(visibleActiveBoxes.map((b) => b.frameIndex));
-  const activePaths = (result?.svgPaths ?? []).filter(
-    (p) =>
-      activeFrames.has(p.frameIndex) &&
-      styleFor(p.label ?? visibleActiveBoxes[0]?.label ?? "").visible
-  );
+  const activePaths = (result?.svgPaths ?? []).filter((p) => {
+    if (isolatedLabel) return p.label === isolatedLabel && activeFrames.has(p.frameIndex);
+    return activeFrames.has(p.frameIndex) && styleFor(p.label ?? visibleActiveBoxes[0]?.label ?? "").visible;
+  });
 
   const activeTargetCount = prompt.trim()
     ? prompt.split(",").filter((s) => s.trim().length > 0).length
     : 0;
 
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const snapshotCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
+
+  const isolatedOverlayD = useMemo(() => {
+    if (!isolatedLabel) return null;
+    if (activePaths.length > 0) return activePaths.map((p) => p.path).join(" ");
+    if (visibleActiveBoxes.length > 0) {
+      return visibleActiveBoxes
+        .map((b) => {
+          const [ymin, xmin, ymax, xmax] = b.box;
+          return `M${xmin} ${ymin} H${xmax} V${ymax} H${xmin} Z`;
+        })
+        .join(" ");
+    }
+    return null;
+  }, [isolatedLabel, activePaths, visibleActiveBoxes]);
+
+  function toggleVideoPlay() {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) v.play();
+    else v.pause();
+  }
+
+  function handleSnapshot() {
+    const v = videoRef.current;
+    const c = snapshotCanvasRef.current;
+    if (!v || !c) return;
+    const w = v.videoWidth || 1280;
+    const h = v.videoHeight || 720;
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(v, 0, 0, w, h);
+    const url = c.toDataURL("image/jpeg", 0.92);
+    setSnapshotUrl(url);
+  }
+
+  function downloadSnapshot() {
+    if (!snapshotUrl) return;
+    const a = document.createElement("a");
+    a.href = snapshotUrl;
+    a.download = `isolated-${isolatedLabel ?? "frame"}-${Date.now()}.jpg`;
+    a.click();
+  }
+
   return (
     <div
-      className="min-h-screen bg-zinc-950 text-zinc-100 relative pb-20"
+      className="min-h-screen bg-zinc-950 text-zinc-100 relative pb-10"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -597,88 +658,90 @@ export default function SamTestPage() {
       {/* Drag Overlay */}
       {isDragging && (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm p-6">
-          <div className="w-full max-w-lg rounded-2xl border-2 border-dashed border-teal-400 bg-zinc-900/95 p-10 text-center space-y-3 shadow-2xl">
-            <div className="mx-auto w-12 h-12 rounded-xl bg-teal-950 border border-teal-500/50 text-teal-300 flex items-center justify-center">
+          <div className="w-full max-w-lg rounded-2xl border-2 border-dashed border-teal-400 bg-zinc-900 p-10 text-center space-y-3 shadow-2xl">
+            <div className="mx-auto w-12 h-12 rounded-xl bg-teal-950 border border-teal-500/40 text-teal-300 flex items-center justify-center">
               <UploadCloud className="w-6 h-6 animate-bounce" />
             </div>
-            <p className="text-base font-bold text-zinc-100">Drop therapy video to load</p>
-            <p className="text-xs text-zinc-400">
-              Supports MP4 and WebM clips up to 100MB
-            </p>
+            <p className="text-sm font-semibold text-zinc-100">Drop therapy video to load</p>
+            <p className="text-xs text-zinc-400">MP4 / WebM up to 100 MB</p>
           </div>
         </div>
       )}
 
-      <main className="container mx-auto px-4 sm:px-6 py-5 max-w-5xl space-y-6">
-        {/* Top Navigation & Workspace Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800/80 pb-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Link
-                href="/therapist/dashboard"
-                className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
-              >
-                Dashboard
-              </Link>
-              <span className="text-zinc-600">/</span>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-teal-950/80 text-teal-300 border border-teal-500/40">
-                SAM 3.1 Workspace
-              </span>
-            </div>
-            <h1 className="text-xl font-bold tracking-tight text-zinc-50 flex items-center gap-2">
-              <span>Meta SAM 3.1 Testing Workspace</span>
-              <span className="text-xs font-normal text-zinc-400 border border-zinc-800 px-2 py-0.5 rounded-md bg-zinc-900">
-                7 Clinical Engines
-              </span>
-            </h1>
-            <p className="text-xs text-zinc-400">
-              Switch between 100-keyword clinical engines across the lifespan (Pediatric, Adolescent, Adult, Geriatrics) and everyday environments (Home, School, Kitchen).
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={fetchPastSessions}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-300 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:text-white transition-colors"
-              title="Reload previous processed sessions from database"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingPastSessions ? "animate-spin text-teal-400" : ""}`} />
-              <span>Reload Sessions</span>
-            </button>
-            <Link
-              href="/aruga-guide"
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 border border-zinc-800 transition-colors"
-            >
-              Ask OT
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-40 w-full border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-md">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link href="/therapist/dashboard" className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors shrink-0">
+              <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
             </Link>
-            <a
-              href="/docs/SAM_ENGINE_KEYWORDS.md"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-teal-400 bg-teal-950/40 border border-teal-500/30 hover:bg-teal-900/40 transition-colors"
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Keywords Guide</span>
+            <span className="hidden sm:block h-5 w-px bg-zinc-800 shrink-0" aria-hidden />
+            <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
+              <Beaker className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-sm font-semibold tracking-tight text-zinc-100 leading-none flex items-center gap-2">
+                SAM 3.1 Workspace
+                <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-950 border border-teal-500/30 text-teal-300">7 Engines • 100 targets</span>
+              </h1>
+              <p className="hidden sm:block text-[11px] text-zinc-500 leading-none mt-1 truncate">Pediatric → Geriatrics • Home • School • Kitchen</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button type="button" onClick={fetchPastSessions} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white hover:border-zinc-700 transition-colors">
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingPastSessions ? "animate-spin text-teal-400" : "text-zinc-500"}`} /> <span className="hidden sm:inline">Reload</span>
+            </button>
+            <Link href="/aruga-guide" className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors">
+              <Sparkles className="w-3.5 h-3.5" /> Guide
+            </Link>
+            <a href="/docs/SAM_ENGINE_KEYWORDS.md" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium bg-teal-950/60 border border-teal-500/30 text-teal-300 hover:bg-teal-900/60 transition-colors">
+              <BookOpen className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Keywords</span>
             </a>
           </div>
         </div>
+      </header>
 
-        {/* 1. PRIMARY ENGINE SWITCHER TABS */}
-        <div className="space-y-4">
-          {/* Lifespan Demographic Care Engines */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-teal-400" />
-                <span>Lifespan Demographic Engines (100 Targets Each)</span>
-              </label>
-              <span className="text-[11px] text-zinc-500">
-                Ages 1 to 55+
-              </span>
+      {/* Stepper Nav */}
+      <div className="sticky top-14 z-30 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 h-11 flex items-center gap-1 overflow-x-auto scrollbar-none">
+          {[
+            { id: "engines", label: "Engine", icon: Layers, sub: selectedEngine === "custom" ? "Custom" : SAM_ENGINES[selectedEngine as SamEngineCategory]?.name ?? "Custom" },
+            { id: "video", label: "Video", icon: Film, sub: previewUrl ? fileName.slice(0,18) : "Upload" },
+            { id: "payload", label: "Payload", icon: Target, sub: `${activeTargetCount} targets` },
+            { id: "results", label: "Results", icon: Eye, sub: result ? `${result.tracks.length} found` : "—" },
+          ].map((s) => (
+            <a key={s.id} href={`#${s.id}`} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors shrink-0">
+              <s.icon className="w-3.5 h-3.5 text-zinc-500" />
+              <span className="font-semibold">{s.label}</span>
+              <span className="hidden sm:inline text-zinc-600">•</span>
+              <span className="hidden sm:inline text-zinc-500 truncate max-w-[120px]">{s.sub}</span>
+            </a>
+          ))}
+          <span className="ml-auto hidden lg:inline-flex items-center gap-1.5 text-[11px] text-zinc-500">
+            <Timer className="w-3 h-3" /> {result ? `${(result.latencyMs/1000).toFixed(2)}s` : "No run yet"}
+          </span>
+        </div>
+      </div>
+
+      <main className="mx-auto max-w-6xl px-4 sm:px-6 py-6 space-y-6">
+
+        {/* 1. ENGINE SELECTOR — sleek grouped cards */}
+        <section id="engines" className="scroll-mt-28 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-semibold tracking-widest uppercase text-zinc-400 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center"><Activity className="w-3.5 h-3.5 text-teal-400" /></span>
+              Choose Engine
+            </h2>
+            <span className="text-xs text-zinc-500">8 options • 100 targets each</span>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold tracking-wide uppercase text-zinc-500">Lifespan</span>
+              <span className="h-px flex-1 bg-zinc-800" />
+              <span className="text-[11px] text-zinc-600">1 → 55+</span>
             </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {(["pedia", "adolescent", "adult", "old_people"] as const).map((key) => {
                 const conf = ENGINE_CONFIGS[key];
                 const Icon = conf.icon;
@@ -688,44 +751,32 @@ export default function SamTestPage() {
                     key={key}
                     type="button"
                     onClick={() => handleSelectEngine(key)}
-                    className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between ${
+                    className={`group relative p-4 rounded-2xl border text-left transition-all ${
                       isSelected
-                        ? conf.activeClass
-                        : "bg-zinc-900/60 border-zinc-800/90 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                        ? "bg-zinc-900 border-teal-500/50 ring-1 ring-teal-500/30 shadow-md"
+                        : "bg-zinc-900/60 border-zinc-800 hover:bg-zinc-900 hover:border-zinc-700"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1 mb-1.5">
-                      <div className="flex items-center gap-1.5 font-semibold text-xs text-zinc-100">
-                        <Icon className="w-4 h-4 shrink-0 text-current" />
-                        <span>{conf.title}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${isSelected ? "bg-teal-950 border-teal-500/30 text-teal-300" : "bg-zinc-800 border-zinc-700 text-zinc-400 group-hover:text-zinc-200"}`}>
+                        <Icon className="w-4 h-4" />
                       </div>
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-medium border ${conf.badgeClass}`}>
-                        100
-                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-medium border ${isSelected ? "bg-teal-950 text-teal-300 border-teal-500/30" : "bg-zinc-800 text-zinc-500 border-zinc-700"}`}>100</span>
                     </div>
-                    <div className="text-[11px] text-zinc-400 font-medium">{conf.ageRange}</div>
-                    <div className="text-[10px] text-zinc-500 truncate mt-0.5">
-                      {conf.subtext}
-                    </div>
+                    <div className={`mt-3 text-sm font-semibold ${isSelected ? "text-zinc-100" : "text-zinc-200"}`}>{conf.title}</div>
+                    <div className="text-xs text-zinc-500">{conf.subtext}</div>
+                    <div className="mt-2 inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-800 border border-zinc-700 text-zinc-400">{conf.ageRange}</div>
                   </button>
                 );
               })}
             </div>
-          </div>
 
-          {/* Environmental & Contextual Engines */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Environmental & Contextual Engines (100 Targets Each)</span>
-              </label>
-              <span className="text-[11px] text-zinc-500">
-                Home • School • Kitchen
-              </span>
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-[11px] font-semibold tracking-wide uppercase text-zinc-500">Environment</span>
+              <span className="h-px flex-1 bg-zinc-800" />
+              <span className="text-[11px] text-zinc-600">Home • School • Kitchen</span>
             </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {(["home_objects", "school_objects", "kitchen_items"] as const).map((key) => {
                 const conf = ENGINE_CONFIGS[key];
                 const Icon = conf.icon;
@@ -735,469 +786,248 @@ export default function SamTestPage() {
                     key={key}
                     type="button"
                     onClick={() => handleSelectEngine(key)}
-                    className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between ${
-                      isSelected
-                        ? conf.activeClass
-                        : "bg-zinc-900/60 border-zinc-800/90 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                    className={`group relative p-4 rounded-2xl border text-left transition-all ${
+                      isSelected ? "bg-zinc-900 border-teal-500/50 ring-1 ring-teal-500/30 shadow-md" : "bg-zinc-900/60 border-zinc-800 hover:bg-zinc-900 hover:border-zinc-700"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1 mb-1.5">
-                      <div className="flex items-center gap-1.5 font-semibold text-xs text-zinc-100">
-                        <Icon className="w-4 h-4 shrink-0 text-current" />
-                        <span>{conf.title}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${isSelected ? "bg-teal-950 border-teal-500/30 text-teal-300" : "bg-zinc-800 border-zinc-700 text-zinc-400 group-hover:text-zinc-200"}`}>
+                        <Icon className="w-4 h-4" />
                       </div>
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-medium border ${conf.badgeClass}`}>
-                        100
-                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-medium border ${isSelected ? "bg-teal-950 text-teal-300 border-teal-500/30" : "bg-zinc-800 text-zinc-500 border-zinc-700"}`}>100</span>
                     </div>
-                    <div className="text-[11px] text-zinc-400 font-medium">{conf.ageRange}</div>
-                    <div className="text-[10px] text-zinc-500 truncate mt-0.5">
-                      {conf.subtext}
-                    </div>
+                    <div className={`mt-3 text-sm font-semibold ${isSelected ? "text-zinc-100" : "text-zinc-200"}`}>{conf.title}</div>
+                    <div className="text-xs text-zinc-500">{conf.subtext}</div>
+                    <div className="mt-2 inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-800 border border-zinc-700 text-zinc-400">{conf.ageRange}</div>
                   </button>
                 );
               })}
-
-              {/* Custom Freeform Prompt Tab */}
               <button
                 type="button"
                 onClick={() => handleSelectEngine("custom")}
-                className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between ${
-                  selectedEngine === "custom"
-                    ? "bg-zinc-800/90 border-teal-400 ring-1 ring-teal-400/40 text-zinc-100 shadow-lg"
-                    : "bg-zinc-900/60 border-zinc-800/90 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                className={`group relative p-4 rounded-2xl border text-left transition-all ${
+                  selectedEngine === "custom" ? "bg-zinc-900 border-teal-500/50 ring-1 ring-teal-500/30 shadow-md" : "bg-zinc-900/60 border-zinc-800 hover:bg-zinc-900 hover:border-zinc-700"
                 }`}
               >
-                <div className="flex items-center justify-between gap-1 mb-1.5">
-                  <div className="flex items-center gap-1.5 font-semibold text-xs text-zinc-200">
-                    <Sliders className="w-4 h-4 text-teal-400 shrink-0" />
-                    <span>Custom</span>
+                <div className="flex items-start justify-between gap-2">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${selectedEngine === "custom" ? "bg-teal-950 border-teal-500/30 text-teal-300" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
+                    <Sliders className="w-4 h-4" />
                   </div>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-800 text-zinc-400">
-                    Free
-                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-zinc-800 text-zinc-500 border border-zinc-700">Free</span>
                 </div>
-                <div className="text-[11px] text-zinc-400 font-medium">Freeform</div>
-                <div className="text-[10px] text-zinc-500 truncate mt-0.5">
-                  Manual Custom Targets
-                </div>
+                <div className="mt-3 text-sm font-semibold text-zinc-200">Custom</div>
+                <div className="text-xs text-zinc-500">Manual targets</div>
+                <div className="mt-2 inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-800 border border-zinc-700 text-zinc-400">Freeform</div>
               </button>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* 2. ACTIVE ENGINE PROFILE & TARGET CONTROLS */}
         {currentEngineMeta && (
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-4 shadow-sm">
-            {/* Header info row */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pb-3 border-b border-zinc-800/80">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-zinc-100">
-                    {currentEngineMeta.name}
-                  </span>
-                  <span className="text-xs text-zinc-400">
-                    ({currentEngineMeta.ageRange})
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-teal-950/70 text-teal-300 border border-teal-500/40">
-                    {selectedKeywords.size} of {currentEngineMeta.targetCount} Targets Active
-                  </span>
+          <Card className="p-5 space-y-4 border-zinc-800 bg-zinc-900/70">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 border-b border-zinc-800">
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-zinc-100">{currentEngineMeta.name}</span>
+                  <span className="text-xs text-zinc-500">• {currentEngineMeta.ageRange}</span>
+                  <Badge variant="teal" className="font-mono text-[11px]">{selectedKeywords.size} / {currentEngineMeta.targetCount} active</Badge>
                 </div>
-                <div className="text-[11px] text-zinc-400 flex flex-wrap gap-x-3 gap-y-1">
-                  <span>
-                    <strong className="text-zinc-300">OT:</strong>{" "}
-                    {currentEngineMeta.clinicalConditions.occupationalTherapy.slice(0, 3).join(", ")}
-                  </span>
-                  <span>•</span>
-                  <span>
-                    <strong className="text-zinc-300">PT:</strong>{" "}
-                    {currentEngineMeta.clinicalConditions.physicalTherapy.slice(0, 3).join(", ")}
-                  </span>
-                  <span>•</span>
-                  <span>
-                    <strong className="text-zinc-300">SLP:</strong>{" "}
-                    {currentEngineMeta.clinicalConditions.speechPathology.slice(0, 3).join(", ")}
-                  </span>
+                <div className="text-xs text-zinc-500 flex flex-wrap gap-x-2 gap-y-1 leading-relaxed">
+                  <span><span className="font-semibold text-zinc-400">OT:</span> {currentEngineMeta.clinicalConditions.occupationalTherapy.slice(0, 3).join(", ")}</span>
+                  <span className="text-zinc-700">•</span>
+                  <span><span className="font-semibold text-zinc-400">PT:</span> {currentEngineMeta.clinicalConditions.physicalTherapy.slice(0, 3).join(", ")}</span>
+                  <span className="text-zinc-700">•</span>
+                  <span><span className="font-semibold text-zinc-400">SLP:</span> {currentEngineMeta.clinicalConditions.speechPathology.slice(0, 3).join(", ")}</span>
                 </div>
               </div>
-
-              {/* Quick Preset Buttons */}
-              <div className="flex items-center flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={handleSelectAllEngineKeywords}
-                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition-colors"
-                >
-                  All 100 Targets
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSelectDisciplineKeywords("OT")}
-                  className="px-2 py-1 rounded-lg text-xs font-medium bg-teal-950/60 hover:bg-teal-900/80 text-teal-300 border border-teal-500/40 transition-colors"
-                >
-                  OT Only
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSelectDisciplineKeywords("PT")}
-                  className="px-2 py-1 rounded-lg text-xs font-medium bg-sky-950/60 hover:bg-sky-900/80 text-sky-300 border border-sky-500/40 transition-colors"
-                >
-                  PT Only
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSelectDisciplineKeywords("SLP")}
-                  className="px-2 py-1 rounded-lg text-xs font-medium bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 border border-purple-500/40 transition-colors"
-                >
-                  SLP Only
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClearKeywords}
-                  className="px-2 py-1 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
-                  title="Clear all targets"
-                >
-                  Clear
-                </button>
+              <div className="flex items-center flex-wrap gap-2 shrink-0">
+                <Button variant="outline" size="sm" onClick={handleSelectAllEngineKeywords} className="h-8 text-xs border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-200">All 100</Button>
+                <Button variant="outline" size="sm" onClick={() => handleSelectDisciplineKeywords("OT")} className="h-8 text-xs border-teal-500/30 bg-teal-950/50 hover:bg-teal-900/50 text-teal-300">OT</Button>
+                <Button variant="outline" size="sm" onClick={() => handleSelectDisciplineKeywords("PT")} className="h-8 text-xs border-sky-500/30 bg-sky-950/50 hover:bg-sky-900/50 text-sky-300">PT</Button>
+                <Button variant="outline" size="sm" onClick={() => handleSelectDisciplineKeywords("SLP")} className="h-8 text-xs border-violet-500/30 bg-violet-950/50 hover:bg-violet-900/50 text-violet-300">SLP</Button>
+                <Button variant="ghost" size="sm" onClick={handleClearKeywords} className="h-8 text-xs text-zinc-400 hover:text-zinc-100">Clear</Button>
               </div>
             </div>
 
-            {/* Keyword Inspector Filter Bar */}
             <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-2 flex-1 max-w-sm">
-                  <div className="relative w-full">
-                    <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={`Search ${currentEngineMeta.keywords.length} targets or clinical contexts...`}
-                      className="w-full pl-8 pr-3 py-1.5 rounded-lg text-xs bg-zinc-950 border border-zinc-800 text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-teal-500"
-                    />
-                    {searchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setSearchQuery("")}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 text-xs"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search targets or clinical context…" className="w-full h-9 pl-9 pr-8 rounded-xl text-sm bg-zinc-950 border border-zinc-800 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20" />
+                  {searchQuery && <button type="button" onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-zinc-800 text-zinc-400 hover:text-zinc-100 flex items-center justify-center text-xs">✕</button>}
                 </div>
-
-                {/* Discipline Filter Tabs */}
-                <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
-                  <span className="text-[11px] text-zinc-500 mr-1 hidden sm:inline">
-                    Discipline:
-                  </span>
+                <div className="flex items-center gap-1 p-1 rounded-xl bg-zinc-950 border border-zinc-800 shrink-0 overflow-x-auto">
                   {(["ALL", "OT", "PT", "SLP", "Interdisciplinary"] as const).map((disc) => (
-                    <button
-                      key={disc}
-                      type="button"
-                      onClick={() => setDisciplineFilter(disc)}
-                      className={`px-2 py-1 rounded-md text-[11px] font-medium transition-colors ${
-                        disciplineFilter === disc
-                          ? "bg-zinc-800 text-teal-300 border border-teal-500/40"
-                          : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
-                      }`}
-                    >
-                      {disc}
-                    </button>
+                    <button key={disc} type="button" onClick={() => setDisciplineFilter(disc)} className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${disciplineFilter === disc ? "bg-zinc-800 text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-300"}`}>{disc}</button>
                   ))}
-                  <button
-                    type="button"
-                    onClick={() => setIsInspectorExpanded(!isInspectorExpanded)}
-                    className="ml-2 px-2 py-1 rounded-md text-[11px] text-zinc-400 hover:text-zinc-200 bg-zinc-800/40 hover:bg-zinc-800 flex items-center gap-1 transition-colors"
-                  >
-                    <span>{isInspectorExpanded ? "Collapse" : "Expand"}</span>
-                    {isInspectorExpanded ? (
-                      <ChevronUp className="w-3 h-3" />
-                    ) : (
-                      <ChevronDown className="w-3 h-3" />
-                    )}
-                  </button>
                 </div>
+                <Button variant="outline" size="sm" onClick={() => setIsInspectorExpanded(!isInspectorExpanded)} className="h-9 gap-1.5 border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-100 shrink-0">
+                  {isInspectorExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />} {isInspectorExpanded ? "Hide" : "Show"}
+                </Button>
               </div>
-
-              {/* Collapsible Interactive Keyword Chip Gallery */}
               {isInspectorExpanded && (
-                <div className="space-y-2">
-                  <div className="max-h-48 overflow-y-auto p-2.5 rounded-xl border border-zinc-800/90 bg-zinc-950/70 flex flex-wrap gap-1.5 scrollbar-thin scrollbar-thumb-zinc-800">
+                <div className="space-y-3">
+                  <div className="max-h-52 overflow-y-auto p-3 rounded-xl border border-zinc-800 bg-zinc-950 flex flex-wrap gap-2">
                     {filteredEngineItems.map((item) => {
                       const isSelected = selectedKeywords.has(item.keyword);
-                      const discBadgeColors = {
-                        OT: "border-teal-500/40 text-teal-300 bg-teal-950/40",
-                        PT: "border-sky-500/40 text-sky-300 bg-sky-950/40",
-                        SLP: "border-purple-500/40 text-purple-300 bg-purple-950/40",
-                        Interdisciplinary:
-                          "border-emerald-500/40 text-emerald-300 bg-emerald-950/40",
-                      }[item.discipline];
-
+                      const discStyle = { OT: "border-teal-500/30 text-teal-300 bg-teal-950/30", PT: "border-sky-500/30 text-sky-300 bg-sky-950/30", SLP: "border-violet-500/30 text-violet-300 bg-violet-950/30", Interdisciplinary: "border-emerald-500/30 text-emerald-300 bg-emerald-950/30" }[item.discipline];
                       return (
-                        <button
-                          key={item.keyword}
-                          type="button"
-                          onClick={() => handleToggleKeyword(item.keyword)}
-                          onMouseEnter={() => setInspectedItem(item)}
-                          className={`group inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-mono border transition-all ${
-                            isSelected
-                              ? `${discBadgeColors} font-semibold ring-1 ring-current/20`
-                              : "border-zinc-800 text-zinc-500 bg-zinc-900/40 hover:border-zinc-700 hover:text-zinc-300"
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              isSelected ? "bg-current" : "bg-zinc-700"
-                            }`}
-                          />
-                          <span>{item.keyword}</span>
-                          {isSelected && <Check className="w-2.5 h-2.5 ml-0.5 opacity-80" />}
+                        <button key={item.keyword} type="button" onClick={() => handleToggleKeyword(item.keyword)} onMouseEnter={() => setInspectedItem(item)} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${isSelected ? `${discStyle} shadow-sm` : "border-zinc-800 text-zinc-500 bg-zinc-900 hover:border-zinc-700 hover:text-zinc-300"}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-current" : "bg-zinc-600"}`} />
+                          {item.keyword}
+                          {isSelected && <Check className="w-3 h-3 ml-0.5" />}
                         </button>
                       );
                     })}
-                    {filteredEngineItems.length === 0 && (
-                      <div className="py-4 w-full text-center text-xs text-zinc-500">
-                        No targets match &quot;{searchQuery}&quot; under {disciplineFilter} filter.
-                      </div>
-                    )}
+                    {filteredEngineItems.length === 0 && <div className="w-full py-6 text-center text-xs text-zinc-500">No matches for “{searchQuery}”</div>}
                   </div>
-
-                  {/* Active Inspected Chip Clinical Card */}
                   {inspectedItem && (
-                    <div className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-teal-300">
-                          {inspectedItem.keyword}
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-medium">
-                          {inspectedItem.discipline} • {inspectedItem.otpfCategory}
-                        </span>
+                        <span className="font-mono font-semibold text-teal-300">{inspectedItem.keyword}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-800 border border-zinc-700 text-zinc-300">{inspectedItem.discipline} • {inspectedItem.otpfCategory}</span>
                       </div>
-                      <span className="text-zinc-400 text-[11px]">
-                        {inspectedItem.clinicalContext}
-                      </span>
+                      <span className="text-zinc-400 max-w-md text-right">{inspectedItem.clinicalContext}</span>
                     </div>
                   )}
                 </div>
               )}
             </div>
-          </div>
+          </Card>
         )}
 
-        {/* 3. VIDEO UPLOAD & PLAYBACK AREA */}
-        <div className="space-y-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={(e) => {
-              handleVideo(e.target.files?.[0] ?? null);
-              e.target.value = "";
-            }}
-          />
-
-          {!previewUrl ? (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-zinc-800 hover:border-teal-500/60 bg-zinc-900/30 hover:bg-zinc-900/60 p-8 text-sm text-zinc-300 transition-all cursor-pointer group"
-            >
-              <div className="w-12 h-12 rounded-xl bg-zinc-800/80 group-hover:bg-teal-950 border border-zinc-700 group-hover:border-teal-500/50 text-zinc-400 group-hover:text-teal-400 flex items-center justify-center transition-colors">
-                {isReading ? (
-                  <Loader2 className="w-6 h-6 animate-spin text-teal-400" />
-                ) : (
-                  <Upload className="w-6 h-6" />
-                )}
-              </div>
-              <div className="text-center">
-                <span className="font-semibold text-zinc-200">
-                  {isReading ? "Reading video..." : "Select or Drop Therapy Video"}
-                </span>
-                <p className="text-xs text-zinc-500 mt-1">
-                  Upload patient rehabilitation clip to test detection with active engine
-                </p>
-              </div>
-            </button>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-zinc-400 px-1">
-                <div className="flex items-center gap-2">
-                  <FileVideo className="w-4 h-4 text-teal-400" />
-                  <span className="font-medium text-zinc-200 truncate max-w-xs sm:max-w-md">
-                    {fileName}
-                  </span>
-                  {videoSize && (
-                    <span className="text-zinc-500 text-[11px]">
-                      ({videoSize.width}x{videoSize.height}
-                      {durationSeconds ? ` • ${Math.round(durationSeconds)}s` : ""})
-                    </span>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-teal-400 hover:text-teal-300 hover:underline text-xs"
-                >
-                  Change Video
-                </button>
-              </div>
-
-              {/* Video Player Container */}
-              <div className="relative w-full overflow-hidden rounded-2xl bg-black border border-zinc-800 shadow-xl">
-                <video
-                  ref={videoRef}
-                  src={previewUrl}
-                  controls
-                  playsInline
-                  className="block w-full h-auto bg-black max-h-[520px] mx-auto object-contain"
-                  onLoadedMetadata={(e) => {
-                    setDurationSeconds(e.currentTarget.duration || undefined);
-                    setVideoSize({
-                      width: e.currentTarget.videoWidth || 0,
-                      height: e.currentTarget.videoHeight || 0,
-                    });
-                  }}
-                  onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-                />
-
-                {/* Multi-Target Mask & Bounding Box Overlay */}
-                {visibleActiveBoxes.length > 0 && (
-                  <div className="absolute inset-0 pointer-events-none">
-                    <svg
-                      className="absolute inset-0 w-full h-full"
-                      viewBox="0 0 1 1"
-                      preserveAspectRatio="none"
-                    >
-                      {activePaths.map((p, i) => {
-                        const style = styleFor(p.label ?? visibleActiveBoxes[0]?.label ?? "");
-                        return (
-                          <path
-                            key={`${p.frameIndex}-${i}`}
-                            d={p.path}
-                            fill={style.color}
-                            fillOpacity={style.fillOpacity}
-                            stroke={style.color}
-                            strokeWidth={Math.max(0.0005, style.strokeWidth * 0.001)}
-                          />
-                        );
-                      })}
-                    </svg>
-                    {visibleActiveBoxes.map((b) => {
-                      const [ymin, xmin, ymax, xmax] = b.box;
-                      const style = styleFor(b.label);
-                      return (
-                        <div
-                          key={`${b.label}-${b.objectId ?? ""}-${b.frameIndex}`}
-                          className="absolute rounded"
-                          style={{
-                            top: `${ymin * 100}%`,
-                            left: `${xmin * 100}%`,
-                            width: `${(xmax - xmin) * 100}%`,
-                            height: `${(ymax - ymin) * 100}%`,
-                            border: `${style.strokeWidth}px solid ${style.color}`,
-                            backgroundColor: "transparent",
-                          }}
-                        >
-                          <span
-                            className="absolute -top-6 left-0 px-1.5 py-0.5 rounded text-[11px] font-mono text-zinc-950 font-bold whitespace-nowrap shadow-sm"
-                            style={{ backgroundColor: style.color }}
-                          >
-                            {b.label}
-                            {b.confidence ? ` ${Math.round(b.confidence * 100)}%` : ""}
-                          </span>
-                        </div>
-                      );
-                    })}
+        {/* 3 + 4 — VIDEO & PAYLOAD in two-column sleek layout */}
+        <div id="video" className="scroll-mt-28 grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <Card className="lg:col-span-3 p-0 overflow-hidden border-zinc-800 bg-zinc-900/70">
+            <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+              <h3 className="text-xs font-semibold tracking-wide uppercase text-zinc-300 flex items-center gap-2"><Film className="w-3.5 h-3.5 text-teal-400" /> Video</h3>
+              {previewUrl && <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="h-7 text-xs border-zinc-700 bg-zinc-800 text-zinc-300">Change</Button>}
+            </div>
+            <input ref={fileInputRef} type="file" accept="video/*" className="hidden" onChange={(e) => { handleVideo(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+            <div className="p-4">
+              {!previewUrl ? (
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-zinc-700 hover:border-teal-500/50 bg-zinc-950 hover:bg-zinc-900 p-10 transition-colors group">
+                  <div className="w-12 h-12 rounded-2xl bg-zinc-800 group-hover:bg-teal-950 border border-zinc-700 group-hover:border-teal-500/30 text-zinc-500 group-hover:text-teal-400 flex items-center justify-center transition-colors">
+                    {isReading ? <Loader2 className="w-6 h-6 animate-spin text-teal-400" /> : <Upload className="w-6 h-6" />}
                   </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 4. SAM TARGET PAYLOAD & TEST EXECUTION */}
-        <div className="space-y-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-zinc-200">
-                Target Payload (Comma-Separated Single Noun Phrases):
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-zinc-800 text-teal-400 font-semibold border border-zinc-700">
-                {activeTargetCount} Targets Ready
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleCopyPayload}
-                className="text-xs text-zinc-400 hover:text-zinc-200 flex items-center gap-1 transition-colors"
-                title="Copy payload to clipboard"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                <span>{copiedPayload ? "Copied!" : "Copy"}</span>
-              </button>
-              {currentEngineMeta && (
-                <button
-                  type="button"
-                  onClick={handleSelectAllEngineKeywords}
-                  className="text-xs text-zinc-400 hover:text-zinc-200 flex items-center gap-1 transition-colors"
-                  title="Reset to 100 engine defaults"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset 100</span>
+                  <div className="text-center space-y-1">
+                    <div className="text-sm font-semibold text-zinc-100">{isReading ? "Reading video…" : "Drop or select therapy video"}</div>
+                    <div className="text-xs text-zinc-500">MP4 / WebM • max 100 MB • drag & drop supported</div>
+                  </div>
                 </button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs">
+                    <FileVideo className="w-4 h-4 text-teal-400 shrink-0" />
+                    <span className="font-medium text-zinc-200 truncate">{fileName}</span>
+                    {videoSize && <span className="text-zinc-500">• {videoSize.width}×{videoSize.height}{durationSeconds ? ` • ${Math.round(durationSeconds)}s` : ""}</span>}
+                  </div>
+                  <div className="relative overflow-hidden rounded-2xl bg-black border border-zinc-800">
+                    <div className="relative w-full bg-black">
+                      <video
+                        ref={videoRef}
+                        src={previewUrl}
+                        playsInline
+                        controls={!isolatedLabel}
+                        className="block w-full h-auto bg-black max-h-[420px] mx-auto object-contain"
+                        onLoadedMetadata={(e) => {
+                          setDurationSeconds(e.currentTarget.duration || undefined);
+                          setVideoSize({ width: e.currentTarget.videoWidth || 0, height: e.currentTarget.videoHeight || 0 });
+                        }}
+                        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+                        onPlay={() => setIsVideoPlaying(true)}
+                        onPause={() => setIsVideoPlaying(false)}
+                        onEnded={() => setIsVideoPlaying(false)}
+                      />
+                      {/* Normal overlay: masks + boxes */}
+                      {visibleActiveBoxes.length > 0 && !isolatedLabel && (
+                        <div className="absolute inset-0 pointer-events-none">
+                          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1 1" preserveAspectRatio="none">
+                            {activePaths.map((p, i) => { const style = styleFor(p.label ?? visibleActiveBoxes[0]?.label ?? ""); return (<path key={`${p.frameIndex}-${i}`} d={p.path} fill={style.color} fillOpacity={style.fillOpacity} stroke={style.color} strokeWidth={Math.max(0.0005, style.strokeWidth * 0.001)} />); })}
+                          </svg>
+                          {visibleActiveBoxes.map((b) => { const [ymin, xmin, ymax, xmax] = b.box; const style = styleFor(b.label); return (<div key={`${b.label}-${b.objectId ?? ""}-${b.frameIndex}`} className="absolute rounded" style={{ top: `${ymin * 100}%`, left: `${xmin * 100}%`, width: `${(xmax - xmin) * 100}%`, height: `${(ymax - ymin) * 100}%`, border: `${style.strokeWidth}px solid ${style.color}` }}><span className="absolute -top-6 left-0 px-1.5 py-0.5 rounded text-[11px] font-mono text-white font-bold whitespace-nowrap shadow" style={{ backgroundColor: style.color }}>{b.label}{b.confidence ? ` ${Math.round(b.confidence * 100)}%` : ""}</span></div>); })}
+                        </div>
+                      )}
+                      {/* Isolate overlay: black backdrop with hole — only segment visible */}
+                      {isolatedLabel && isolatedOverlayD && (
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden>
+                          <path d={`M0 0 H1 V1 H0 Z ${isolatedOverlayD}`} fill="black" fillOpacity={0.97} fillRule="evenodd" />
+                        </svg>
+                      )}
+                      {isolatedLabel && visibleActiveBoxes.length === 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/80 pointer-events-none">
+                          <span className="text-xs text-zinc-400">No active frame for {isolatedLabel} at this time</span>
+                        </div>
+                      )}
+                      {isolatedLabel && (
+                        <div className="absolute bottom-2 left-2 z-10 px-2.5 py-1 rounded-full bg-zinc-900/90 border border-zinc-700 text-xs font-medium text-zinc-100 flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: styleFor(isolatedLabel).color }} /> Isolated: {isolatedLabel}
+                          <button type="button" onClick={() => setIsolatedLabel(null)} className="ml-1 px-2 py-0.5 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px]">Clear</button>
+                        </div>
+                      )}
+                    </div>
+                    {/* Isolate custom controls — outside overlay so always clickable */}
+                    {isolatedLabel && previewUrl && (
+                      <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 bg-zinc-900 border-t border-zinc-800">
+                        <Button variant="outline" size="sm" onClick={toggleVideoPlay} className="h-7 text-xs gap-1.5 border-zinc-700 bg-zinc-800 text-zinc-100">
+                          {isVideoPlaying ? <span className="w-3 h-3 flex items-center justify-center">❚❚</span> : <Play className="w-3 h-3 fill-current" />} {isVideoPlaying ? "Pause" : "Play"}
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => { const v = videoRef.current; if (v) { v.currentTime = 0; v.play(); } }} className="h-7 text-xs border-zinc-700 bg-zinc-800 text-zinc-300">Replay</Button>
+                        <div className="flex items-center gap-2 flex-1 min-w-[120px]">
+                          <span className="text-[11px] font-mono text-zinc-500">{Math.floor(currentTime)}s</span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={durationSeconds ?? 100}
+                            step={0.1}
+                            value={currentTime}
+                            onChange={(e) => { const v = videoRef.current; if (v) v.currentTime = Number(e.target.value); }}
+                            className="flex-1 accent-teal-500 h-1"
+                          />
+                          <span className="text-[11px] font-mono text-zinc-500">{durationSeconds ? `${Math.round(durationSeconds)}s` : "--"}</span>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={handleSnapshot} className="h-7 text-xs gap-1.5 border-teal-500/30 bg-teal-950/40 text-teal-300">Snapshot photo</Button>
+                        {snapshotUrl && <Button variant="outline" size="sm" onClick={downloadSnapshot} className="h-7 text-xs border-zinc-700 bg-zinc-900 text-zinc-300">Download</Button>}
+                      </div>
+                    )}
+                    {/* Hidden canvas for snapshots */}
+                    <canvas ref={snapshotCanvasRef} className="hidden" />
+                    {snapshotUrl && (
+                      <div className="p-3 bg-zinc-900 border-t border-zinc-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-zinc-300">Snapshot</span>
+                          <div className="flex items-center gap-2">
+                            <Button variant="outline" size="sm" onClick={downloadSnapshot} className="h-7 text-xs border-zinc-700 bg-zinc-800 text-zinc-300">Download JPG</Button>
+                            <button type="button" onClick={() => setSnapshotUrl(null)} className="text-xs text-zinc-500 hover:text-zinc-300">Clear</button>
+                          </div>
+                        </div>
+                        <img src={snapshotUrl} alt="Snapshot" className="w-full rounded-xl border border-zinc-800 bg-black object-contain max-h-56" />
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
-          </div>
+          </Card>
 
-          <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
-            <textarea
-              rows={3}
-              value={prompt}
-              onChange={(e) => {
-                setPrompt(e.target.value);
-                const items = e.target.value
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean);
-                setSelectedKeywords(new Set(items));
-              }}
-              placeholder="e.g. cup, hand, fork, spoon (select an engine above to test all 100)"
-              className="flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-teal-500 font-mono leading-relaxed"
-            />
-
-            <Button
-              onClick={handleTrack}
-              disabled={!videoDataUrl || activeTargetCount === 0 || isTracking || isReading}
-              className="gap-2 bg-teal-500 hover:bg-teal-400 text-zinc-950 font-bold shrink-0 self-end sm:self-stretch px-6 py-3 h-auto shadow-lg shadow-teal-950/40"
-            >
-              {isTracking ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Tracking with SAM...</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 fill-current" />
-                  <span>
-                    Test with {selectedEngine === "custom" ? "Custom" : SAM_ENGINES[selectedEngine].name} (
-                    {activeTargetCount})
-                  </span>
-                </>
-              )}
-            </Button>
-          </div>
-
-          {!videoDataUrl && (
-            <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
-              <Info className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-              <span>Upload a therapy video above to run detection on these targets.</span>
-            </p>
-          )}
+          <Card id="payload" className="lg:col-span-2 p-0 overflow-hidden border-zinc-800 bg-zinc-900/70 flex flex-col scroll-mt-28">
+            <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between gap-2">
+              <h3 className="text-xs font-semibold tracking-wide uppercase text-zinc-300 flex items-center gap-2"><Target className="w-3.5 h-3.5 text-teal-400" /> Payload</h3>
+              <Badge variant="teal" className="font-mono text-[11px]">{activeTargetCount} targets</Badge>
+            </div>
+            <div className="p-4 space-y-3 flex-1 flex flex-col">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleCopyPayload} className="h-7 text-xs gap-1.5 border-zinc-700 bg-zinc-800 text-zinc-300"><Copy className="w-3 h-3" />{copiedPayload ? "Copied!" : "Copy"}</Button>
+                {currentEngineMeta && <Button variant="ghost" size="sm" onClick={handleSelectAllEngineKeywords} className="h-7 text-xs gap-1.5 text-zinc-400"><RotateCcw className="w-3 h-3" />Reset 100</Button>}
+              </div>
+              <textarea rows={6} value={prompt} onChange={(e) => { setPrompt(e.target.value); const items = e.target.value.split(",").map((s) => s.trim()).filter(Boolean); setSelectedKeywords(new Set(items)); }} placeholder="cup, hand, fork, spoon…" className="flex-1 min-h-[120px] rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 font-mono leading-relaxed resize-none" />
+              <Button onClick={handleTrack} disabled={!videoDataUrl || activeTargetCount === 0 || isTracking || isReading} className="w-full h-11 gap-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold shadow-sm">
+                {isTracking ? <><Loader2 className="w-4 h-4 animate-spin" /> Tracking…</> : <><Play className="w-4 h-4 fill-current" /> Test {selectedEngine === "custom" ? "Custom" : SAM_ENGINES[selectedEngine as SamEngineCategory]?.name} ({activeTargetCount})</>}
+              </Button>
+              {!videoDataUrl && <p className="text-xs text-zinc-500 flex items-center gap-1.5"><Info className="w-3.5 h-3.5" /> Upload video to enable tracking</p>}
+            </div>
+          </Card>
         </div>
 
         {/* Reloaded Session Toast Notice */}
@@ -1227,54 +1057,28 @@ export default function SamTestPage() {
 
         {/* 5. MULTI-ENGINE TEST RUNS COMPARISON SWITCHER */}
         {testRuns.length > 0 && (
-          <div className="space-y-3 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
+          <Card className="p-4 space-y-3 border-zinc-800 bg-zinc-900/60">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-teal-400" />
-                <span className="text-xs font-semibold text-zinc-200">
-                  Current Video Runs ({testRuns.length})
-                </span>
-              </div>
-              <span className="text-[11px] text-zinc-500">
-                Click a run to switch overlay & compare detections
-              </span>
+              <h3 className="text-xs font-semibold tracking-wide uppercase text-zinc-300 flex items-center gap-2"><Layers className="w-3.5 h-3.5 text-teal-400" /> Runs ({testRuns.length})</h3>
+              <span className="text-xs text-zinc-500 hidden sm:inline">Click to compare overlays</span>
             </div>
-
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <div className="flex gap-2 overflow-x-auto pb-1">
               {testRuns.map((run, idx) => {
                 const isActive = activeRunId === run.id;
                 return (
-                  <button
-                    key={run.id}
-                    type="button"
-                    onClick={() => handleSelectRun(run)}
-                    className={`px-3 py-2 rounded-xl text-left border shrink-0 transition-all flex flex-col gap-0.5 ${
-                      isActive
-                        ? "bg-zinc-800 border-teal-500 text-teal-200 ring-1 ring-teal-500/40"
-                        : "bg-zinc-950/70 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 text-xs font-semibold">
-                      <span>Run #{testRuns.length - idx}:</span>
-                      <span>{run.engineName}</span>
-                    </div>
-                    <div className="text-[10px] text-zinc-500 flex items-center gap-2">
-                      <span>{run.detectedCount} detected / {run.targetCount}</span>
-                      <span>•</span>
-                      <span className="font-mono text-teal-400">
-                        {run.latencyMs ? `${(run.latencyMs / 1000).toFixed(2)}s` : ""}
-                      </span>
-                    </div>
+                  <button key={run.id} type="button" onClick={() => handleSelectRun(run)} className={`px-4 py-2.5 rounded-xl text-left border shrink-0 transition-all ${isActive ? "bg-zinc-800 border-teal-500/50 text-zinc-100 shadow-sm" : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"}`}>
+                    <div className="text-xs font-semibold">Run #{testRuns.length - idx} • {run.engineName}</div>
+                    <div className="text-xs text-zinc-500 mt-0.5 flex items-center gap-2"><span>{run.detectedCount}/{run.targetCount} found</span><span className="text-zinc-600">•</span><span className="font-mono text-teal-400">{run.latencyMs ? `${(run.latencyMs / 1000).toFixed(2)}s` : ""}</span></div>
                   </button>
                 );
               })}
             </div>
-          </div>
+          </Card>
         )}
 
-        {/* 6. DETECTION RESULTS & ACCURATE PROCESSING TIME */}
+        {/* 6. DETECTION RESULTS */}
         {result && (
-          <div className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
+          <Card id="results" className="p-5 space-y-4 border-zinc-800 bg-zinc-900/70 scroll-mt-28">
             {savedToDb && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-950/60 border border-teal-500/40 text-teal-300 text-xs">
                 <CheckCircle2 className="w-3.5 h-3.5 text-teal-400 shrink-0" />
@@ -1284,160 +1088,58 @@ export default function SamTestPage() {
               </div>
             )}
 
-            {/* Run Summary Meta with Processing Time */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-zinc-800">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold text-zinc-100">
-                  Detections for &quot;
-                  {selectedEngine === "custom"
-                    ? "Custom"
-                    : SAM_ENGINES[selectedEngine].name}
-                  &quot;:
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-mono bg-teal-950 border border-teal-500/40 text-teal-300">
-                  {result.tracks.length} Concepts Tracked
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-mono bg-zinc-800 text-zinc-400">
-                  {result.boxes.length} Bounding Boxes
-                </span>
+                <h3 className="text-sm font-semibold text-zinc-100">Detections — {selectedEngine === "custom" ? "Custom" : SAM_ENGINES[selectedEngine as SamEngineCategory]?.name}</h3>
+                <Badge variant="teal" className="font-mono text-xs">{result.tracks.length} tracked</Badge>
+                <Badge variant="outline" className="font-mono text-xs border-zinc-700 text-zinc-400">{result.boxes.length} boxes</Badge>
               </div>
-
-              {/* Exact processing time highlight */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-950/70 border border-teal-500/40 text-teal-300 text-xs font-mono font-medium">
-                  <Timer className="w-3.5 h-3.5 text-teal-400" />
-                  <span>
-                    Processed in:{" "}
-                    <strong>
-                      {result.latencyMs ? `${(result.latencyMs / 1000).toFixed(2)}s` : "0s"}
-                    </strong>{" "}
-                    ({result.latencyMs || 0} ms)
-                  </span>
-                </div>
-
-                <span className="text-[11px] text-zinc-500 hidden sm:inline">
-                  {result.modelId} {result.mode ? `(${result.mode})` : ""} •{" "}
-                  {result.billedRequests} billed req
-                </span>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-teal-950/60 border border-teal-500/30 text-teal-300 text-xs font-mono font-medium"><Timer className="w-3.5 h-3.5" /> {(result.latencyMs / 1000).toFixed(2)}s • {result.latencyMs} ms</span>
+                <span className="hidden sm:inline text-xs text-zinc-500">{result.modelId} • {result.billedRequests} req</span>
               </div>
             </div>
 
-            {/* Tracked Concept Chips */}
             {result.tracks.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {result.tracks.map((t) => (
-                  <span
-                    key={t.trackId}
-                    className="px-2.5 py-1 rounded-full text-xs font-mono font-medium bg-zinc-950 border flex items-center gap-1.5"
-                    style={{
-                      borderColor: colorFor(t.label),
-                      color: colorFor(t.label),
-                    }}
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: colorFor(t.label) }}
-                    />
-                    <span>{t.label}</span>
-                    <span className="text-[10px] opacity-75">
-                      ({t.frames.length} frames)
-                    </span>
+                  <span key={t.trackId} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-zinc-950 border font-mono" style={{ borderColor: colorFor(t.label), color: colorFor(t.label) }}>
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colorFor(t.label) }} /> {t.label} <span className="opacity-60 text-[11px]">• {t.frames.length} fr</span>
                   </span>
                 ))}
               </div>
             )}
 
-            {/* Per-target mask customizers */}
             {result.objectConcepts.length > 0 && (
-              <div className="space-y-2 rounded-xl border border-zinc-800/80 bg-zinc-950/80 p-3">
-                <span className="text-xs font-semibold text-zinc-300 block">
-                  Interactive Mask Appearance (Per-Detected Target)
-                </span>
-                <div className="space-y-2 pt-1">
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300"><Settings2 className="w-3.5 h-3.5 text-zinc-500" /> Mask Appearance</div>
+                  {isolatedLabel && <button type="button" onClick={() => setIsolatedLabel(null)} className="px-2.5 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-medium text-zinc-300">Clear isolate</button>}
+                </div>
+                <div className="divide-y divide-zinc-800">
                   {result.objectConcepts.map((label) => {
                     const style = styleFor(label);
+                    const isIsolated = isolatedLabel === label;
                     return (
-                      <div
-                        key={label}
-                        className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-300 border-b border-zinc-900 pb-1.5 last:border-0 last:pb-0"
-                      >
-                        <div className="flex items-center gap-2 w-36 truncate">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: style.color }}
-                          />
-                          <span className="font-mono font-semibold truncate">
-                            {label}
-                          </span>
+                      <div key={label} className={`flex flex-wrap items-center justify-between gap-3 py-3 ${isIsolated ? "bg-teal-950/20 -mx-2 px-2 rounded-lg border border-teal-500/20" : ""}`}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: style.color }} />
+                          <span className="text-sm font-medium text-zinc-200 font-mono truncate">{label}</span>
+                          {isIsolated && <span className="px-1.5 py-0.5 rounded-full bg-teal-950 border border-teal-500/30 text-teal-300 text-[10px] font-semibold">ISOLATED</span>}
                         </div>
-
-                        <div className="flex items-center gap-4 flex-wrap">
-                          <input
-                            type="color"
-                            value={style.color}
-                            onChange={(e) =>
-                              updateStyle(label, { color: e.target.value })
-                            }
-                            className="w-6 h-6 bg-transparent cursor-pointer rounded"
-                            title="Mask Color"
-                          />
-
-                          <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-                            <span>Fill</span>
-                            <input
-                              type="range"
-                              min={0}
-                              max={1}
-                              step={0.05}
-                              value={style.fillOpacity}
-                              onChange={(e) =>
-                                updateStyle(label, {
-                                  fillOpacity: Number(e.target.value),
-                                })
-                              }
-                              className="w-16 accent-teal-400"
-                            />
-                            <span className="font-mono w-7 text-right">
-                              {Math.round(style.fillOpacity * 100)}%
-                            </span>
-                          </label>
-
-                          <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-                            <span>Border</span>
-                            <input
-                              type="range"
-                              min={0}
-                              max={6}
-                              step={0.5}
-                              value={style.strokeWidth}
-                              onChange={(e) =>
-                                updateStyle(label, {
-                                  strokeWidth: Number(e.target.value),
-                                })
-                              }
-                              className="w-16 accent-teal-400"
-                            />
-                            <span className="font-mono w-6 text-right">
-                              {style.strokeWidth}px
-                            </span>
-                          </label>
-
-                          <label className="flex items-center gap-1.5 cursor-pointer text-[11px]">
-                            <input
-                              type="checkbox"
-                              checked={style.visible}
-                              onChange={(e) =>
-                                updateStyle(label, { visible: e.target.checked })
-                              }
-                              className="accent-teal-400"
-                            />
-                            <span>Show</span>
-                          </label>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Button variant={isIsolated ? "default" : "outline"} size="sm" onClick={() => setIsolatedLabel(isIsolated ? null : label)} className={`h-7 text-xs gap-1 ${isIsolated ? "bg-teal-600 hover:bg-teal-500 text-white" : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}><Eye className="w-3 h-3" /> {isIsolated ? "Isolating" : "Isolate"}</Button>
+                          <Button variant="outline" size="sm" disabled className="h-7 text-xs border-zinc-800 text-zinc-500 cursor-not-allowed" title="Render coming soon">Download MP4</Button>
+                          <input type="color" value={style.color} onChange={(e) => updateStyle(label, { color: e.target.value })} className="w-7 h-7 rounded-lg bg-transparent cursor-pointer" />
+                          <label className="flex items-center gap-2 text-xs text-zinc-400">Fill <input type="range" min={0} max={1} step={0.05} value={style.fillOpacity} onChange={(e) => updateStyle(label, { fillOpacity: Number(e.target.value) })} className="w-20 accent-teal-500" /><span className="font-mono w-8 text-right">{Math.round(style.fillOpacity * 100)}%</span></label>
+                          <label className="flex items-center gap-2 text-xs text-zinc-400">Border <input type="range" min={0} max={6} step={0.5} value={style.strokeWidth} onChange={(e) => updateStyle(label, { strokeWidth: Number(e.target.value) })} className="w-20 accent-teal-500" /><span className="font-mono w-7 text-right">{style.strokeWidth}px</span></label>
+                          <label className="flex items-center gap-1.5 text-xs text-zinc-400 cursor-pointer"><input type="checkbox" checked={style.visible} onChange={(e) => updateStyle(label, { visible: e.target.checked })} className="accent-teal-500 rounded" /> Show</label>
                         </div>
                       </div>
                     );
                   })}
                 </div>
+                {isolatedLabel && <p className="text-xs text-zinc-500 flex items-center gap-1.5"><Info className="w-3 h-3" /> Black background isolate is dynamic (no re-render). Use Download when render service is enabled.</p>}
               </div>
             )}
 
@@ -1461,27 +1163,14 @@ export default function SamTestPage() {
                 Try selecting a different engine or checking a video featuring therapy equipment.
               </div>
             )}
-          </div>
+          </Card>
         )}
 
-        {/* 7. PREVIOUS PROCESSED SESSIONS WITH RELOAD BUTTON */}
-        <div className="space-y-3 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
-          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
-            <div className="flex items-center gap-2">
-              <History className="w-4 h-4 text-teal-400" />
-              <span className="text-sm font-semibold text-zinc-200">
-                Previous Processed Sessions ({pastSessions.length})
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={fetchPastSessions}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-teal-300 border border-zinc-700 transition-colors"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingPastSessions ? "animate-spin" : ""}`} />
-              <span>Reload Sessions</span>
-            </button>
+        {/* 7. PREVIOUS PROCESSED SESSIONS */}
+        <Card className="p-5 space-y-4 border-zinc-800 bg-zinc-900/60">
+          <div className="flex items-center justify-between gap-3 pb-4 border-b border-zinc-800">
+            <h3 className="text-xs font-semibold tracking-wide uppercase text-zinc-300 flex items-center gap-2"><History className="w-4 h-4 text-teal-400" /> History • {pastSessions.length} sessions</h3>
+            <Button variant="outline" size="sm" onClick={fetchPastSessions} className="h-8 text-xs gap-1.5 border-zinc-700 bg-zinc-800 text-zinc-300"><RefreshCw className={`w-3.5 h-3.5 ${isLoadingPastSessions ? "animate-spin" : ""}`} /> Reload</Button>
           </div>
 
           {isLoadingPastSessions && pastSessions.length === 0 ? (
@@ -1546,7 +1235,7 @@ export default function SamTestPage() {
               })}
             </div>
           )}
-        </div>
+        </Card>
       </main>
     </div>
   );
