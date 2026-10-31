@@ -51,6 +51,7 @@ import {
 } from "../src/app/api/ai/soap-summary/route";
 import {
   resetMockStore,
+  getMockStore,
   DEMO_THERAPIST_ID,
   DEMO_CLIENT_ID,
   DEMO_PATIENT_ID,
@@ -90,7 +91,17 @@ describe("Therapist and Client Supabase CRUD Operations", () => {
       expect(data.client.name).toBe("Gabriel Santos");
       expect(data.client.therapist_id).toBe(customTherapistId);
       expect(data.client.client_category).toBe("old_people");
+      expect(data.client.role).toBe("client");
       expect(data.credentials).toBeDefined();
+
+      // Verify that the user created by the therapist is strictly of client role in profiles
+      const store = getMockStore();
+      const clientProfile = store.profiles.find(
+        (p: { id: string; email?: string | null; role: string }) =>
+          p.id === data.client.client_user_id || p.email === "gabriel.santos.test@aruga-health.local"
+      );
+      expect(clientProfile).toBeDefined();
+      expect(clientProfile?.role).toBe("client");
 
       // Verify that this therapist can fetch this client
       const listReq = new NextRequest(

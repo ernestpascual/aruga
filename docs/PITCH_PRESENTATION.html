@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aruga • Allied Health Presentation (10 Slides with UI References)</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2309090b'/%3E%3Ccircle cx='32' cy='32' r='28' fill='%2314b8a6'/%3E%3Ccircle cx='32' cy='24' r='8.5' fill='%2309090b'/%3E%3Cpath d='M17 48c0-7.5 6.7-12.5 15-12.5s15 5 15 12.5' fill='none' stroke='%2309090b' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #09090b;
+      --card: #121215;
+      --card-border: #222226;
+      --card-subtle: #18181c;
+      --text: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --text-dim: #71717a;
+      --teal: #14b8a6;
+      --teal-glow: rgba(20, 184, 166, 0.15);
+      --teal-light: #5eead4;
+      --amber: #f59e0b;
+      --sky: #38bdf8;
+      --emerald: #10b981;
+      --purple: #c084fc;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top Progress Line */
+    .top-progress {
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.05);
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 100;
+    }
+
+    .top-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--teal) 0%, var(--emerald) 100%);
+      width: 10%;
+      transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Top Bar with UI Quick Links Button */
+    .top-header {
+      position: fixed;
+      top: 10px;
+      right: 2rem;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .ui-launcher-btn {
+      background: rgba(20, 184, 166, 0.12);
+      border: 1px solid rgba(20, 184, 166, 0.35);
+      color: var(--teal-light);
+      font-size: 0.78rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      padding: 0.35rem 0.8rem;
+      border-radius: 9999px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+
+    .ui-launcher-btn:hover {
+      background: var(--teal);
+      color: #000;
+    }
+
+    /* Viewport & Slide Container */
+    .deck-container {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2.2rem 3.5rem;
+    }
+
+    .slide {
+      position: absolute;
+      width: 100%;
+      max-width: 1060px;
+      height: 80vh;
+      max-height: 660px;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 2.6rem 3.2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      opacity: 0;
+      transform: scale(0.97) translateY(16px);
+      pointer-events: none;
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+    }
+
+    .slide.active {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      pointer-events: auto;
+      z-index: 10;
+    }
+
+    /* Header */
+    .slide-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.25rem;
+    }
+
+    .badge {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--teal);
+      background: var(--teal-glow);
+      border: 1px solid rgba(20, 184, 166, 0.3);
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-weight: 700;
+    }
+
+    .slide-index {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    .slide-title {
+      font-size: 2.25rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #fff;
+      line-height: 1.15;
+      margin-top: 0.25rem;
+    }
+
+    .slide-sub {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+      font-weight: 400;
+    }
+
+    .hero-brand {
+      font-family: 'Playwrite IT Trad', cursive, sans-serif;
+      font-size: 3.8rem;
+      font-weight: 700;
+      color: var(--teal-light);
+      letter-spacing: -1px;
+    }
+
+    .hero-title {
+      font-size: 2rem;
+      font-weight: 800;
+      max-width: 820px;
+      margin: 0 auto;
+      line-height: 1.25;
+    }
+
+    .hero-sub {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    /* Content Body */
+    .slide-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      margin: 1.25rem 0;
+      gap: 1.1rem;
+    }
+
+    /* Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.1rem;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.9rem;
+    }
+
+    /* Sleek Cards */
+    .clean-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.35rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .clean-card:hover {
+      border-color: rgba(20, 184, 166, 0.4);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .card-icon {
+      font-size: 1.35rem;
+      margin-bottom: 0.1rem;
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.01em;
+    }
+
+    .card-text {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    /* Callout Strip */
+    .strip {
+      background: linear-gradient(90deg, rgba(20, 184, 166, 0.08) 0%, rgba(2, 132, 199, 0.04) 100%);
+      border: 1px solid rgba(20, 184, 166, 0.22);
+      border-radius: 12px;
+      padding: 1rem 1.4rem;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .strip-stat {
+      font-size: 2.3rem;
+      font-weight: 900;
+      font-family: var(--font-mono);
+      color: var(--teal-light);
+      line-height: 1;
+    }
+
+    .strip-text {
+      font-size: 0.88rem;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    /* Embedded UI References (Sleek Visual Mockups) */
+    .ui-snippet {
+      background: #0d0d10;
+      border: 1px solid #27272a;
+      border-radius: 10px;
+      padding: 0.9rem 1.1rem;
+      font-family: var(--font-sans);
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    }
+
+    .ui-snippet-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.6rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 0.4rem;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+
+    .ui-dot-group {
+      display: flex;
+      gap: 4px;
+    }
+
+    .ui-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #3f3f46;
+    }
+
+    .ui-badge {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+    }
+
+    /* SOAP Card Styles */
+    .soap-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .soap-tag {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+    }
+
+    .s-tag { background: rgba(56, 189, 248, 0.15); color: var(--sky); border: 1px solid var(--sky); }
+    .o-tag { background: rgba(20, 184, 166, 0.15); color: var(--teal); border: 1px solid var(--teal); }
+    .a-tag { background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid var(--amber); }
+    .p-tag { background: rgba(192, 132, 252, 0.15); color: var(--purple); border: 1px solid var(--purple); }
+
+    /* Interactive Step-by-Step Demo Styles */
+    .mini-demo-link {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--teal);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      margin-top: 0.4rem;
+      transition: color 0.15s;
+    }
+
+    .mini-demo-link:hover {
+      color: #fff;
+      text-decoration: underline;
+    }
+
+    .demo-stepper-nav {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 0.75rem;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .demo-stepper-nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .demo-tab-btn {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.45rem 0.85rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .demo-tab-btn:hover {
+      border-color: var(--teal);
+      color: var(--text);
+    }
+
+    .demo-tab-btn.active {
+      background: rgba(20, 184, 166, 0.12);
+      border-color: var(--teal);
+      color: var(--teal);
+    }
+
+    .demo-stage-card {
+      display: none;
+      gap: 1.25rem;
+    }
+
+    .demo-stage-card.active {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+    }
+
+    @media (max-width: 860px) {
+      .demo-stage-card.active {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .demo-launch-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--teal);
+      color: #000;
+      font-size: 0.76rem;
+      font-weight: 700;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: opacity 0.2s;
+      margin-top: 0.5rem;
+      width: fit-content;
+    }
+
+    .demo-launch-btn:hover {
+      opacity: 0.9;
+    }
+
+    /* Bottom Controls */
+    .controls {
+      height: 60px;
+      background: var(--bg);
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 3.2rem;
+    }
+
+    .key-hints {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+
+    .key {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      padding: 0.12rem 0.38rem;
+      border-radius: 4px;
+      color: var(--text-muted);
+    }
+
+    .dots {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--card-border);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .dot.active {
+      background: var(--teal);
+      width: 18px;
+      border-radius: 9999px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 0.45rem 0.9rem;
+      border-radius: 7px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .btn:hover:not(:disabled) {
+      border-color: var(--teal);
+      color: var(--teal);
+      background: rgba(20, 184, 166, 0.05);
+    }
+
+    .btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* UI Quick Links Modal / Drawer */
+    .drawer-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .drawer-overlay.open {
+      display: flex;
+    }
+
+    .drawer-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 640px;
+      padding: 2rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .route-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.8rem 1rem;
+      background: var(--card-subtle);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+
+    .route-item:hover {
+      border-color: var(--teal);
+      background: rgba(20, 184, 166, 0.06);
+    }
+
+    .route-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .route-path {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--teal);
+    }
+
+    /* Mobile Responsive Rules */
+    .mobile-slide-indicator {
+      display: none;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--teal);
+    }
+
+    @media (max-width: 860px) {
+      .deck-container {
+        padding: 3.2rem 1rem 4.5rem 1rem;
+      }
+
+      .slide {
+        padding: 1.6rem 1.4rem;
+        height: auto;
+        min-height: 72vh;
+        max-height: calc(100vh - 120px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .slide-title {
+        font-size: 1.65rem;
+      }
+
+      .slide-sub {
+        font-size: 0.88rem;
+      }
+
+      .hero-brand {
+        font-size: 2.8rem;
+      }
+
+      .hero-title {
+        font-size: 1.55rem;
+      }
+
+      .hero-sub {
+        font-size: 0.95rem;
+      }
+
+      .grid-2, .grid-3 {
+        grid-template-columns: 1fr;
+        gap: 0.85rem;
+      }
+
+      .grid-4 {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+      }
+
+      .top-header {
+        top: 8px;
+        right: 1rem;
+      }
+
+      .ui-launcher-btn {
+        font-size: 0.72rem;
+        padding: 0.25rem 0.6rem;
+      }
+
+      .controls {
+        padding: 0 1rem;
+        height: 56px;
+      }
+
+      .key-hints {
+        display: none;
+      }
+
+      .mobile-slide-indicator {
+        display: block;
+      }
+
+      .dots {
+        display: none;
+      }
+
+      .desktop-only {
+        display: none;
+      }
+
+      .strip {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.4rem;
+        padding: 0.85rem 1rem;
+      }
+
+      .strip-stat {
+        font-size: 1.8rem;
+      }
+
+      .drawer-card {
+        padding: 1.25rem;
+        width: 95%;
+        max-height: 85vh;
+        overflow-y: auto;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .deck-container {
+        padding: 3.2rem 0.6rem 4.2rem 0.6rem;
+      }
+
+      .slide {
+        padding: 1.25rem 1rem;
+        border-radius: 14px;
+      }
+
+      .slide-title {
+        font-size: 1.35rem;
+      }
+
+      .hero-brand {
+        font-size: 2.2rem;
+      }
+
+      .hero-title {
+        font-size: 1.25rem;
+      }
+
+      .hero-sub {
+        font-size: 0.85rem;
+      }
+
+      .grid-4 {
+        grid-template-columns: 1fr;
+      }
+
+      .soap-card {
+        padding: 0.85rem;
+      }
+
+      .btn {
+        padding: 0.45rem 0.75rem;
+        font-size: 0.75rem;
+      }
+    }
+
+    @media print {
+      body { overflow: visible; background: #fff; color: #000; }
+      .slide { position: static; opacity: 1; transform: none; page-break-after: always; height: auto; border: 1px solid #ddd; background: #fff; color: #000; margin-bottom: 2rem; }
+      .controls, .top-progress, .top-header { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="top-progress">
+  <div id="topProgressBar" class="top-progress-bar"></div>
+</div>
+
+<div class="top-header">
+  <button class="ui-launcher-btn" onclick="toggleDrawer()">
+    <span>⚡ Live UI References</span>
+  </button>
+</div>
+
+<div class="deck-container">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active" data-index="1">
+    <div class="slide-meta">
+      <span class="badge">Allied Health Pitch</span>
+      <span class="slide-index">01 / 10</span>
+    </div>
+    <div class="slide-content" style="text-align: center; gap: 1.25rem;">
+      <div class="hero-brand">
+        Aruga
+      </div>
+      <div class="hero-title">
+        The Home Program Companion Built for Real Therapists
+      </div>
+      <p class="hero-sub">
+        More compliance for your patients. Less paperwork for you.<br>
+        Clinician-directed, AI-assisted, and audit-ready.
+      </p>
+
+      <!-- Mini UI Reference: Caseload Quick Preview -->
+      <div class="ui-snippet" style="max-width: 580px; margin: 0 auto; text-align: left;">
+        <div class="ui-snippet-header">
+          <div class="ui-dot-group"><div class="ui-dot"></div><div class="ui-dot"></div><div class="ui-dot"></div></div>
+          <span>UI PREVIEW • CLINICIAN CASELOAD HUB</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: #27272a; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--teal);">LC</div>
+            <span><strong>Leo Chen</strong> (6y • Pincer Grasp Delay • Mom: Sarah)</span>
+          </div>
+          <span class="ui-badge" style="background: rgba(16, 185, 129, 0.15); color: var(--emerald);">1 Routine Active</span>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: center; gap: 0.6rem; margin-top: 0.25rem;">
+        <span class="badge" style="background: rgba(56, 189, 248, 0.1); color: var(--sky); border-color: rgba(56, 189, 248, 0.3);">Occupational Therapy</span>
+        <span class="badge" style="background: rgba(20, 184, 166, 0.1); color: var(--teal); border-color: rgba(20, 184, 166, 0.3);">Physical Therapy</span>
+        <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: var(--amber); border-color: rgba(245, 158, 11, 0.3);">Speech-Language Pathology</span>
+      </div>
+    </div>
+    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim); border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.75rem;">
+      <span>Aruga Rehabilitation Technologies</span>
+      <span>5-Minute Clinical Sense Check</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: The Core Problem -->
+  <div class="slide" data-index="2">
+    <div class="slide-meta">
+      <span class="badge">The Reality</span>
+      <span class="slide-index">02 / 10</span>
+    </div>
+    <div>
+      <h1 class="slide-title">The Home Program Black Hole</h1>
+      <p class="slide-sub">What happens between clinic sessions is where recovery stalls.</p>
+    </div>
+    <div class="slide-content">
+      <div class="grid-3">
+        <div class="clean-card">
+          <div class="card-icon" style="color: var(--amber);">📄</div>
+          <div class="card-title">Lost Handouts</div>
+          <div class="card-text">
+            70% of clients lose or ignore paper sheets. Patients get confused without active guidance.
+          </div>
+        </div>
+
+        <div class="clean-card">
+          <div class="card-icon" style="color: #f43f5e;">⏰</div>
+          <div class="card-title">Unpaid Admin Time</div>
+          <div class="card-text">
+            Therapists spend 15–20 minutes per patient after hours on calls, emails, and manual notes.
+          </div>
+        </div>
+
+        <div class="clean-card">
+          <div class="card-icon" style="color: var(--sky);">⚠️</div>
+          <div class="card-title">Unseen Compensations</div>
+          <div class="card-text">
+            Patients practice with poor form—hiking shoulders or leaning trunks—and cement bad habits.
+          </div>
+        </div>
+      </div>
+
+      <div class="strip">
+        <div class="strip-stat">73%</div>
+        <div class="strip-text">
+          Of allied health clinicians cite <strong>documentation burden and chasing home compliance</strong> as their #1 driver of professional burnout.
+        </div>
+      </div>
+    </div>
+    <div style="font-size: 0.75rem; color: var(--text-dim);">The takeaway: We need a way to verify home progress without adding hours of paperwork.</div>
+  </div>
+
+  <!-- SLIDE 3: How Aruga Works -->
+  <div class="slide" data-index="3">
+    <div class="slide-meta">
+      <span class="badge">How It Works</span>
+      <span class="slide-index">03 / 10</span>
+    </div>
+    <div>
+      <h1 class="slide-title">3 Simple Steps. Complete Control.</h1>
+      <p class="slide-sub">A digital co-pilot that keeps the licensed clinician in the driver's seat.</p>
+    </div>
+    <div class="slide-content">
+      <div class="grid-3">
+        <div class="clean-card" style="border-top: 3px solid var(--teal);">
+          <div class="card-icon">1️⃣</div>
+          <div class="card-title">You Prescribe (30s)</div>
+          <div class="card-text">
+            Type rough notes. Formatted into 3 clear tabletop steps with patient instructions.
+          </div>
+          <!-- Mini UI Reference -->
+          <div class="ui-snippet" style="margin-top: 0.5rem; font-size: 0.72rem;">
+            <div style="color: var(--teal-light); font-weight: bold;">Step 1: Colorful Peg Stacking Game</div>
+            <div style="color: var(--text-dim); margin-top: 2px;">Target: 5 pegs • Pincer grasp • 20s clip</div>
+          </div>
+        
+        </div>
+
+        <div class="clean-card" style="border-top: 3px solid var(--sky);">
+          <div class="card-icon">2️⃣</div>
+          <div class="card-title">Patient Records (30s)</div>
+          <div class="card-text">
+            Quick 15–30s clip on their phone. Fatigue skips logged with medical reasons.
+          </div>
+          <!-- Mini UI Reference -->
+          <div class="ui-snippet" style="margin-top: 0.5rem; font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #f43f5e;">● REC (00:14)</span>
+            <span class="ui-badge" style="background: rgba(2, 132, 199, 0.2); color: var(--sky);">Camera Active</span>
+          </div>
+         
+        </div>
+
+        <div class="clean-card" style="border-top: 3px solid var(--emerald);">
+          <div class="card-icon">3️⃣</div>
+          <div class="card-title">You Sign Off (3m)</div>
+          <div class="card-text">
+            Review movement tracking, verify draft notes, and publish to the patient record.
+          </div>
+          <!-- Mini UI Reference -->
+          <div class="ui-snippet" style="margin-top: 0.5rem; font-size: 0.72rem; text-align: center;">
+            <span style="background: var(--emerald); color: #000; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 4px;">Publish Review ✓</span>
+          </div>
+        
+        </div>
+      </div>
+
+      <div class="strip" style="background: rgba(20, 184, 166, 0.08);">
+        <div style="font-size: 1.6rem;">🛡️</div>
+        <div class="strip-text">
+          <strong>Human-in-the-Loop Safeguard:</strong> Aruga never sends feedback automatically. AI only creates private drafts for your clinical approval.
+        </div>
+      </div>
+    </div>
+    <div style="font-size: 0.75rem; color: var(--text-dim);">Fast for the clinician, simple for the patient.</div>
+  </div>
+
+  <!-- SLIDE 4: Smart Movement Tracking -->
+  <div class="slide" data-index="4">
+    <div class="slide-meta">
+      <span class="badge">Movement Vision</span>
+      <span class="slide-index">04 / 10</span>
+    </div>
+    <div>
+      <h1 class="slide-title">Objective Tracking (No Endless Video)</h1>
+      <p class="slide-sub">You don't have time to watch raw video. We highlight what matters.</p>
+    </div>
+    <div class="slide-content">
+      <div class="grid-2">
+        <div class="clean-card" style="justify-content: center;">
+          <div class="card-icon">🎯</div>
+          <div class="card-title">Tracks Everyday Therapy Items</div>
+          <div class="card-text">
+            Recognizes real tools: pegboards, pegs, pencils, scissors, spoons, and therapy putty across all ages.
+          </div>
+          <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.4rem;">
+            <span class="badge" style="font-size: 0.65rem;">Pegboards & Pegs</span>
+            <span class="badge" style="font-size: 0.65rem;">Therapy Putty</span>
+            <span class="badge" style="font-size: 0.65rem;">Tabletop Objects</span>
+          </div>
+        </div>
+
+        <!-- Mini UI Reference: Video Overlay Simulation -->
+        <div class="ui-snippet" style="display: flex; flex-direction: column; justify-content: center;">
+          <div class="ui-snippet-header">
+            <span>LIVE VIDEO VIEWPORT OVERLAY</span>
+            <span style="color: var(--teal); font-weight: bold;">SAM 3.1 ACTIVE</span>
+          </div>
+          <div style="height: 110px; background: #000; border-radius: 8px; border: 1px solid #27272a; position: relative; display: flex; align-items: center; justify-content: center;">
+            <!-- Simulated bounding box -->
+            <div style="width: 120px; height: 80px; border: 2px dashed var(--teal); border-radius: 6px; position: relative; background: rgba(20, 184, 166, 0.1);">
+              <span style="position: absolute; top: -10px; left: 6px; font-size: 0.65rem; background: var(--teal); color: #000; font-weight: 700; padding: 1px 4px; border-radius: 3px;">Pegboard • 98%</span>
+            </div>
+            <div style="position: absolute; bottom: 8px; left: 8px; font-size: 0.7rem; color: #fff; font-family: var(--font-mono); background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px;">
+              Hold: 2.4s • Pinch Aperture: 12mm
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="strip">
+        <div class="strip-stat">75%</div>
+        <div class="strip-text">
+          <strong>Faster video review:</strong> Instead of watching 10-minute videos, clinicians verify kinematic milestones and compensations in under 60 seconds.
+        </div>
+      </div>
+    </div>
+    <div style="font-size: 0.75rem; color: var(--text-dim);">Objective evidence replaces "Patient says they did their exercises."</div>
+  </div>
+
+  <!-- SLIDE 5: Multi-Box SOAP Notes -->
+  <div class="slide" data-index="5">
+    <div class="slide-meta">
+      <span class="badge">Documentation</span>
+      <span class="slide-index">05 / 10</span>
+    </div>
+    <div>
+      <h1 class="slide-title">Multi-Box SOAP Notes</h1>
+      <p class="slide-sub">Structured for live sessions and home program reviews.</p>
+    </div>
+    <div class="slide-content">
+      <div class="grid-4">
+        <div class="soap-card">
+          <div class="soap-tag s-tag">S</div>
+          <div class="card-title" style="color: var(--sky); font-size: 0.95rem;">Subjective</div>
+          <!-- Mini UI Reference snippet -->
+          <div class="ui-snippet" style="padding: 0.6rem; font-size: 0.72rem; color: var(--text-muted);">
+            "Sarah noted Leo was enthusiastic; placed 5 pegs with minimal prompting."
+          </div>
+        </div>
+
+        <div class="soap-card">
+          <div class="soap-tag o-tag">O</div>
+          <div class="card-title" style="color: var(--teal); font-size: 0.95rem;">Objective</div>
+          <!-- Mini UI Reference snippet -->
+          <div class="ui-snippet" style="padding: 0.6rem; font-size: 0.72rem; color: var(--text-muted);">
+            "5 pegs placed in board; neat pincer grasp on 4/5 trials; avg 2.4s pinch hold."
+          </div>
+        </div>
+
+        <div class="soap-card">
+          <div class="soap-tag a-tag">A</div>
+          <div class="card-title" style="color: var(--amber); font-size: 0.95rem;">Assessment</div>
+          <!-- Mini UI Reference snippet -->
+          <div class="ui-snippet" style="padding: 0.6rem; font-size: 0.72rem; color: var(--text-muted);">
+            "Demonstrating improved thumb-index opposition; subtle compensatory wrist flexion."
+          </div>
+        </div>
+
+        <div class="soap-card">
+          <div class="soap-tag p-tag">P</div>
+          <div class="card-title" style="color: var(--purple); font-size: 0.95rem;">Plan</div>
+          <!-- Mini UI Reference snippet -->
+          <div class="ui-snippet" style="padding: 0.6rem; font-size: 0.72rem; color: var(--text-muted);">
+            "Progress to 1-inch pegs next week; maintain caregiver praise."
+          </div>
+        </div>
+      </div>
+
+      <div class="clean-card" style="flex-direction: row; align-items: center; justify-content: space-between; padding: 1.1rem 1.6rem;">
+        <div>
+          <div class="card-title" style="font-size: 0.95rem;">Works Across Live Care & Routine Feedback</div>
+          <div class="card-text" style="font-size: 0.8rem;">Discrete textareas for live sessions or video submissions with full audit history.</div>
+        </div>
+        <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: var(--emerald); border-color: rgba(16, 185, 129, 0.3);">70% Time Saved</span>
+      </div>
+    </div>
+    <div style="font-size: 0.75rem; color: var(--text-dim);">No more single, cramped text boxes. Complete clinical freedom.</div>
+  </div>
+
+  <!-- SLIDE 6: Plain-English Family Summaries -->
+  <div class="slide" data-index="6">
+    <div class="slide-meta">
+      <span class="badge">Patient Experience</span>
+      <span class="slide-index">06 / 10</span>
+    </div>
+    <div>
+      <h1 class="slide-title">Plain-English Family Summaries</h1>
+      <p class="slide-sub">Translating medical acronyms into warm encouragement clients understand.</p>
+    </div>
+    <div class="slide-content">
+      <div class="grid-2">
+        <div class="clean-card" style="border-left: 3px solid var(--amber);">
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--amber); font-weight: 700;">Clinician SOAP Note</div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; line-height: 1.5;">
+            "Patient demonstrated isolated pincer grasp on 4/5 trials. Observed mild compensatory wrist flexion on trial 5. Helper hand maintained steady tabletop positioning on pegboard container."
+          </p>
+        </div>
+
+        <div class="clean-card" style="border-left: 3px solid var(--emerald); background: rgba(16, 185, 129, 0.04);">
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--emerald); font-weight: 700;">Family-Friendly Summary</div>
+          <p style="font-size: 0.85rem; color: #fff; font-weight: 500; line-height: 1.5;">
+            "Leo, superstar work with the colorful pegs today! You picked up 5 pegs using your champion crab-claw pinch! Keep your helper hand steady on the table. You're doing amazing!"
+          </p>
+        </div>
+      </div>
+
+      <!-- Mini UI Reference: SoapSummaryCard Component Preview -->
+      <div class="ui-snippet" style="border: 1px solid rgba(20, 184, 166, 0.3); background: rgba(20, 184, 166, 0.04);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="color: var(--teal);">✨</span>
+            <span style="font-size: 0.8rem; font-weight: 700; color: #fff;">Summary for You & Your Family (Simple & Easy to Understand)</span>
+            <span class="ui-badge" style="background: rgba(16, 185, 129, 0.15); color: var(--emerald);">Cached in Database</span>
+          </div>
+          <span style="background: var(--teal); color: #000; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 4px;">See Summary</span>
+        </div>
+      </div>
+    </div>
+    <div style="font-size: 0.75rem; color: var(--text-dim);">Positioned right below the notes so families never feel lost or confused.</div>
+  </div>
+
+  <!-- SLIDE 7: Whole Lifespan Support -->
+  <div class="slide" data-index="7">
+    <div class="slide-meta">
+      <span class="badge">Caseload Scope</span>
+      <span class="slide-index">07 / 10</span>
+    </div>
+    <div>
+      <h1 class="slide-title">Tailored Across the Whole Lifespan</h1>
+      <p class="slide-sub">One single tool for your pediatric, adult, and geriatric clients.</p>
+    </div>
+    <div class="slide-content">
+      <div class="grid-4">
+        <div class="clean-card">
+          <div class="card-icon">🧸</div>
+          <div class="card-title" style="font-size: 0.95rem;">Pediatric (&lt;12y)</div>
+          <div class="card-text" style="font-size: 0.8rem;">
+            Play-based putty & peg drills with <strong>Caregiver Co-Runner</strong> prompts.
+          </div>
+          <!-- Mini UI Reference snippet -->
+          <div class="ui-snippet" style="font-size: 0.7rem; padding: 0.5rem; color: var(--sky);">
+            Leo Chen • Caregiver: Sarah
+          </div>
+        </div>
+
+        <div class="clean-card">
+          <div class="card-icon">🎒</div>
+          <div class="card-title" style="font-size: 0.95rem;">Adolescent (12–17)</div>
+          <div class="card-text" style="font-size: 0.8rem;">
+            School handwriting stamina, desk ergonomics, and bilateral coordination.
+          </div>
+          <!-- Mini UI Reference snippet -->
+          <div class="ui-snippet" style="font-size: 0.7rem; padding: 0.5rem; color: var(--teal-light);">
+            Pencil grip & stamina drill
+          </div>
+        </div>
+
+        <div class="clean-card">
+          <div class="card-icon">💼</div>
+          <div class="card-title" style="font-size: 0.95rem;">Adult (18–54y)</div>
+          <div class="card-text" style="font-size: 0.8rem;">
+            Stroke neuro-recovery, upper extremity dexterity, and workplace tasks.
+          </div>
+          <!-- Mini UI Reference snippet -->
+          <div class="ui-snippet" style="font-size: 0.7rem; padding: 0.5rem; color: var(--amber);">
+            Marcus Vance • Post-Stroke
+          </div>
+        </div>
+
+        <div class="clean-card">
+          <div class="card-icon">🌱</div>
+          <div class="card-title" style="font-size: 0.95rem;">Older Adults (55+)</div>
+          <div class="card-text" style="font-size: 0.8rem;">
+            Arthritis joint care, tremor control, hip precautions, and fall prevention.
+          </div>
+          <!-- Mini UI Reference snippet -->
+          <div class="ui-snippet" style="font-size: 0.7rem; padding: 0.5rem; color: var(--purple);">
+            Eleanor Ramos • Joint Mobility
+          </div>
+        </div>
+      </div>
+
+      <div class="clean-card" style="flex-direction: row; justify-content: space-between; align-items: center; padding: 0.9rem 1.4rem;">
+        <span style="font-size: 0.82rem; color: var(--text-muted);">Quick 1-click filter tabs on your clinician dashboard:</span>
+        <div style="display: flex; gap: 0.4rem;">
+          <span class="badge">All</span>
+          <span class="badge">Pediatric</span>
+          <span class="badge">Adolescent</span>
+          <span class="badge">Adult</span>
+          <span class="badge">55+ Geriatric</span>
+        </div>
+      </div>
+    </div>
+    <div style="font-size: 0.75rem; color: var(--text-dim);">No need to juggle multiple apps for different age groups.</div>
+  </div>
+
+  <!-- SLIDE 8: Practice Features -->
+  <div class="slide" data-index="8">
+    <div class="slide-meta">
+      <span class="badge">Team Features</span>
+      <span class="slide-index">08 / 10</span>
+    </div>
+    <div>
+      <h1 class="slide-title">Built for Real Clinical Teams</h1>
+      <p class="slide-sub">Tools that make running a practice smooth and stress-free.</p>
+    </div>
+    <div class="slide-content">
+      <div class="grid-3">
+        <div class="clean-card">
+          <div class="card-icon">✉️</div>
+          <div class="card-title">Easy Email Invites</div>
+          <div class="card-text">
+            Invite clients with their email. Temporary passwords automatically wipe upon first login.
+          </div>
+          <!-- Mini UI Reference -->
+          <div class="ui-snippet" style="font-size: 0.7rem; color: var(--teal);">
+            + Invite Client by Email Address
+          </div>
+        </div>
+
+        <div class="clean-card">
+          <div class="card-icon">🔄</div>
+          <div class="card-title">Care Transfers</div>
+          <div class="card-text">
+            Covering leave? Transfer patient caseloads to a colleague with full history and handover notes.
+          </div>
+          <!-- Mini UI Reference -->
+          <div class="ui-snippet" style="font-size: 0.7rem; color: var(--sky);">
+            Transfer to Dr. Jordan Miller ✓
+          </div>
+        </div>
+
+        <div class="clean-card">
+          <div class="card-icon">💬</div>
+          <div class="card-title">Direct Messaging</div>
+          <div class="card-text">
+            Switch patients via selector dropdown, attach <code>@routine</code> chips, and delete messages.
+          </div>
+          <!-- Mini UI Reference -->
+          <div class="ui-snippet" style="font-size: 0.7rem; color: var(--amber);">
+            @Tabletop Grasp Routine [Chip]
+          </div>
+        </div>
+      </div>
+
+      <div class="strip">
+        <div style="font-size: 1.6rem;">🔒</div>
+        <div class="strip-text">
+          <strong>Private & HIPAA-Ready:</strong> Client exercise videos upload directly to private medical cloud storage with zero compression loss.
+        </div>
+      </div>
+    </div>
+    <div style="font-size: 0.75rem; color: var(--text-dim);">Seamless handover between therapists means zero client drop-off.</div>
+  </div>
+
+  <!-- SLIDE 9: Step-by-Step Demo Walkthrough -->
+  <div class="slide" data-index="9">
+    <div class="slide-meta">
+      <span class="badge" style="background: rgba(20, 184, 166, 0.15); color: var(--teal); border-color: rgba(20, 184, 166, 0.3);">Live Demo Experience</span>
+      <span class="slide-index">09 / 10</span>
+    </div>
+    <div>
+      <h1 class="slide-title">End-to-End Walkthrough in Practice</h1>
+      <p class="slide-sub">Experience the 4 connected steps from shorthand prescribing to family feedback.</p>
+    </div>
+
+    <div class="slide-content">
+      <!-- 4-Stage Stepper Navigation -->
+      <div class="demo-stepper-nav">
+        <button class="demo-tab-btn active" onclick="setDemoStage(1)">1️⃣ Prescribe Shorthand (30s)</button>
+        <button class="demo-tab-btn" onclick="setDemoStage(2)">2️⃣ Patient Mobile Run (30s)</button>
+        <button class="demo-tab-btn" onclick="setDemoStage(3)">3️⃣ Vision AI Highlights (Instant)</button>
+        <button class="demo-tab-btn" onclick="setDemoStage(4)">4️⃣ SOAP Signoff & Summary (2m)</button>
+      </div>
+
+      <!-- STAGE 1: Prescribe -->
+      <div id="demoStage1" class="demo-stage-card active">
+        <div class="clean-card" style="justify-content: space-between;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+              <span class="badge" style="background: rgba(20, 184, 166, 0.15); color: var(--teal);">Step 1 • Clinician Station</span>
+              <span style="font-size: 0.75rem; color: var(--text-dim); font-family: var(--font-mono);">30 Seconds</span>
+            </div>
+            <div class="card-title" style="font-size: 1.15rem;">Shorthand to Patient Protocol</div>
+            <p class="card-text" style="font-size: 0.85rem; margin-top: 0.4rem;">
+              Type rapid thoughts without worrying about formatting. Aruga structures it into 3 progressive exercise steps with target repetitions, visual cues, and compensation warnings.
+            </p>
+            <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--teal-light); background: rgba(20, 184, 166, 0.06); padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(20, 184, 166, 0.2);">
+              💡 <strong>Clinician Win:</strong> Saves 15–20 minutes compared to drafting manual home handouts.
+            </div>
+          </div>
+        
+        </div>
+
+        <!-- Simulated UI Window -->
+        <div class="ui-snippet" style="margin: 0; padding: 0.9rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div class="ui-snippet-header">
+            <div class="ui-dot-group"><div class="ui-dot"></div><div class="ui-dot"></div><div class="ui-dot"></div></div>
+            <span>PRESCRIBING HUB • LEO CHEN (6Y)</span>
+          </div>
+          <div style="background: rgba(0,0,0,0.4); border: 1px solid #27272a; border-radius: 6px; padding: 0.6rem; font-size: 0.75rem; font-family: var(--font-mono); color: var(--text-dim);">
+            <span style="color: var(--teal);">Input:</span> "Leo Chen: 5 pegboard stackings, 2s pincer hold, keep helper hand on table, 30s rest"
+          </div>
+          <div style="background: rgba(20, 184, 166, 0.05); border: 1px dashed rgba(20, 184, 166, 0.4); border-radius: 6px; padding: 0.65rem; margin-top: 0.5rem;">
+            <div style="font-size: 0.78rem; font-weight: 700; color: #fff;">✓ Step 1: Colorful Peg Stacking Game</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">• Target: 5 pegs • Pincer grasp • 2s pinch hold</div>
+            <div style="font-size: 0.7rem; color: var(--amber); margin-top: 2px;">⚠️ Form Cue: Keep helper hand flat on table; avoid wrist hooking</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAGE 2: Patient Mobile Run -->
+      <div id="demoStage2" class="demo-stage-card">
+        <div class="clean-card" style="justify-content: space-between;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+              <span class="badge" style="background: rgba(2, 132, 199, 0.15); color: var(--sky);">Step 2 • Patient Smartphone</span>
+              <span style="font-size: 0.75rem; color: var(--text-dim); font-family: var(--font-mono);">30 Seconds</span>
+            </div>
+            <div class="card-title" style="font-size: 1.15rem;">Guided Mobile Video & Safety Valve</div>
+            <p class="card-text" style="font-size: 0.85rem; margin-top: 0.4rem;">
+              Patients open the exercise link on their phone. If fatigue, pain, or tremor spikes, they tap <strong>"Log Fatigue / Skip"</strong> with a clinical reason so care is never forced.
+            </p>
+            <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--sky); background: rgba(2, 132, 199, 0.06); padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(2, 132, 199, 0.2);">
+              💡 <strong>Patient Win:</strong> 30-second completion with zero passwords to remember.
+            </div>
+          </div>
+       
+        </div>
+
+        <!-- Simulated UI Window -->
+        <div class="ui-snippet" style="margin: 0; padding: 0.9rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div class="ui-snippet-header">
+            <div class="ui-dot-group"><div class="ui-dot"></div><div class="ui-dot"></div><div class="ui-dot"></div></div>
+            <span>PATIENT VIEWPORT • EXERCISE RUNNER (MOM: SARAH)</span>
+          </div>
+          <div style="height: 85px; background: #000; border-radius: 6px; border: 1px solid #27272a; position: relative; display: flex; align-items: center; justify-content: center;">
+            <span style="color: #f43f5e; font-size: 0.75rem; font-family: var(--font-mono); position: absolute; top: 6px; left: 8px;">● REC 00:15</span>
+            <div style="text-align: center; font-size: 0.75rem; color: #fff;">
+              "Pick up 5 colorful pegs using your crab claw pinch (2s)"
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem;">
+            <button style="flex: 1; background: var(--emerald); color: #000; font-weight: 700; border: none; font-size: 0.72rem; padding: 0.35rem; border-radius: 4px;">Complete 5 Pegs ✓</button>
+            <button style="flex: 1; background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.4); font-size: 0.72rem; padding: 0.35rem; border-radius: 4px;">⚠️ Log Fatigue / Skip</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAGE 3: Vision AI Tracking -->
+      <div id="demoStage3" class="demo-stage-card">
+        <div class="clean-card" style="justify-content: space-between;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+              <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: var(--amber);">Step 3 • Vision Engine</span>
+              <span style="font-size: 0.75rem; color: var(--text-dim); font-family: var(--font-mono);">Instant Analysis</span>
+            </div>
+            <div class="card-title" style="font-size: 1.15rem;">Automated Kinematic Highlights</div>
+            <p class="card-text" style="font-size: 0.85rem; margin-top: 0.4rem;">
+              Never scrub through raw video. SAM 3.1 tracks therapy objects (pegboards, pegs, spoons, putty) and keypoints, calculating hold time, vertical lift, and trunk compensations.
+            </p>
+            <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--amber); background: rgba(245, 158, 11, 0.06); padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.2);">
+              💡 <strong>Clinician Win:</strong> 75% faster review. Objective data replaces patient guesswork.
+            </div>
+          </div>
+       
+        </div>
+
+        <!-- Simulated UI Window -->
+        <div class="ui-snippet" style="margin: 0; padding: 0.9rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div class="ui-snippet-header">
+            <div class="ui-dot-group"><div class="ui-dot"></div><div class="ui-dot"></div><div class="ui-dot"></div></div>
+            <span>KINEMATIC TRACKING • SAM 3.1</span>
+          </div>
+          <div style="background: #000; border-radius: 6px; border: 1px solid #27272a; padding: 0.6rem; font-size: 0.72rem; font-family: var(--font-mono);">
+            <div style="color: var(--teal); font-weight: bold;">● Object Tracked: Pegboard & Pegs (98.4% Conf)</div>
+            <div style="color: #fff; margin-top: 3px;">• Avg Pinch Hold Duration: <strong>2.4 seconds</strong></div>
+            <div style="color: var(--amber); margin-top: 3px;">• Compensatory Wrist Flexion: <strong>8.0° (Normal Range)</strong></div>
+          </div>
+          <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.4rem; display: flex; justify-content: space-between;">
+            <span>Milestones: 00:04 Grasp • 00:11 Board Placement • 00:18 Rest</span>
+            <span style="color: var(--emerald);">✓ 5/5 Pegs Verified</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAGE 4: SOAP Signoff & Summary -->
+      <div id="demoStage4" class="demo-stage-card">
+        <div class="clean-card" style="justify-content: space-between;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+              <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: var(--emerald);">Step 4 • Documentation</span>
+              <span style="font-size: 0.75rem; color: var(--text-dim); font-family: var(--font-mono);">2 Minutes</span>
+            </div>
+            <div class="card-title" style="font-size: 1.15rem;">SOAP Approval & Family Summary</div>
+            <p class="card-text" style="font-size: 0.85rem; margin-top: 0.4rem;">
+              Kinematics pre-fill 4 discrete clinical SOAP textareas (S.O.A.P.). You review and sign off. On the client side, the platform transforms your SOAP notes into warm, plain-English encouragement on demand.
+            </p>
+            <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--emerald); background: rgba(16, 185, 129, 0.06); padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2);">
+              💡 <strong>Family Win:</strong> Warm, understandable encouragement with zero medical jargon.
+            </div>
+          </div>
+      
+        </div>
+
+        <!-- Simulated UI Window -->
+        <div class="ui-snippet" style="margin: 0; padding: 0.9rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div class="ui-snippet-header">
+            <div class="ui-dot-group"><div class="ui-dot"></div><div class="ui-dot"></div><div class="ui-dot"></div></div>
+            <span>FAMILY SUMMARY • DATABASE CACHED</span>
+          </div>
+          <div style="display: flex; gap: 0.3rem; margin-bottom: 0.4rem;">
+            <span class="ui-badge" style="background: rgba(56, 189, 248, 0.15); color: var(--sky);">S ✓</span>
+            <span class="ui-badge" style="background: rgba(20, 184, 166, 0.15); color: var(--teal);">O ✓</span>
+            <span class="ui-badge" style="background: rgba(245, 158, 11, 0.15); color: var(--amber);">A ✓</span>
+            <span class="ui-badge" style="background: rgba(192, 132, 252, 0.15); color: var(--purple);">P ✓</span>
+            <span style="font-size: 0.7rem; color: var(--emerald); font-weight: bold; margin-left: auto;">Published ✓</span>
+          </div>
+          <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.6rem; font-size: 0.75rem; line-height: 1.45; color: #fff;">
+            "Leo, superstar work with the colorful pegs today! You picked up 5 pegs using your champion crab-claw pinch! Keep your helper hand steady on the table. You're doing amazing!"
+          </div>
+          <div style="font-size: 0.7rem; color: var(--teal); margin-top: 0.3rem;">
+            ✓ Saved in Supabase • Zero extra AI charges on re-reads
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Step Switcher Buttons -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.6rem; font-size: 0.75rem; color: var(--text-dim);">
+        <span>Click tabs above or cycle through each stage with the buttons:</span>
+        <div style="display: flex; gap: 0.4rem;">
+          <button class="btn" style="padding: 0.3rem 0.7rem; font-size: 0.75rem;" onclick="prevDemoStage()">← Prev Step</button>
+          <button class="btn" style="padding: 0.3rem 0.7rem; font-size: 0.75rem;" onclick="nextDemoStage()">Next Step →</button>
+        </div>
+      </div>
+    </div>
+    <div style="font-size: 0.75rem; color: var(--text-dim);">4 streamlined steps that turn painful home programs into effortless clinical continuity.</div>
+  </div>
+
+  <!-- SLIDE 10: Sense Check -->
+  <div class="slide" data-index="10">
+    <div class="slide-meta">
+      <span class="badge">Sense Check</span>
+      <span class="slide-index">10 / 10</span>
+    </div>
+    <div>
+      <h1 class="slide-title">Quick Sense Check: What Do You Think?</h1>
+      <p class="slide-sub">3 quick questions for clinical colleagues.</p>
+    </div>
+    <div class="slide-content">
+      <div class="grid-3">
+        <div class="clean-card" style="border-top: 3px solid var(--sky);">
+          <div class="card-title">1. Time Saver?</div>
+          <div class="card-text">
+            Would cutting your home program review down to under 4 minutes with pre-drafted SOAP notes feel like a genuine win in your work week?
+          </div>
+        </div>
+
+        <div class="clean-card" style="border-top: 3px solid var(--amber);">
+          <div class="card-title">2. Realistic for Patients?</div>
+          <div class="card-text">
+            Would your clients (or parents of pediatric kids) realistically record a quick 30-second video on their phone instead of reading paper?
+          </div>
+        </div>
+
+        <div class="clean-card" style="border-top: 3px solid var(--emerald);">
+          <div class="card-title">3. Setting Adaptation?</div>
+          <div class="card-text">
+            What is the #1 must-have feature for your specific clinical setting (outpatient, sensory gym, neuro rehab, hospital, home health)?
+          </div>
+        </div>
+      </div>
+
+      <div class="strip" style="justify-content: center; text-align: center;">
+        <div>
+         
+        
+        </div>
+      </div>
+    </div>
+    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim); border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.75rem;">
+      <span>Thank you for your clinical feedback!</span>
+      <span>Aruga Rehabilitation Technologies</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bottom Navigation Controls -->
+<div class="controls">
+  <div class="key-hints">
+    <span>Keys: <span class="key">←</span> <span class="key">→</span> or <span class="key">Space</span></span>
+    <span>Fullscreen: <span class="key">F</span></span>
+  </div>
+
+  <div class="mobile-slide-indicator" id="mobileSlideIndicator">01 / 10</div>
+
+  <div class="dots" id="dotsContainer"></div>
+
+  <div class="btn-group">
+    <button class="btn" id="prevSlideBtn" onclick="prevSlide()">← Prev</button>
+    <button class="btn" id="nextSlideBtn" onclick="nextSlide()">Next →</button>
+    <button class="btn desktop-only" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+  </div>
+</div>
+
+<!-- Quick UI Launcher Drawer -->
+<div id="drawerOverlay" class="drawer-overlay" onclick="closeDrawerOnBg(event)">
+  <div class="drawer-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 0.75rem;">
+      <div>
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff;">⚡ Live Aruga UI Routes</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">Quick links to test live pages on localhost:3000 during your pitch</p>
+      </div>
+      <button onclick="toggleDrawer()" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+      <a href="/therapist/clients/22222222-2222-4222-8222-222222222224" target="_blank" class="route-item">
+        <div>
+          <div class="route-title">Therapist Client Profile & SOAP Notes</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Live session SOAP notes tab with 4 clinical textareas (S.O.A.P.)</div>
+        </div>
+        <span class="route-path">/therapist/clients/[id] ↗</span>
+      </a>
+
+      <a href="/therapist/submissions/55555555-5555-4555-8555-555555555556" target="_blank" class="route-item">
+        <div>
+          <div class="route-title">Submission Review with SAM Tracking</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Video playback with SAM overlay and multi-box feedback</div>
+        </div>
+        <span class="route-path">/therapist/submissions/[id] ↗</span>
+      </a>
+
+      <a href="/client/history" target="_blank" class="route-item">
+        <div>
+          <div class="route-title">Client History & Cached Summaries</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Color-coded SOAP badges and on-demand "See Summary" card</div>
+        </div>
+        <span class="route-path">/client/history ↗</span>
+      </a>
+
+      <a href="/client/programs/44444444-4444-4444-8444-444444444445" target="_blank" class="route-item">
+        <div>
+          <div class="route-title">Client Program Runner</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Camera recorder (30s) and step-by-step exercise flow</div>
+        </div>
+        <span class="route-path">/client/programs/[id] ↗</span>
+      </a>
+
+      <a href="/therapist/messages" target="_blank" class="route-item">
+        <div>
+          <div class="route-title">Multi-Client Messaging Hub</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Client selector dropdown and @routine mention chips</div>
+        </div>
+        <span class="route-path">/therapist/messages ↗</span>
+      </a>
+
+      <a href="/sam-test" target="_blank" class="route-item">
+        <div>
+          <div class="route-title">SAM 3.1 Kinematic Test Workspace</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Live 7-engine keyword selector and tracking latency test bench</div>
+        </div>
+        <span class="route-path">/sam-test ↗</span>
+      </a>
+    </div>
+
+    <div style="font-size: 0.75rem; color: var(--text-dim); text-align: center; border-top: 1px solid var(--card-border); padding-top: 0.6rem;">
+      Links open in a new tab on your running Next.js server .
+    </div>
+  </div>
+</div>
+
+<script>
+  let current = 1;
+  const total = 10;
+
+  function setSlide(index) {
+    if (index < 1 || index > total) return;
+    current = index;
+
+    document.querySelectorAll('.slide').forEach((s, i) => {
+      s.classList.toggle('active', i + 1 === current);
+    });
+
+    document.getElementById('topProgressBar').style.width = ((current / total) * 100) + '%';
+
+    document.querySelectorAll('.dot').forEach((d, i) => {
+      d.classList.toggle('active', i + 1 === current);
+    });
+
+    const ind = document.getElementById('mobileSlideIndicator');
+    if (ind) {
+      ind.innerText = String(current).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
+    }
+
+    document.getElementById('prevSlideBtn').disabled = (current === 1);
+    document.getElementById('nextSlideBtn').disabled = (current === total);
+  }
+
+  function nextSlide() { if (current < total) setSlide(current + 1); }
+  function prevSlide() { if (current > 1) setSlide(current - 1); }
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen();
+    }
+  }
+
+  function toggleDrawer() {
+    const el = document.getElementById('drawerOverlay');
+    el.classList.toggle('open');
+  }
+
+  function closeDrawerOnBg(e) {
+    if (e.target.id === 'drawerOverlay') {
+      toggleDrawer();
+    }
+  }
+
+  window.addEventListener('keydown', (e) => {
+    // If modal is open, Esc closes it
+    const overlay = document.getElementById('drawerOverlay');
+    if (overlay.classList.contains('open')) {
+      if (e.key === 'Escape') {
+        toggleDrawer();
+        return;
+      }
+    }
+
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+      e.preventDefault();
+      nextSlide();
+    } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      e.preventDefault();
+      prevSlide();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setSlide(1);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setSlide(total);
+    } else if (e.key.toLowerCase() === 'f') {
+      e.preventDefault();
+      toggleFullscreen();
+    } else if (e.key.toLowerCase() === 'u') {
+      e.preventDefault();
+      toggleDrawer();
+    }
+  });
+
+  const dots = document.getElementById('dotsContainer');
+  for (let i = 1; i <= total; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i === 1 ? ' active' : '');
+    dot.onclick = () => setSlide(i);
+    dots.appendChild(dot);
+  }
+
+  // Mobile Touch Swipe Handling
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  document.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    const deltaX = e.changedTouches[0].screenX - touchStartX;
+    const deltaY = e.changedTouches[0].screenY - touchStartY;
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 40) {
+      if (deltaX < 0) {
+        nextSlide();
+      } else {
+        prevSlide();
+      }
+    }
+  }, { passive: true });
+
+  // Slide 9: Interactive Demo Stepper
+  let currentDemoStage = 1;
+  const totalDemoStages = 4;
+
+  function setDemoStage(stageNum) {
+    currentDemoStage = stageNum;
+    document.querySelectorAll('.demo-tab-btn').forEach((btn, idx) => {
+      btn.classList.toggle('active', idx === stageNum - 1);
+    });
+    document.querySelectorAll('.demo-stage-card').forEach((card, idx) => {
+      card.classList.toggle('active', idx === stageNum - 1);
+    });
+  }
+
+  function nextDemoStage() {
+    if (currentDemoStage < totalDemoStages) {
+      setDemoStage(currentDemoStage + 1);
+    } else {
+      setDemoStage(1);
+    }
+  }
+
+  function prevDemoStage() {
+    if (currentDemoStage > 1) {
+      setDemoStage(currentDemoStage - 1);
+    } else {
+      setDemoStage(totalDemoStages);
+    }
+  }
+
+  setSlide(1);
+</script>
+
+</body>
+</html>

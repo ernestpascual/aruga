@@ -471,7 +471,6 @@ DECLARE
   v_therapist_id UUID;
   v_email TEXT;
 BEGIN
-  v_role := COALESCE(new.raw_user_meta_data->>'role', 'client');
   v_email := LOWER(TRIM(new.email));
   v_name := COALESCE(
     new.raw_user_meta_data->>'name',
@@ -491,7 +490,14 @@ BEGIN
     v_therapist_id := NULL;
   END IF;
 
-  -- Upsert Profile (Prevents duplicate profiles by ID, preserves email)
+  -- Any user created by a therapist is strictly guaranteed to be 'client' type
+  IF (v_therapist_id IS NOT NULL OR (new.raw_user_meta_data->>'created_by_therapist')::boolean IS TRUE) THEN
+    v_role := 'client';
+  ELSE
+    v_role := COALESCE(new.raw_user_meta_data->>'role', 'client');
+  END IF;
+
+  -- Upsert Profile (Prevents duplicate profiles by ID, preserves email, enforces client type)
   INSERT INTO public.profiles (
     id,
     display_name,
@@ -511,7 +517,10 @@ BEGIN
   )
   ON CONFLICT (id) DO UPDATE SET
     display_name = COALESCE(EXCLUDED.display_name, public.profiles.display_name),
-    role = COALESCE(EXCLUDED.role, public.profiles.role),
+    role = CASE 
+      WHEN (v_therapist_id IS NOT NULL OR (new.raw_user_meta_data->>'created_by_therapist')::boolean IS TRUE) THEN 'client'
+      ELSE COALESCE(EXCLUDED.role, public.profiles.role) 
+    END,
     email = COALESCE(EXCLUDED.email, public.profiles.email),
     client_category = COALESCE(EXCLUDED.client_category, public.profiles.client_category),
     updated_at = NOW();

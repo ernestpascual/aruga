@@ -96,8 +96,8 @@ export function SoapSummaryCard({
           </div>
           <p className="text-[11px] text-zinc-400 leading-relaxed">
             {hasExistingSummary
-              ? "Summary is cached in the database. Click to view with zero AI credits used."
-              : "Click to view summary. It will be cached in the database so you won't be charged next time."}
+              ? "Session summary is ready. Click to view with zero AI credits used."
+              : "Click to create a plain-English summary of your session from your therapist's clinical SOAP notes."}
           </p>
         </div>
 
@@ -110,7 +110,7 @@ export function SoapSummaryCard({
           {loading ? (
             <>
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Loading Summary...
+              Creating Summary...
             </>
           ) : (
             <>
@@ -153,7 +153,7 @@ export function SoapSummaryCard({
 
       <p className="text-[11px] text-teal-400/80 italic flex items-center gap-1">
         <HeartHandshake className="w-3.5 h-3.5 shrink-0" />
-        Written in plain terms by your therapist so you know exactly how you are progressing and what to focus on next.
+        Created directly from your therapist's clinical SOAP notes into simple, encouraging takeaways for you and your family.
       </p>
     </div>
   );

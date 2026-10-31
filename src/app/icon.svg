@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14b8a6" />
+      <stop offset="100%" stop-color="#0f766e" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+  <!-- Background circle / badge with Aruga clinical teal gradient -->
+  <rect width="64" height="64" rx="16" fill="#09090b" />
+  <circle cx="32" cy="32" r="28" fill="url(#bgGrad)" filter="url(#glow)" />
+  
+  <!-- Client / Patient silhouette in dark zinc with crisp clarity -->
+  <!-- Head -->
+  <circle cx="32" cy="24" r="8.5" fill="#09090b" />
+  <!-- Shoulders -->
+  <path d="M17 48c0-7.5 6.7-12.5 15-12.5s15 5 15 12.5" fill="none" stroke="#09090b" stroke-width="5" stroke-linecap="round" />
+</svg>

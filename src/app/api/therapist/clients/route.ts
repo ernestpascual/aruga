@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getMockStore, DEMO_THERAPIST_ID } from "@/lib/supabase/mock-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { Profile } from "@/types/database";
 import { z } from "zod";
 
 import { POST as linkClientByEmail } from "../client-link/route";
@@ -395,7 +396,19 @@ export async function POST(req: NextRequest) {
           if (linked.client_user_id) {
             try {
               await admin.auth.admin.updateUserById(linked.client_user_id, {
-                user_metadata: { therapist_id: creatingTherapistId, client_category: category },
+                user_metadata: {
+                  role: "client",
+                  user_type: "client",
+                  therapist_id: creatingTherapistId,
+                  client_category: category,
+                  created_by_therapist: true,
+                },
+              });
+              await admin.from("profiles").upsert({
+                id: linked.client_user_id,
+                role: "client",
+                display_name: name,
+                client_category: category,
               });
             } catch {
               // ignore metadata update error
@@ -451,7 +464,19 @@ export async function POST(req: NextRequest) {
         if (reassigned.client_user_id) {
           try {
             await admin.auth.admin.updateUserById(reassigned.client_user_id, {
-              user_metadata: { therapist_id: creatingTherapistId, client_category: category },
+              user_metadata: {
+                role: "client",
+                user_type: "client",
+                therapist_id: creatingTherapistId,
+                client_category: category,
+                created_by_therapist: true,
+              },
+            });
+            await admin.from("profiles").upsert({
+              id: reassigned.client_user_id,
+              role: "client",
+              display_name: name,
+              client_category: category,
             });
           } catch {
             // ignore metadata update error
@@ -494,15 +519,17 @@ export async function POST(req: NextRequest) {
             name,
             display_name: name,
             role: "client",
+            user_type: "client",
             client_category: category,
             therapist_id: creatingTherapistId,
+            created_by_therapist: true,
           },
         });
 
         if (authUserData?.user) {
           clientAuthUserId = authUserData.user.id;
 
-          // Upsert client profile
+          // Upsert client profile with guaranteed client role
           await admin.from("profiles").upsert({
             id: clientAuthUserId,
             role: "client",
@@ -522,7 +549,22 @@ export async function POST(req: NextRequest) {
             clientAuthUserId = existingAuthUser.id;
             isNewUser = false;
             await admin.auth.admin.updateUserById(clientAuthUserId, {
-              user_metadata: { therapist_id: creatingTherapistId, client_category: category },
+              user_metadata: {
+                role: "client",
+                user_type: "client",
+                therapist_id: creatingTherapistId,
+                client_category: category,
+                created_by_therapist: true,
+              },
+            });
+            await admin.from("profiles").upsert({
+              id: clientAuthUserId,
+              role: "client",
+              display_name: name,
+              client_category: category,
+              age,
+              primary_condition: condition,
+              caregiver_name: caregiverName || null,
             });
           }
         }
@@ -684,6 +726,8 @@ export async function POST(req: NextRequest) {
       email,
       caregiver_name: caregiverName || null,
       client_category: category,
+      role: "client" as const,
+      user_type: "client" as const,
       invitation_status: (body.autoConfirm ? "accepted" : "pending") as "accepted" | "pending",
       invitation_initiated_by: "therapist" as const,
       invitation_sent_at: new Date().toISOString(),
@@ -698,6 +742,21 @@ export async function POST(req: NextRequest) {
     };
 
     store.patients.unshift(newPatient);
+
+    // Ensure mock store has matching profile with role: 'client'
+    const newProfile: Profile = {
+      id: newPatient.client_user_id,
+      role: "client",
+      display_name: name,
+      email: normalizedEmail,
+      client_category: category,
+      discipline: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    store.profiles = store.profiles.filter((p) => p.id !== newPatient.client_user_id && p.email !== normalizedEmail);
+    store.profiles.unshift(newProfile);
+
     return NextResponse.json(
       {
         client: newPatient,

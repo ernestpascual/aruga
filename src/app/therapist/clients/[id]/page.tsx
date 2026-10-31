@@ -32,7 +32,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Patient, HomeProgram, ClientCategory, SoapNote } from "@/types/database";
-import { SoapSummaryCard } from "@/components/ui/soap-summary-card";
 
 export default function TherapistClientDetailPage({
   params,
@@ -78,9 +77,7 @@ function TherapistClientDetailContent({
   const [soapObjective, setSoapObjective] = useState("");
   const [soapAssessment, setSoapAssessment] = useState("");
   const [soapPlan, setSoapPlan] = useState("");
-  const [soapClientSummary, setSoapClientSummary] = useState("");
   const [soapSubmitting, setSoapSubmitting] = useState(false);
-  const [generatingSoapSummary, setGeneratingSoapSummary] = useState(false);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -273,7 +270,6 @@ function TherapistClientDetailContent({
     setSoapObjective("");
     setSoapAssessment("");
     setSoapPlan("");
-    setSoapClientSummary("");
     setIsSoapModalOpen(true);
   };
 
@@ -286,36 +282,7 @@ function TherapistClientDetailContent({
     setSoapObjective(note.objective);
     setSoapAssessment(note.assessment);
     setSoapPlan(note.plan);
-    setSoapClientSummary(note.client_summary);
     setIsSoapModalOpen(true);
-  };
-
-  const handleAiGenerateSoapSummary = async () => {
-    setGeneratingSoapSummary(true);
-    try {
-      const res = await fetch("/api/ai/soap-summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          targetType: "soap_note",
-          targetId: editingSoapId || undefined,
-          subjective: soapSubjective,
-          objective: soapObjective,
-          assessment: soapAssessment,
-          plan: soapPlan,
-          clientName: client?.name,
-          isDemo,
-        }),
-      });
-      const data = await res.json();
-      if (data.summary) {
-        setSoapClientSummary(data.summary);
-      }
-    } catch (err) {
-      console.warn("Could not generate summary:", err);
-    } finally {
-      setGeneratingSoapSummary(false);
-    }
   };
 
   // Save SOAP Note (POST / PATCH)
@@ -337,7 +304,6 @@ function TherapistClientDetailContent({
         objective: soapObjective.trim(),
         assessment: soapAssessment.trim(),
         plan: soapPlan.trim(),
-        clientSummary: soapClientSummary.trim(),
       };
       if (isEditing) {
         payload.id = editingSoapId;
@@ -991,19 +957,6 @@ function TherapistClientDetailContent({
                       </p>
                     </div>
                   </div>
-
-                  {/* Summary for Client & Family (Plain English) with On-Demand Reveal & DB Cache */}
-                  <SoapSummaryCard
-                    targetType="soap_note"
-                    targetId={note.id}
-                    initialSummary={note.client_summary}
-                    subjective={note.subjective}
-                    objective={note.objective}
-                    assessment={note.assessment}
-                    plan={note.plan}
-                    clientName={client?.name}
-                    isDemo={isDemo}
-                  />
                 </Card>
               ))}
             </div>
@@ -1285,7 +1238,7 @@ function TherapistClientDetailContent({
                   {editingSoapId ? "Edit Live Session SOAP Note" : "New Live Session SOAP Note"}
                 </CardTitle>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Client: <span className="font-semibold text-zinc-200">{client?.name}</span> • 4 Clinical SOAP Boxes + Easy Summary
+                  Client: <span className="font-semibold text-zinc-200">{client?.name}</span> • 4 Clinical SOAP Boxes (S.O.A.P.)
                 </p>
               </div>
               <button
@@ -1385,38 +1338,6 @@ function TherapistClientDetailContent({
                       className="bg-zinc-900/80 border-zinc-800 text-xs leading-relaxed"
                     />
                   </div>
-                </div>
-
-                {/* 5th Box: Client-Friendly Summary */}
-                <div className="rounded-xl border border-emerald-500/50 bg-emerald-950/20 p-3.5 space-y-1.5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <label className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                      Summary for Client & Family (Plain English Key Takeaways) *
-                    </label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAiGenerateSoapSummary}
-                      disabled={generatingSoapSummary || (!soapSubjective && !soapObjective && !soapAssessment && !soapPlan)}
-                      className="h-6 text-[10px] px-2.5 border-emerald-500/40 text-emerald-300 hover:bg-emerald-950/60 hover:text-emerald-200 gap-1"
-                    >
-                      <Sparkles className="w-3 h-3 text-emerald-400" />
-                      {generatingSoapSummary ? "Generating..." : "AI Generate Summary"}
-                    </Button>
-                  </div>
-                  <p className="text-[11px] text-zinc-400 leading-snug">
-                    Provide a simple, encouraging summary without confusing medical jargon so the client and their family understand their progress and next steps.
-                  </p>
-                  <Textarea
-                    rows={3}
-                    placeholder="e.g., You did a wonderful job with your wrist exercises today! Rest your elbow on the table to keep your shoulder relaxed..."
-                    value={soapClientSummary}
-                    onChange={(e) => setSoapClientSummary(e.target.value)}
-                    required
-                    className="bg-zinc-950/90 border-emerald-500/30 text-xs text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-emerald-500"
-                  />
                 </div>
 
                 <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">

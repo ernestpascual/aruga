@@ -69,8 +69,6 @@ function TherapistSubmissionReviewContent({
   const [soapObjective, setSoapObjective] = useState("");
   const [soapAssessment, setSoapAssessment] = useState("");
   const [soapPlan, setSoapPlan] = useState("");
-  const [clientSummary, setClientSummary] = useState("");
-  const [generatingSummary, setGeneratingSummary] = useState(false);
 
   // AI Assistant state per step
   const [analyzingStepId, setAnalyzingStepId] = useState<string | null>(null);
@@ -104,7 +102,6 @@ function TherapistSubmissionReviewContent({
             if (data.submission.review.objective) setSoapObjective(data.submission.review.objective);
             if (data.submission.review.assessment) setSoapAssessment(data.submission.review.assessment);
             if (data.submission.review.plan) setSoapPlan(data.submission.review.plan);
-            if (data.submission.review.client_summary) setClientSummary(data.submission.review.client_summary);
 
             if (Array.isArray(data.submission.review.step_reviews)) {
               const notesMap: Record<string, string> = {};
@@ -284,7 +281,6 @@ function TherapistSubmissionReviewContent({
           setSoapObjective("Neat pincer grasp achieved on 5 peg placements. Helper hand spontaneously stabilized container rim.");
           setSoapAssessment("Bilateral coordination and thumb-index pad opposition show marked maturation from gross raking grasp.");
           setSoapPlan("Continue daily peg stacking and play-doh routines. Use pre-loosened plastic containers for bilateral twist-off practice.");
-          setClientSummary("Leo did an incredible job using his 'pincer fingers' to place the colorful pegs! Sarah, having him hold the container with his helper hand made all the difference. For tomorrow, start with the jar lid already partly loosened so Leo can celebrate opening it all by himself!");
         } else {
           setStepNotes({
             [mockStepSubs[0].id]: "Smooth cylindrical grasp observed. Minimal trunk compensation. Keep focusing on slow finger release.",
@@ -298,7 +294,6 @@ function TherapistSubmissionReviewContent({
           setSoapObjective("Video review demonstrates active cylindrical grasp with 3-4 inch vertical cup lift. Trunk lateral flexion under 5°. Step 2 block stacking completed with 4 clean chuck releases.");
           setSoapAssessment("Right UE hemiparesis shows steady neuromuscular recovery. Tabletop grasp and release are functional; proximal shoulder girdle endurance is the remaining limiting factor.");
           setSoapPlan("Maintain current tabletop routine 1x daily. Introduce 30-second resting intervals between block sets. Re-check active shoulder flexion in next live session.");
-          setClientSummary("You did an outstanding job lifting and releasing the cup smoothly without leaning your body. Listening to your shoulder and resting on step 3 was 100% the right call. Keep practicing the cup and block exercises once a day, and remember to take 30-second breathers whenever your shoulder feels tired!");
         }
 
         // Preload step 1 AI record from demo
@@ -481,7 +476,6 @@ function TherapistSubmissionReviewContent({
           objective: soapObjective,
           assessment: soapAssessment,
           plan: soapPlan,
-          clientSummary,
         }),
       });
 
@@ -511,34 +505,6 @@ function TherapistSubmissionReviewContent({
       });
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const handleGenerateAiSummary = async () => {
-    setGeneratingSummary(true);
-    try {
-      const res = await fetch("/api/ai/soap-summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          targetType: "submission_review",
-          targetId: submissionId,
-          subjective: soapSubjective,
-          objective: soapObjective,
-          assessment: soapAssessment,
-          plan: soapPlan,
-          clientName: clientDisplayName,
-          isDemo,
-        }),
-      });
-      const data = await res.json();
-      if (data.summary) {
-        setClientSummary(data.summary);
-      }
-    } catch (err) {
-      console.warn("Could not generate summary:", err);
-    } finally {
-      setGeneratingSummary(false);
     }
   };
 
@@ -827,11 +793,11 @@ function TherapistSubmissionReviewContent({
               Home Program Clinical SOAP Documentation
             </CardTitle>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Divided into structured clinical SOAP boxes, followed by an easy-to-understand summary for the client.
+              Divided into 4 structured clinical SOAP boxes (Subjective, Objective, Assessment, Plan).
             </p>
           </div>
           <span className="text-[11px] font-medium text-teal-400 bg-teal-950/70 border border-teal-500/30 px-2.5 py-1 rounded-md self-start sm:self-auto">
-            SOAP Standard + Client Plain English
+            Clinical S.O.A.P. Standard
           </span>
         </div>
 
@@ -908,37 +874,6 @@ function TherapistSubmissionReviewContent({
               className="text-xs leading-relaxed border-zinc-800 bg-zinc-900/80 focus-visible:ring-indigo-500"
             />
           </div>
-        </div>
-
-        {/* Client-Friendly Summary Box */}
-        <div className="rounded-xl border border-emerald-500/50 bg-emerald-950/20 p-4 space-y-2 mt-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="text-xs font-bold text-emerald-300 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-400" />
-              Summary for Client & Family (Easy to Understand • Plain English)
-            </label>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleGenerateAiSummary}
-              disabled={generatingSummary || (!soapSubjective && !soapObjective && !soapAssessment && !soapPlan)}
-              className="h-6 text-[10px] px-2.5 border-emerald-500/40 text-emerald-300 hover:bg-emerald-950/60 hover:text-emerald-200 gap-1"
-            >
-              <Sparkles className="w-3 h-3 text-emerald-400" />
-              {generatingSummary ? "Generating..." : "AI Generate Summary"}
-            </Button>
-          </div>
-          <p className="text-[11px] text-zinc-400 leading-snug">
-            Write an encouraging, non-jargon summary that directly explains how the client did, praises their efforts, and provides simple guidance for home practice.
-          </p>
-          <Textarea
-            rows={3}
-            placeholder="e.g., You did an outstanding job lifting and releasing the cup smoothly today! Listening to your shoulder and resting was the right call. Keep practicing once daily..."
-            value={clientSummary}
-            onChange={(e) => setClientSummary(e.target.value)}
-            className="text-xs leading-relaxed border-emerald-500/30 bg-zinc-950/80 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-emerald-500"
-          />
         </div>
       </Card>
 

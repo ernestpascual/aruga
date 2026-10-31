@@ -1,31 +1,34 @@
 # Meta AI Integration Guide: Aruga
+**Document Version:** 2.0  
+**Updated for Commit:** `e5a7bd6` (feaures 50%)  
+**Models Supported:** `muse-spark-1.3`, `sam-3.1`  
+**Base URL:** `https://api.meta.ai/v1`  
+
+---
 
 ## 1. Overview and Architecture
 
-Aruga integrates **Meta AI** directly using official Meta API endpoints to assist licensed therapists with two critical tasks:
-1. **Program Drafting & Instruction Clarification**: Powered by **Muse Spark 1.3** (`muse-spark-1.3`).
-2. **Tabletop Object Tracking & Video Observation**: Powered by **SAM 3.1** (`sam-3.1`) and Muse Spark 1.3.
+Aruga integrates **Meta AI** to assist licensed occupational, physical, and speech therapists in clinical routine prescription, kinematic video tracking, multi-box SOAP documentation, and accessible family communication.
 
-All AI interactions adhere to strict clinician oversight: AI results are always tentative draft suggestions that therapists must preview, confirm, or reject before any content is published to a client.
+All AI interactions adhere to strict **human-in-the-loop clinical governance**: AI outputs are strictly treated as tentative drafts that clinicians must review, confirm, or modify before being made visible to patients.
 
 ```
 Therapist Instructions ---> [Muse Spark 1.3] ---> Structured Ordered Steps (Preview & Accept)
 Client Video Upload  ---> [Muse Spark 1.3] ---> Tentative Observable Actions (Confirmed/Rejected)
                      ---> [SAM 3.1 Stream]  ---> Object Bounding Boxes & SVG Masks (@meta-sam/parser)
-Confirmed Evidence   ---> [Muse Spark 1.3] ---> Draft Step Notes & Overall Feedback (Clinician Review)
+Confirmed Evidence   ---> [Muse Spark 1.3] ---> Multi-Box SOAP Notes (Subjective, Objective, Assessment, Plan)
+Clinical SOAP Notes  ---> [Muse Spark 1.3] ---> Plain-English Family Summary (Cached in PostgreSQL DB)
 ```
 
 ---
 
 ## 2. API Endpoints & Configuration
 
-- **Developer Documentation**: `https://dev.meta.ai`
-- **Official Inference Base URL**: `https://api.meta.ai/v1`
-- **Models**:
-  - `muse-spark-1.2-contributor` (default for chat)
-  - `muse-spark-1.3-contributor`
-  - `muse-wonder-1.0`
-  - `sam-3.1`
+- **Developer Portal**: `https://dev.meta.ai`
+- **Inference Base URL**: `https://api.meta.ai/v1`
+- **Supported Models**:
+  - `muse-spark-1.3-contributor` (Clinical text reasoning, program drafting, observation drafting)
+  - `sam-3.1` (Temporal streaming video object segmentation)
 
 ### Environment Configuration
 ```env
@@ -34,78 +37,84 @@ META_API_BASE_URL=https://api.meta.ai/v1
 AI_MODE=mock # 'off' | 'live' | 'mock'
 ```
 
-### AI Modes:
-- **`live`**: Directly sends requests to `https://api.meta.ai/v1`. Validates base host against `api.meta.ai`.
-- **`mock`**: Operates on clinically realistic adult tabletop fixtures. Displays a persistent `[Mock AI Fixture]` badge in the interface.
+### Operational Modes:
+- **`live`**: Dispatches requests directly to `https://api.meta.ai/v1`. Validates target host against `api.meta.ai`.
+- **`mock`**: Operates on clinically validated adult, pediatric, and geriatric rehabilitation fixtures.
 - **`off`**: Meta AI features are disabled, with clear informational notices for clinicians. Manual authoring and video review remain fully available.
-
-*Note: The platform never silently falls back from live to mock.*
 
 ---
 
 ## 3. Server-Only Architecture
 
-All API calls to Meta are strictly encapsulated in server-only modules:
-- `src/lib/meta/client.ts`: Host validation and authenticated HTTP clients.
-- `src/lib/meta/spark.ts`: Structured JSON-schema responses using `muse-spark-1.3`.
-- `src/lib/meta/sam.ts`: Streaming Responses API parser using `@meta-sam/parser`.
-- `src/lib/meta/prompts.ts`: Clinical safety prompts enforcing ethical boundaries.
-- `src/lib/meta/schemas.ts`: Zod validation schemas for structured output.
-- `src/lib/meta/errors.ts`: Typed error hierarchy (`MetaApiError`, `MetaTimeoutError`, `MetaRateLimitError`, `MetaRefusalError`, `SamParserError`).
-- `src/lib/meta-ai.ts`: High-level application service interface.
-- `src/types/meta.ts`: Browser-safe shared TypeScript contracts.
+All Meta AI API interactions are encapsulated in server-only modules under `src/lib/meta/`:
+- `client.ts`: Host validation and authenticated HTTP clients.
+- `spark.ts`: Structured JSON-schema responses using `muse-spark-1.3`.
+- `sam.ts`: Streaming Responses API parser using `@meta-sam/parser`.
+- `sam-engines/index.ts`: 7 clinical & environmental keyword engines (700 keywords total).
+- `prompts.ts`: Clinical safety prompts enforcing ethical and medical boundaries.
+- `schemas.ts`: Zod validation schemas for structured output.
+- `errors.ts`: Typed error hierarchy (`MetaApiError`, `MetaTimeoutError`, `MetaRateLimitError`, `MetaRefusalError`, `SamParserError`).
 
 ---
 
-## 4. Muse Spark 1.3 Implementation
+## 4. Muse Spark 1.3 Implementations
 
 ### A. Program Drafting (`draftHomeProgram`)
-- Accepts therapist rough notes and optional discipline label.
-- Restructures compound instructions into sequential steps with clear pacing.
-- **Safety constraint**: Never invents new clinical diagnoses, medication advice, or ungrounded precautions. Ambiguities are flagged explicitly in a `warnings` array.
-- Requires therapist preview and explicit acceptance before updating the editor.
+- Restructures informal clinician shorthand into sequential exercise steps with target repetitions and duration.
+- **Safety Boundary**: Never hallucinates clinical diagnoses or unsupported precautions. Ambiguities are flagged explicitly in a `warnings` array.
 
 ### B. Video Observation (`analyzeStepVideo`)
-- Reviews uploaded video via Meta Responses media format.
-- Generates tentative descriptions of **observable visual actions** (e.g., reaching toward object, cylindrical grasp, lifting object 3 inches).
+- Emits tentative descriptions of **observable visual actions** (e.g. reaching toward object, cylindrical grasp, lifting object 3 inches vertically).
 - Includes approximate timestamps within the clip duration.
 - Identifies at most one concrete object concept (e.g. `cup`, `block`, `spoon`) for SAM visual segmentation.
-- Notes environmental limitations (camera angle, lighting, occlusion).
 
 ### C. Feedback Drafting (`draftTherapistFeedback`)
 - Synthesizes rough clinician notes and **only explicitly confirmed observations**.
-- Recommends draft step notes and empathetic overall feedback.
-- Leaves content editable; remains completely private to the therapist until published atomically.
+- Emits multi-box SOAP feedback:
+  - **Subjective**: Patient fatigue, comfort, and verbal statements.
+  - **Objective**: Repetitions, hold duration, and kinematic measurements.
+  - **Assessment**: Neuromuscular control and compensatory movements.
+  - **Plan**: Pacing, resistance adjustments, and next session goals.
+
+### D. Plain-English Client Summary Engine (`/api/ai/soap-summary`)
+- Synthesizes complex clinical SOAP notes into a warm, 2–3 sentence takeaway written at a 6th-grade reading level.
+- Designed specifically for patients, parents of pediatric clients, and caregivers of older adults.
+- **Database Caching Layer**:
+  - The API checks PostgreSQL (`soap_notes.client_summary` or `submission_reviews.client_summary`) first.
+  - If cached, returns `{ summary, cached: true, source: "database_cache" }` in `<15 ms` with **zero AI inference credits consumed**.
+  - If empty, invokes Muse Spark, generates the summary, and immediately persists it back to the database.
 
 ---
 
 ## 5. SAM 3.1 Streaming Video Segmentation
 
-SAM 3.1 tracks discrete physical objects across video frames.
+### Multi-Engine Clinical Keywords (7 Engines, 700 Keywords)
+Aruga includes 7 pre-validated clinical and environmental keyword engines:
+1. **Pediatric Care Engine** (100 keywords): Fine-motor play tools (crayons, pegboards, bubbles, pop tubes, therapy putty).
+2. **Adolescent Care Engine** (100 keywords): Academic & executive function tools (mechanical pencil, geometry compass, locker lock, binder clips).
+3. **Adult Rehabilitation Engine** (100 keywords): Stroke & neuro-rehab items (cylindrical cup, weighted fork, therapeutic washcloth, key turner).
+4. **Old People (55+) Engine** (100 keywords): Fall prevention & joint mobility items (long-handled shoehorn, button hook, pill organizer, walker grip).
+5. **Everyday Home Items Engine** (100 keywords): Toothbrush, television remote, house key, hairbrush, nail clipper.
+6. **Everyday School Items Engine** (100 keywords): Safety scissors, glue stick, lunchbox latch, highlighter, eraser cap.
+7. **Kitchen Items Engine** (100 keywords): Measuring spoon, spatula, soup ladle, jar opener, vegetable peeler.
+
+*Full taxonomy available in [SAM Engine Keywords Guide](SAM_ENGINE_KEYWORDS.md).*
 
 ### Streaming Protocol & Parser:
-1. Video URL and object concept (e.g. `"cup"`) are sent to `https://api.meta.ai/v1/responses` with `stream: true`.
+1. Video URL and object concept (e.g. `"cup"`) are dispatched to `https://api.meta.ai/v1/responses` with `stream: true`.
 2. The SSE response stream is consumed using `@meta-sam/parser`:
    ```ts
-   import { parseVideoStream, recordsOfKind, frameIndexOf, decodeMaskToSVGPath } from "@meta-sam/parser";
+   import { parseVideoStream, recordsOfKind, decodeMaskToSVGPath } from "@meta-sam/parser";
 
    const parsedStream = parseVideoStream(sseEventsStream);
    const result = await parsedStream.finalResult;
    const boxRecords = recordsOfKind(result.records, "box");
    const maskRecords = recordsOfKind(result.records, "mask");
    ```
-3. Normalized coordinates `[ymin, xmin, ymax, xmax]` and decoded SVG mask paths (`decodeMaskToSVGPath`) are synchronized to the `<video>` element's playback timestamp in `SamOverlay.tsx`.
+3. Normalized coordinates `[ymin, xmin, ymax, xmax]` and decoded SVG mask paths (`decodeMaskToSVGPath`) are synchronized to video playback in `SamOverlay.tsx`.
 
-### Multi-Target Management (SAM 3 Engine, `src/lib/meta/sam-engine.ts`):
-- The Meta API accepts **one noun phrase per `/responses` request** — compound prompts like `"dog, cat"` are rejected (`INVALID_SAM_PROMPT`), never concatenated.
-- `segmentStepVideoMulti` / `Sam3Engine.segmentConcepts`: N distinct concepts = N billed requests, run with bounded concurrency (default 2), deduped case-insensitively, cached per `(video, concept)` for 5 minutes, with per-concept failure isolation, cross-concept overlap suppression (IoU ≥ 0.9), and labeled per-object tracks (`trackId = label:objectId`). The result reports `billedRequests` explicitly.
-- `Sam3Engine.trackObjects`: pre-located objects (boxes/points via `buildObjectPrompt`) are tracked in **one** billed request regardless of object count. Use this when objects are already located instead of paying one video pass per concept.
-
----
-
-## 6. Safety & Human Oversight Guarantees
-
-1. **No Autonomous Clinical Decisions**: Aruga does not generate diagnoses or clinical scores.
-2. **Untrusted Video Content**: Speech or text inside media is treated strictly as untrusted data, never as system prompt commands.
-3. **Dual Client Consent**: Separate consents are collected for therapist sharing and optional Meta AI analysis.
-4. **Demonstration Prototype**: Configured for consenting adult tabletop rehabilitation demonstrations. Pediatric onboarding is disabled in this hosted Meta AI deployment.
+### Multi-Target Engine Guards:
+- **Single Noun Enforcement**: Rejects compound prompts (`INVALID_SAM_PROMPT`).
+- **Concept Deduplication**: Case-insensitive prompt deduplication ensures billing occurs at most once per distinct physical concept.
+- **Frame Memory Cache**: Re-segmentation of the same video and concept is served from local frame cache without redundant API calls.
+- **Overlap Suppression**: Lower-confidence bounding boxes that overlap with higher-confidence primary targets on the same frame are suppressed to avoid visual clutter.

@@ -708,6 +708,7 @@ export default function ClientHistoryPage() {
                       objective={note.objective}
                       assessment={note.assessment}
                       plan={note.plan}
+                      clientName={profile?.display_name || user?.user_metadata?.name || "Client"}
                       isDemo={isDemo}
                     />
                   </Card>

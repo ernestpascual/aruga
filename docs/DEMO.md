@@ -1,73 +1,117 @@
-# Aruga Hackathon Demo Guide
+# Aruga Hackathon Demo Guide & Evaluation Walkthrough
+**Updated for Commit:** `e5a7bd6` (feaures 50%)  
+**Document Version:** 2.0  
 
-This guide outlines the 5-minute evaluation demonstration for **Aruga**, highlighting the clinician-directed home-program companion workflow and Meta AI integration.
+This guide provides a comprehensive evaluation walkthrough for **Aruga**, demonstrating the clinician-directed home-program companion, Meta AI multi-engine video segmentation, multi-box clinical SOAP notes, on-demand plain-English family summaries, care transfers, and two-way invitations.
 
 ---
 
-## Simulated Adult Rehabilitation Scenario
+## 1. Simulated Clinical Personas
 
-- **Therapist**: Dr. Elena Ramos, OTR/L (Occupational & Physical Therapy Specialist)
+### Clinician Persona
+- **Therapist**: Dr. Elena Ramos, OTR/L (Occupational Therapy Specialist)
+- **Practice**: Aruga Hand & Neuro-Rehabilitation Clinic
+- **Caseload**: Marcus Vance (Adult stroke recovery), Leo Chen (Pediatric pincer development), Eleanor Ramos (Geriatric 55+ joint mobility)
+
+### Patient Persona (Marcus Vance)
 - **Client**: Marcus Vance (Age 58, Adult post-stroke rehabilitation with right upper extremity hemiparesis)
-- **Activity**: Seated Tabletop Grasp & Precision Release Routine
-  - Step 1: Cylindrical Cup Lift and Transfer
-  - Step 2: Small Block Lateral Stacking
-  - Step 3: Forearm Supination with Washcloth (rested/skipped due to muscle fatigue)
+- **Care Routine**: Seated Tabletop Grasp & Precision Release Routine
+  - Step 1: Cylindrical Cup Lift and Transfer (Video recorded)
+  - Step 2: Small Block Lateral Stacking (Video recorded)
+  - Step 3: Forearm Supination with Washcloth (Rested/skipped due to muscle fatigue)
 
 ---
 
-## 5-Minute Demonstration Walkthrough
+## 2. 7-Minute Comprehensive Walkthrough
 
 ### Step 1: Sign In & Caseload Overview (45 seconds)
 1. Open `http://localhost:3000`.
-2. Notice the restrained medical aesthetic: charcoal/black background, dark zinc cards, and teal accent. The app logo is a **hand**.
+2. Notice the refined medical aesthetic: dark zinc cards, cursive *Playwrite IT Trad* wordmark, and teal accent.
 3. Click **"Therapist Portal"** (or use the one-click quick switch for Dr. Elena Ramos on `/login`).
-4. On `/therapist/clients`, observe the live caseload:
-   - Client **Marcus Vance** (58y, Male)
-   - Status badge: **Account Active**
-   - Active routines: **1 Active**
-   - Review alert: **1 Awaiting Review**
+4. On `/therapist/clients`, observe the multi-demographic caseload:
+   - Marcus Vance (Adult, Post-Stroke Hemiparesis)
+   - Leo Chen (Pediatric, Fine Motor Delay, Caregiver: Sarah Chen)
+   - Eleanor Ramos (Old People 55+, Osteoarthritis & Tremor Damping)
+5. Notice the **Caseload Demographic Filter Tabs**: *All Clients*, *Adult*, *Adolescent*, *Pediatric*, *Old People (55+)*.
+6. Check the **Invite / Link Client** modal: supports two-way email address linking invitations.
 
-### Step 2: Meta Muse Spark 1.3 Program Drafting (60 seconds)
-1. Open Marcus Vance's profile and click **"Create Home Program"**.
-2. Select discipline: **Occupational Therapy (OT)**.
-3. In the instructions overview, type rough clinician shorthand:
+### Step 2: Live Session Multi-Box SOAP Notes (60 seconds)
+1. Open Marcus Vance's client details at `/therapist/clients/33333333-3333-4333-8333-333333333333`.
+2. Click the **"Live Session SOAP Notes"** tab.
+3. Observe the chronologically organized past SOAP notes.
+4. Click **"Record New SOAP Note"**:
+   - See **4 distinct textarea boxes**:
+     - **Subjective (S)**: Patient quotes, fatigue, comfort, pain score (0–10).
+     - **Objective (O)**: Active range of motion, grip strength, repetitions completed.
+     - **Assessment (A)**: Neuromuscular progress, compensatory trunk flexion analysis.
+     - **Plan (P)**: Progression adjustments, frequency changes, next appointment date.
+   - See the **5th Box: Summary for Client & Family**:
+     - Click **"AI Generate Summary"**: Synthesizes the clinical notes into a 2–3 sentence message in warm, plain English.
+5. Save the note: persists to `public.soap_notes` with instant reactive UI update.
+
+### Step 3: Meta Muse Spark 1.3 Program Drafting (60 seconds)
+1. In Marcus Vance's profile, click **"Assign New Routine"** (`/therapist/clients/[id]/programs/new`).
+2. In the instructions overview, type rough clinician shorthand:
    ```text
    tabletop cup reaches, active cylindrical grasp, lift 3 inches vertically, hold 2s, gentle release without tipping. Move across midline if tolerated.
    ```
-4. Click **"Refine with Meta"**:
-   - Meta Muse Spark 1.3 parses the rough notes into structured, sequential steps with patient-friendly language.
-   - Clinical ambiguities and pacing considerations are flagged in the warnings panel.
-5. Review the preview diff and click **"Accept Proposed Changes"** to populate the editor.
+3. Click **"Refine with Meta"**:
+   - Meta Muse Spark 1.3 parses the rough notes into structured, sequential steps with patient-friendly pacing.
+   - Ambiguities and pacing warnings are highlighted in the safety check panel.
+4. Review the preview diff and click **"Accept Proposed Changes"** to populate the structured routine editor.
 
-### Step 3: Client Recording & Dual Consent (60 seconds)
-1. Navigate to `/client` (or use the Marcus Vance quick switch).
-2. The Home screen shows:
-   - Assigned therapist: **Dr. Elena Ramos, OTR/L**
-   - Next action button: **"Continue Routine"**
-3. Click into the program runner:
-   - Notice the step-by-step runner (**"Step 1 of 3"**).
-   - In Step 1, see the camera recorder with countdown timer (max 30s) and format detection.
-   - In Step 3, see how Marcus selected **"I could not complete this step"** and provided an explicit reason (*"Shoulder felt tight and fatigued after step 2; rested per precautions"*).
-4. Review the final completion summary with separate checkboxes for therapist sharing and optional Meta AI analysis.
+### Step 4: Client Routine Runner & Video Capture (60 seconds)
+1. Open `/client` (or use the Marcus Vance quick switch).
+2. Click **"Continue Routine"** into `/client/programs/11111111-1111-4111-8111-111111111112`.
+3. In Step 1:
+   - Use the camera recorder with countdown timer (max 30s) and format detection.
+   - Direct-to-bucket upload stores recordings safely in the private Supabase Storage `program-videos` bucket.
+4. In Step 3:
+   - See how Marcus toggles **"I could not complete this step"** and logs an explicit clinical fatigue reason (*"Shoulder felt tight and fatigued after step 2; rested per precautions"*).
+5. Submit the routine.
 
-### Step 4: Submission Review with SAM 3.1 Overlays (75 seconds)
+### Step 5: Submission Review with SAM 3.1 & Multi-Box Feedback (75 seconds)
 1. Return to `/therapist/submissions/55555555-5555-4555-8555-555555555555`.
 2. In Step 1:
    - Play the submitted video.
-   - See the synchronized **SAM 3.1 Visual Tracking** box and SVG mask overlay highlighting the cup as Marcus lifts and transfers it.
-   - Use the **"SAM Tracking On/Off"** toggle button.
-3. Open the **Meta Review Assistant**:
+   - Observe the synchronized **SAM 3.1 Visual Tracking** bounding box and SVG mask overlay highlighting the cup.
+   - Toggle **"SAM Tracking On/Off"** to inspect raw video vs. segmentations.
+3. In the **Meta Review Assistant**:
    - Inspect tentative observations generated by Muse Spark 1.3.
-   - Check the boxes to confirm valid observations (e.g. *Full active cylindrical grasp achieved*).
-   - Click **"Draft Step Note with Confirmed Evidence"** to insert the confirmed observations into your editable note.
-4. Review Step 3 to see the fatigue skip reason acknowledged with empathy.
-5. Click **"Publish Feedback"** to atomically publish the entire review.
+   - Confirm valid observations (e.g., *Full active cylindrical grasp achieved*).
+   - Click **"Draft Step Note with Confirmed Evidence"** to insert into the editable step note.
+4. In the **Final Overall Review Section**:
+   - The final review is partitioned into the **4 distinct SOAP textareas**:
+     - **S**: Marcus noted mild shoulder tightness after step 2.
+     - **O**: Completed 10 cup lifts with 2.8s hold time; smooth release.
+     - **A**: Excellent cylindrical grasp isolation; minimal compensatory trunk lean.
+     - **P**: Advance to weighted cup exercise; maintain rest periods.
+   - Click **"AI Generate Summary"** to populate the patient-friendly summary box.
+5. Click **"Publish Review"**: Atomically transitions the review from `draft` to `published`.
 
-### Step 5: Direct Messaging with @home-program Mention (60 seconds)
+### Step 6: Client History & On-Demand Cached Summary (60 seconds)
+1. Return to the client view at `/client/history`.
+2. Notice the primary tab switcher:
+   - **Home Program Feedback**: Displays published exercise routines.
+   - **Live Session SOAP Notes**: Displays all live session notes recorded by Dr. Ramos.
+3. In either view, observe the **4 color-coded SOAP badges** (Sky for S, Teal for O, Amber for A, Violet for P).
+4. Look **prominently below the SOAP notes**:
+   - Notice the **"See Summary"** card.
+   - Notice the badge: `[Cached in Database (Zero AI Credits)]`.
+   - Click **"See Summary"**: Expands instantly with **zero API round-trip and zero AI cost**, revealing the plain-English family takeaway.
+
+### Step 7: Therapist Multi-Client Messaging & Routine Mentions (60 seconds)
 1. Navigate to `/therapist/messages`.
-2. Notice the non-emergency clinical notice banner.
-3. Type `@` in the message box:
-   - A dropdown opens showing assigned routines for Marcus.
+2. Use the **Client Selector Dropdown** to easily switch between Marcus Vance, Leo Chen, and Eleanor Ramos.
+3. In the message box, type `@`:
+   - A dropdown opens listing Marcus's assigned routines.
    - Select **"Tabletop Grasp & Precision Release Routine"**.
    - The program attaches as a clickable chip.
-4. Send the message. Click the chip to navigate directly to the program review!
+4. Send the message. Click the chip to navigate directly to the program!
+5. Hover over any sent message and click the **Trash icon** to delete unnecessary test messages.
+
+### Step 8: Care Transfer Handover (30 seconds)
+1. On Marcus Vance's client profile (`/therapist/clients/[id]`), click **"Transfer Care"**.
+2. Select a colleague clinician (e.g., Dr. Jordan Miller).
+3. Enter clinical handover notes (*"Marcus has made steady gains in cylindrical grasp. Focus on shoulder stability."*).
+4. Click **"Execute Transfer"**: The patient caseload, exercise history, and videos seamlessly transition to the new clinician with complete audit traceability.
