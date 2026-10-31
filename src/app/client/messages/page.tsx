@@ -11,6 +11,7 @@ import {
   User,
   Stethoscope,
   Baby,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -54,6 +55,7 @@ function ClientMessagesContent() {
   const [inputText, setInputText] = useState("");
   const [selectedMentionProgram, setSelectedMentionProgram] = useState<ProgramMentionOption | null>(null);
   const [sending, setSending] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const fetchMessages = async () => {
@@ -117,6 +119,26 @@ function ClientMessagesContent() {
       // error
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!confirm("Are you sure you want to delete this message?")) return;
+
+    setDeletingId(messageId);
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+
+    try {
+      const res = await fetch(`/api/messages?id=${messageId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        fetchMessages();
+      }
+    } catch {
+      fetchMessages();
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -223,6 +245,15 @@ function ClientMessagesContent() {
                   </>
                 )}
                 <span>• {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteMessage(msg.id)}
+                  disabled={deletingId === msg.id}
+                  title="Delete message"
+                  className="ml-1 text-zinc-500 hover:text-rose-400 transition-colors p-0.5 rounded hover:bg-rose-950/40 opacity-70 hover:opacity-100"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
               </div>
 
               <div

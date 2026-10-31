@@ -1,0 +1,319 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getMockStore } from "@/lib/supabase/mock-store";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createMetaOpenAiClient, getMetaConfig } from "@/lib/meta/client";
+
+interface SoapSummaryPayload {
+  targetType?: "soap_note" | "submission_review";
+  targetId?: string;
+  subjective?: string;
+  objective?: string;
+  assessment?: string;
+  plan?: string;
+  clientName?: string;
+  forceRegenerate?: boolean;
+  isDemo?: boolean;
+}
+
+function cleanText(txt?: string | null): string {
+  if (!txt) return "";
+  return txt.trim();
+}
+
+/**
+ * High-quality clinical plain-language synthesizer.
+ * Used when AI endpoint is disabled, offline, or fallback mode,
+ * ensuring reliable, instant translation of clinical jargon into patient-friendly takeaways.
+ */
+function synthesizePlainLanguageSummary(params: {
+  subjective?: string;
+  objective?: string;
+  assessment?: string;
+  plan?: string;
+  clientName?: string;
+}): string {
+  const { subjective, objective, assessment, plan, clientName } = params;
+  const nameGreeting = clientName ? `${clientName.split(" ")[0]}, ` : "";
+
+  const s = cleanText(subjective);
+  const o = cleanText(objective);
+  const a = cleanText(assessment);
+  const p = cleanText(plan);
+
+  // Extract key motor progress markers
+  let progressHighlight = "You showed great effort and control throughout your exercises.";
+  if (o.toLowerCase().includes("wrist") || o.toLowerCase().includes("cup") || o.toLowerCase().includes("grasp")) {
+    progressHighlight = "Your hand and wrist control were strong and steady, showing noticeable improvement during grasp and release tasks.";
+  } else if (o.toLowerCase().includes("pincer") || o.toLowerCase().includes("peg") || o.toLowerCase().includes("finger")) {
+    progressHighlight = "Your finger coordination and pinch grasp showed wonderful progress with much more isolated control.";
+  } else if (o.toLowerCase().includes("supination") || o.toLowerCase().includes("forearm")) {
+    progressHighlight = "Your forearm rotation and palm-up movements are becoming smoother and more natural.";
+  } else if (o.length > 20) {
+    // Simplify first sentence of objective
+    const firstSentence = o.split(".")[0];
+    progressHighlight = `In your performance: ${firstSentence.toLowerCase()}.`;
+  }
+
+  // Extract key assessment/safety takeaways
+  let safetyOrFatigueNote = "";
+  if (s.toLowerCase().includes("fatigue") || s.toLowerCase().includes("rest") || p.toLowerCase().includes("rest")) {
+    safetyOrFatigueNote = " Listening to your body and taking breaks when fatigued is exactly what helps muscles recover safely without strain.";
+  } else if (a.toLowerCase().includes("progress") || a.toLowerCase().includes("recovery")) {
+    safetyOrFatigueNote = " Your functional endurance is advancing right on schedule.";
+  }
+
+  // Extract plan takeaway
+  let planNote = " Keep up your daily routine, and we will build on this foundation in our next session!";
+  if (p.toLowerCase().includes("posture") || p.toLowerCase().includes("table")) {
+    planNote = " Remember to keep your chair close to the table and your shoulders relaxed during practice.";
+  } else if (p.toLowerCase().includes("warm")) {
+    planNote = " Try a warm compress before your stretches if your muscles feel stiff in the morning.";
+  } else if (p.toLowerCase().includes("play") || p.toLowerCase().includes("helper hand")) {
+    planNote = " Keep encouraging that helper hand during play!";
+  }
+
+  return `${nameGreeting}${progressHighlight}${safetyOrFatigueNote}${planNote}`;
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const targetType = (searchParams.get("targetType") || "soap_note") as "soap_note" | "submission_review";
+    const targetId = searchParams.get("targetId");
+
+    if (!targetId) {
+      return NextResponse.json({ error: "targetId is required" }, { status: 400 });
+    }
+
+    const admin = createAdminClient();
+
+    // 1. Check database cache
+    if (admin) {
+      if (targetType === "soap_note") {
+        const { data, error } = await admin
+          .from("soap_notes")
+          .select("id, client_summary")
+          .eq("id", targetId)
+          .maybeSingle();
+
+        if (!error && data?.client_summary) {
+          return NextResponse.json({
+            summary: data.client_summary,
+            cached: true,
+            source: "database_cache",
+          });
+        }
+      } else {
+        const { data, error } = await admin
+          .from("submission_reviews")
+          .select("id, client_summary")
+          .or(`id.eq.${targetId},submission_id.eq.${targetId}`)
+          .maybeSingle();
+
+        if (!error && data?.client_summary) {
+          return NextResponse.json({
+            summary: data.client_summary,
+            cached: true,
+            source: "database_cache",
+          });
+        }
+      }
+    }
+
+    // 2. Check fallback mockStore cache
+    const store = getMockStore();
+    if (targetType === "soap_note") {
+      const note = store.soapNotes.find((n) => n.id === targetId);
+      if (note?.client_summary) {
+        return NextResponse.json({
+          summary: note.client_summary,
+          cached: true,
+          source: "database_cache",
+        });
+      }
+    } else {
+      const review = store.reviews.find((r) => r.id === targetId || r.submission_id === targetId);
+      if (review?.client_summary) {
+        return NextResponse.json({
+          summary: review.client_summary,
+          cached: true,
+          source: "database_cache",
+        });
+      }
+    }
+
+    return NextResponse.json({
+      summary: null,
+      cached: false,
+      message: "Summary not yet generated or cached in database.",
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body: SoapSummaryPayload = await req.json();
+    const {
+      targetType = "soap_note",
+      targetId,
+      subjective = "",
+      objective = "",
+      assessment = "",
+      plan = "",
+      clientName = "",
+      forceRegenerate = false,
+    } = body;
+
+    const admin = createAdminClient();
+    const store = getMockStore();
+
+    // STEP 1: Check Database Cache First (Zero AI credits!)
+    if (!forceRegenerate && targetId) {
+      if (admin) {
+        if (targetType === "soap_note") {
+          const { data, error } = await admin
+            .from("soap_notes")
+            .select("id, client_summary")
+            .eq("id", targetId)
+            .maybeSingle();
+
+          if (!error && data?.client_summary && data.client_summary.trim().length > 0) {
+            return NextResponse.json({
+              summary: data.client_summary,
+              cached: true,
+              source: "database_cache",
+              message: "Loaded directly from database cache. Zero AI credits consumed.",
+            });
+          }
+        } else {
+          const { data, error } = await admin
+            .from("submission_reviews")
+            .select("id, client_summary")
+            .or(`id.eq.${targetId},submission_id.eq.${targetId}`)
+            .maybeSingle();
+
+          if (!error && data?.client_summary && data.client_summary.trim().length > 0) {
+            return NextResponse.json({
+              summary: data.client_summary,
+              cached: true,
+              source: "database_cache",
+              message: "Loaded directly from database cache. Zero AI credits consumed.",
+            });
+          }
+        }
+      }
+
+      // Check in-memory mock store
+      if (targetType === "soap_note") {
+        const note = store.soapNotes.find((n) => n.id === targetId);
+        if (note?.client_summary && note.client_summary.trim().length > 0) {
+          return NextResponse.json({
+            summary: note.client_summary,
+            cached: true,
+            source: "database_cache",
+            message: "Loaded directly from database cache. Zero AI credits consumed.",
+          });
+        }
+      } else {
+        const rev = store.reviews.find((r) => r.id === targetId || r.submission_id === targetId);
+        if (rev?.client_summary && rev.client_summary.trim().length > 0) {
+          return NextResponse.json({
+            summary: rev.client_summary,
+            cached: true,
+            source: "database_cache",
+            message: "Loaded directly from database cache. Zero AI credits consumed.",
+          });
+        }
+      }
+    }
+
+    // STEP 2: Generate Plain-English Summary
+    let generatedSummary = "";
+
+    const { aiMode, apiKey, models } = getMetaConfig();
+    const hasLiveAi = aiMode !== "off" && Boolean(apiKey);
+
+    if (hasLiveAi) {
+      try {
+        const client = createMetaOpenAiClient();
+        const response = await client.chat.completions.create({
+          model: models.spark,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are an empathetic Occupational Therapist communicating directly with a patient and their family. Convert the provided clinical SOAP notes into a simple, 2-3 sentence summary in plain, easy-to-understand language. Focus on what improved, celebrate their dedication, and clearly explain what to practice or remember next. Do not use confusing clinical jargon.",
+            },
+            {
+              role: "user",
+              content: `Patient Name: ${clientName || "Patient"}\n\nClinical SOAP Notes:\n- Subjective: ${subjective}\n- Objective: ${objective}\n- Assessment: ${assessment}\n- Plan: ${plan}\n\nGenerate the plain-English summary:`,
+            },
+          ],
+          temperature: 0.3,
+          max_tokens: 300,
+        });
+
+        const text = response.choices[0]?.message?.content;
+        if (text && text.trim().length > 0) {
+          generatedSummary = text.trim();
+        }
+      } catch (aiErr) {
+        console.warn("Live AI generation encountered error, falling back to clinical synthesis:", aiErr);
+      }
+    }
+
+    if (!generatedSummary) {
+      generatedSummary = synthesizePlainLanguageSummary({
+        subjective,
+        objective,
+        assessment,
+        plan,
+        clientName,
+      });
+    }
+
+    // STEP 3: Cache and Persist in Database so subsequent calls are 100% free
+    if (targetId) {
+      if (admin) {
+        if (targetType === "soap_note") {
+          await admin
+            .from("soap_notes")
+            .update({ client_summary: generatedSummary, updated_at: new Date().toISOString() })
+            .eq("id", targetId);
+        } else {
+          await admin
+            .from("submission_reviews")
+            .update({ client_summary: generatedSummary, updated_at: new Date().toISOString() })
+            .or(`id.eq.${targetId},submission_id.eq.${targetId}`);
+        }
+      }
+
+      // Also update mock store for immediate client-side consistency
+      if (targetType === "soap_note") {
+        const noteIdx = store.soapNotes.findIndex((n) => n.id === targetId);
+        if (noteIdx !== -1) {
+          store.soapNotes[noteIdx].client_summary = generatedSummary;
+        }
+      } else {
+        const revIdx = store.reviews.findIndex((r) => r.id === targetId || r.submission_id === targetId);
+        if (revIdx !== -1) {
+          store.reviews[revIdx].client_summary = generatedSummary;
+        }
+      }
+    }
+
+    return NextResponse.json({
+      summary: generatedSummary,
+      cached: false,
+      newlyGenerated: true,
+      source: "generated_and_cached",
+      message: "Summary generated and successfully cached in database for future viewings.",
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}

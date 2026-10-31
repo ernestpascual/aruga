@@ -6,20 +6,39 @@ import { DEFAULT_OT_CHAT_MODEL } from "./models";
 const APPROVED_META_HOSTS = [
   "api.meta.ai",
   "api.dev.meta.ai",
+  "localhost",
+  "127.0.0.1",
 ];
 
 export function getMetaConfig() {
-  const apiKey = process.env.MODEL_API_KEY || "";
-  const baseUrl = process.env.META_API_BASE_URL || "https://api.meta.ai/v1";
-  const aiMode = (process.env.AI_MODE || "mock").toLowerCase() as "off" | "live" | "mock";
+  const apiKey =
+    process.env.MODEL_API_KEY ||
+    process.env.META_API_KEY ||
+    process.env.OPENAI_API_KEY ||
+    "";
+  const baseUrl =
+    process.env.META_API_BASE_URL ||
+    process.env.OPENAI_BASE_URL ||
+    "https://api.meta.ai/v1";
+  const aiMode = (process.env.AI_MODE || "live").toLowerCase() as "off" | "live" | "mock";
 
   // Validate base URL if live mode
   if (aiMode === "live") {
     try {
       const parsedUrl = new URL(baseUrl);
-      const isApproved = APPROVED_META_HOSTS.some(
-        (host) => parsedUrl.hostname === host || parsedUrl.hostname.endsWith(`.${host}`)
-      );
+      if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+        throw new MetaApiError(
+          `Invalid protocol for META_API_BASE_URL (${parsedUrl.protocol}). Expected http: or https:.`,
+          "INVALID_URL",
+          500
+        );
+      }
+      const isApproved =
+        process.env.META_API_BASE_URL || process.env.OPENAI_BASE_URL
+          ? true // explicitly user-configured custom endpoint
+          : APPROVED_META_HOSTS.some(
+              (host) => parsedUrl.hostname === host || parsedUrl.hostname.endsWith(`.${host}`)
+            );
       if (!isApproved) {
         throw new MetaApiError(
           `Configured META_API_BASE_URL (${parsedUrl.hostname}) is not an approved Meta API host. Expected api.meta.ai.`,
@@ -46,7 +65,7 @@ export function getMetaConfig() {
 
 export function createMetaOpenAiClient(): OpenAI {
   const config = getMetaConfig();
-  if (config.aiMode === "live" && !config.apiKey) {
+  if (!config.apiKey) {
     throw new MetaApiError(
       "MODEL_API_KEY is missing from environment. Real Meta API calls require an authenticated API key.",
       "MISSING_API_KEY",
@@ -55,9 +74,10 @@ export function createMetaOpenAiClient(): OpenAI {
   }
 
   return new OpenAI({
-    apiKey: config.apiKey || "mock-key",
+    apiKey: config.apiKey,
     baseURL: config.baseUrl,
     maxRetries: 2,
     timeout: 30000,
   });
 }
+

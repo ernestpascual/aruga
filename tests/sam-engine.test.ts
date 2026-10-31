@@ -138,18 +138,46 @@ describe("Sam3Engine object tracking", () => {
   });
 });
 
-describe("segmentStepVideoMulti facade (mock mode)", () => {
-  it("merges per-concept mock results with labels and tracks", async () => {
-    const { segmentStepVideoMulti } = await import("../src/lib/meta-ai");
-    const out = await segmentStepVideoMulti({
-      stepSubmissionId: "sub-1",
-      videoUrl: "/demo/cup.mp4",
-      objectConcepts: ["cup", "Cup", "block"],
+describe("segmentStepVideoMulti live facade", () => {
+  it("delegates to sam3Engine.segmentConcepts and returns tracks and boxes", async () => {
+    const origKey = process.env.MODEL_API_KEY;
+    process.env.MODEL_API_KEY = "test-live-key";
+    const { sam3Engine } = await import("../src/lib/meta/sam-engine");
+    const spy = vi.spyOn(sam3Engine, "segmentConcepts").mockResolvedValueOnce({
+      conceptsRequested: ["cup", "block"],
+      tracks: [
+        { trackId: "cup:0", label: "cup", objectId: "0", frames: [0], boxes: [], svgPaths: [], maxConfidence: 0.95 },
+        { trackId: "block:0", label: "block", objectId: "0", frames: [0], boxes: [], svgPaths: [], maxConfidence: 0.92 },
+      ],
+      boxes: [
+        { frameIndex: 0, timestampSeconds: 0, box: [0, 0, 10, 10], label: "cup", confidence: 0.95 },
+        { frameIndex: 0, timestampSeconds: 0, box: [0, 0, 10, 10], label: "block", confidence: 0.92 },
+      ],
+      svgPaths: [],
+      failures: [],
+      billedRequests: 2,
+      latencyMs: 150,
     });
-    expect(out.objectConcepts).toEqual(["cup", "block"]);
-    expect(out.tracks).toHaveLength(2);
-    expect(out.boxes.every((b) => ["cup", "block"].includes(b.label))).toBe(true);
-    expect(out.billedRequests).toBe(0);
+
+    try {
+      const { segmentStepVideoMulti } = await import("../src/lib/meta-ai");
+      const out = await segmentStepVideoMulti({
+        stepSubmissionId: "sub-1",
+        videoUrl: "/demo/cup.mp4",
+        objectConcepts: ["cup", "Cup", "block"],
+      });
+      expect(out.objectConcepts).toEqual(["cup", "block"]);
+      expect(out.tracks).toHaveLength(2);
+      expect(out.boxes.every((b) => ["cup", "block"].includes(b.label))).toBe(true);
+      expect(out.billedRequests).toBe(2);
+    } finally {
+      spy.mockRestore();
+      if (origKey !== undefined) {
+        process.env.MODEL_API_KEY = origKey;
+      } else {
+        delete process.env.MODEL_API_KEY;
+      }
+    }
   });
 });
 

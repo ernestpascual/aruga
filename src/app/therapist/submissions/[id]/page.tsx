@@ -8,29 +8,23 @@ import {
   Sparkles,
   Save,
   Send,
-  Eye,
   CheckSquare,
   Square,
   AlertCircle,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Layers,
   FileText,
-  Clock,
   Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MockBadge } from "@/components/ui/mock-badge";
 import { SamOverlay } from "@/components/ui/sam-overlay";
-import { siteConfig } from "@/config/site";
 import { Submission, StepSubmission, ProgramStep, AiAnalysisRecord } from "@/types/database";
 import {
-  DEMO_PATIENT_ID,
-  DEMO_PEDIATRIC_PATIENT_ID,
+  DEMO_SUBMISSION_ID,
   DEMO_PEDIATRIC_SUBMISSION_ID,
 } from "@/lib/supabase/mock-store";
 
@@ -54,6 +48,10 @@ function TherapistSubmissionReviewContent({
   const router = useRouter();
   const resolvedParams = use(params);
   const submissionId = resolvedParams.id;
+  const isDemo =
+    submissionId === DEMO_SUBMISSION_ID ||
+    submissionId === DEMO_PEDIATRIC_SUBMISSION_ID ||
+    submissionId.includes("demo");
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -67,6 +65,12 @@ function TherapistSubmissionReviewContent({
   // Therapist feedback state
   const [stepNotes, setStepNotes] = useState<Record<string, string>>({});
   const [overallFeedback, setOverallFeedback] = useState("");
+  const [soapSubjective, setSoapSubjective] = useState("");
+  const [soapObjective, setSoapObjective] = useState("");
+  const [soapAssessment, setSoapAssessment] = useState("");
+  const [soapPlan, setSoapPlan] = useState("");
+  const [clientSummary, setClientSummary] = useState("");
+  const [generatingSummary, setGeneratingSummary] = useState(false);
 
   // AI Assistant state per step
   const [analyzingStepId, setAnalyzingStepId] = useState<string | null>(null);
@@ -79,8 +83,53 @@ function TherapistSubmissionReviewContent({
     const fetchSubmission = async () => {
       try {
         setLoading(true);
-        const isPediatric = submissionId === DEMO_PEDIATRIC_SUBMISSION_ID || submissionId.includes("pediatric");
 
+        // Attempt live fetch from Supabase
+        const res = await fetch(`/api/client/submissions?submissionId=${submissionId}`);
+        const data = await res.json();
+
+        if (data.submission) {
+          setSubmission(data.submission);
+          const loadedSteps = data.submission.program?.steps || [];
+          const loadedStepSubs = data.submission.step_submissions || [];
+
+          if (loadedSteps.length > 0) setSteps(loadedSteps);
+          if (loadedStepSubs.length > 0) setStepSubmissions(loadedStepSubs);
+
+          if (data.submission.review) {
+            if (data.submission.review.overall_feedback) {
+              setOverallFeedback(data.submission.review.overall_feedback);
+            }
+            if (data.submission.review.subjective) setSoapSubjective(data.submission.review.subjective);
+            if (data.submission.review.objective) setSoapObjective(data.submission.review.objective);
+            if (data.submission.review.assessment) setSoapAssessment(data.submission.review.assessment);
+            if (data.submission.review.plan) setSoapPlan(data.submission.review.plan);
+            if (data.submission.review.client_summary) setClientSummary(data.submission.review.client_summary);
+
+            if (Array.isArray(data.submission.review.step_reviews)) {
+              const notesMap: Record<string, string> = {};
+              data.submission.review.step_reviews.forEach((sr: { step_submission_id: string; therapist_note?: string }) => {
+                notesMap[sr.step_submission_id] = sr.therapist_note || "";
+              });
+              setStepNotes(notesMap);
+            }
+          }
+
+          if (loadedSteps.length > 0) setSteps(loadedSteps);
+          if (loadedStepSubs.length > 0) setStepSubmissions(loadedStepSubs);
+          setLoading(false);
+          return;
+        }
+
+        const isDemoSubmission = isDemo;
+
+        if (!isDemoSubmission) {
+          setStatusMessage({ type: "error", text: "Submission not found or has been archived." });
+          setLoading(false);
+          return;
+        }
+
+        const isPediatric = submissionId === DEMO_PEDIATRIC_SUBMISSION_ID || submissionId.includes("pediatric");
         const mockSteps: ProgramStep[] = isPediatric
           ? [
               {
@@ -186,7 +235,7 @@ function TherapistSubmissionReviewContent({
                 submission_id: submissionId,
                 program_step_id: mockSteps[0].id,
                 video_path: "/demo/cup_grasp_transfer.mp4",
-                media_meta: { mime: "video/mp4", durationSeconds: 14, formatSupported: true },
+                media_meta: { mime: "video/mp4", durationSeconds: 15, formatSupported: true },
                 client_comment: "Felt smoother than last week! Finger extension still feels stiff right before touching the cup.",
                 skipped: false,
                 skip_reason: null,
@@ -231,6 +280,11 @@ function TherapistSubmissionReviewContent({
           setOverallFeedback(
             "Fantastic progress, Leo! Sarah, his pincer grasp on the pegs showed wonderful isolated finger control with much less whole-hand raking. Great call on loosening the jar lid for step 3."
           );
+          setSoapSubjective("Sarah reported Leo was enthusiastic with the colored pegs. Noted step 3 jar was too tight for independent opening.");
+          setSoapObjective("Neat pincer grasp achieved on 5 peg placements. Helper hand spontaneously stabilized container rim.");
+          setSoapAssessment("Bilateral coordination and thumb-index pad opposition show marked maturation from gross raking grasp.");
+          setSoapPlan("Continue daily peg stacking and play-doh routines. Use pre-loosened plastic containers for bilateral twist-off practice.");
+          setClientSummary("Leo did an incredible job using his 'pincer fingers' to place the colorful pegs! Sarah, having him hold the container with his helper hand made all the difference. For tomorrow, start with the jar lid already partly loosened so Leo can celebrate opening it all by himself!");
         } else {
           setStepNotes({
             [mockStepSubs[0].id]: "Smooth cylindrical grasp observed. Minimal trunk compensation. Keep focusing on slow finger release.",
@@ -238,8 +292,13 @@ function TherapistSubmissionReviewContent({
             [mockStepSubs[2].id]: "Appropriate skip. We will re-evaluate shoulder active range of motion during our next session.",
           });
           setOverallFeedback(
-            "Great effort on the tabletop transfer, Marcus. Your wrist alignment during the cup release is noticeably improved. Good decision to rest your shoulder on step 3—honoring fatigue prevents compensatory shoulder hiking."
+            "Great effort on the tabletop transfer routine. Wrist alignment during the cup release is noticeably improved. Good decision to rest the shoulder on step 3—honoring fatigue prevents compensatory shoulder hiking."
           );
+          setSoapSubjective("Marcus reported feeling smoother during cup lifts, but noted residual morning finger stiffness. Made an appropriate clinical decision to rest shoulder on step 3.");
+          setSoapObjective("Video review demonstrates active cylindrical grasp with 3-4 inch vertical cup lift. Trunk lateral flexion under 5°. Step 2 block stacking completed with 4 clean chuck releases.");
+          setSoapAssessment("Right UE hemiparesis shows steady neuromuscular recovery. Tabletop grasp and release are functional; proximal shoulder girdle endurance is the remaining limiting factor.");
+          setSoapPlan("Maintain current tabletop routine 1x daily. Introduce 30-second resting intervals between block sets. Re-check active shoulder flexion in next live session.");
+          setClientSummary("You did an outstanding job lifting and releasing the cup smoothly without leaning your body. Listening to your shoulder and resting on step 3 was 100% the right call. Keep practicing the cup and block exercises once a day, and remember to take 30-second breathers whenever your shoulder feels tired!");
         }
 
         // Preload step 1 AI record from demo
@@ -302,7 +361,7 @@ function TherapistSubmissionReviewContent({
     };
 
     fetchSubmission();
-  }, [submissionId]);
+  }, [submissionId, isDemo]);
 
   // Toggle Assistant Collapse
   const toggleCollapse = (stepSubId: string) => {
@@ -312,8 +371,15 @@ function TherapistSubmissionReviewContent({
     }));
   };
 
-  // Run Meta Analysis on a Step
   const handleAnalyzeWithMeta = async (stepSub: StepSubmission, step: ProgramStep) => {
+    if (!stepSub.video_path && !isDemo) {
+      setStatusMessage({
+        type: "error",
+        text: "Cannot run Meta AI analysis: no video was uploaded by the client for this step.",
+      });
+      return;
+    }
+
     setAnalyzingStepId(stepSub.id);
     setStatusMessage(null);
 
@@ -323,7 +389,7 @@ function TherapistSubmissionReviewContent({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           stepSubmissionId: stepSub.id,
-          videoUrl: stepSub.video_path || "/demo/tabletop_exercise.mp4",
+          videoUrl: stepSub.video_path || (isDemo ? "/demo/tabletop_exercise.mp4" : ""),
           stepInstructions: step.instructions,
           stepTitle: step.title || `Step ${step.position}`,
           runSam: true,
@@ -411,6 +477,11 @@ function TherapistSubmissionReviewContent({
           submissionId,
           stepReviews: stepReviewsPayload,
           overallFeedback,
+          subjective: soapSubjective,
+          objective: soapObjective,
+          assessment: soapAssessment,
+          plan: soapPlan,
+          clientSummary,
         }),
       });
 
@@ -443,17 +514,63 @@ function TherapistSubmissionReviewContent({
     }
   };
 
+  const handleGenerateAiSummary = async () => {
+    setGeneratingSummary(true);
+    try {
+      const res = await fetch("/api/ai/soap-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetType: "submission_review",
+          targetId: submissionId,
+          subjective: soapSubjective,
+          objective: soapObjective,
+          assessment: soapAssessment,
+          plan: soapPlan,
+          clientName: clientDisplayName,
+          isDemo,
+        }),
+      });
+      const data = await res.json();
+      if (data.summary) {
+        setClientSummary(data.summary);
+      }
+    } catch (err) {
+      console.warn("Could not generate summary:", err);
+    } finally {
+      setGeneratingSummary(false);
+    }
+  };
+
   const isPediatric = submissionId === DEMO_PEDIATRIC_SUBMISSION_ID || submissionId.includes("pediatric");
+
+  if (loading) {
+    return (
+      <div className="py-16 text-center text-zinc-500 text-sm">
+        Loading submission review...
+      </div>
+    );
+  }
+
+  const clientDisplayName =
+    submission?.program?.patient?.name ||
+    (submission && "patient" in submission && (submission as Record<string, unknown>).patient
+      ? ((submission as Record<string, unknown>).patient as { name?: string }).name
+      : null) ||
+    "Client";
+  const clientLink = submission?.patient_id
+    ? `/therapist/clients/${submission.patient_id}`
+    : "/therapist/clients";
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-16">
       {/* Back button */}
       <div>
         <Link
-          href={`/therapist/clients/${isPediatric ? DEMO_PEDIATRIC_PATIENT_ID : DEMO_PATIENT_ID}`}
+          href={clientLink}
           className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
         >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to {isPediatric ? "Leo Chen" : "Marcus Vance"}
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to {clientDisplayName}
         </Link>
       </div>
 
@@ -469,11 +586,9 @@ function TherapistSubmissionReviewContent({
             <Badge variant="teal" statusText="Awaiting Review" />
           </div>
           <p className="text-xs text-zinc-400 mt-1">
-            Client: <span className="text-zinc-200 font-medium">{isPediatric ? "Leo Chen (Pediatric • Mom: Sarah Chen)" : "Marcus Vance (Adult, 58y)"}</span> • Submitted Recently • 3 Steps Total
+            Client: <span className="text-zinc-200 font-medium">{clientDisplayName}</span> • Submitted Recently • {steps.length > 0 ? `${steps.length} Steps Total` : "Routine Submission"}
           </p>
         </div>
-
-        {siteConfig.ai.mode === "mock" && <MockBadge />}
       </div>
 
       {statusMessage && (
@@ -538,11 +653,11 @@ function TherapistSubmissionReviewContent({
                     &quot;{stepSub.skip_reason}&quot;
                   </p>
                 </div>
-              ) : (
+              ) : stepSub.video_path || isDemo ? (
                 <div className="space-y-3">
                   {/* SAM Video Player with Live Tracking Overlays */}
                   <SamOverlay
-                    videoSrc={stepSub.video_path || "/demo/tabletop_exercise.mp4"}
+                    videoSrc={stepSub.video_path || (isDemo ? "/demo/tabletop_exercise.mp4" : "")}
                     boxes={aiRec?.sam_results?.boxes}
                     svgPaths={aiRec?.sam_results?.svg_paths}
                     objectConcept={aiRec?.sam_results?.object_concept}
@@ -674,6 +789,10 @@ function TherapistSubmissionReviewContent({
                     )}
                   </div>
                 </div>
+              ) : (
+                <div className="rounded-lg bg-zinc-950/60 border border-zinc-800 p-4 text-xs text-zinc-400">
+                  <p>No video recorded for this step.</p>
+                </div>
               )}
 
               {/* Therapist Step Notes Input */}
@@ -699,25 +818,128 @@ function TherapistSubmissionReviewContent({
         })}
       </div>
 
-      {/* Overall Feedback Section */}
-      <Card className="border-zinc-800 bg-zinc-900/90 p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base text-zinc-100 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-teal-400" />
-            Overall Session Feedback
-          </CardTitle>
-          <span className="text-[11px] text-zinc-400">
-            Visible to client after review is published
+      {/* Overall Review & Clinical SOAP Notes Section */}
+      <Card className="border-zinc-800 bg-zinc-900/90 p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+          <div>
+            <CardTitle className="text-base text-zinc-100 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-teal-400" />
+              Home Program Clinical SOAP Documentation
+            </CardTitle>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              Divided into structured clinical SOAP boxes, followed by an easy-to-understand summary for the client.
+            </p>
+          </div>
+          <span className="text-[11px] font-medium text-teal-400 bg-teal-950/70 border border-teal-500/30 px-2.5 py-1 rounded-md self-start sm:self-auto">
+            SOAP Standard + Client Plain English
           </span>
         </div>
 
-        <Textarea
-          rows={4}
-          placeholder="Synthesize participation, technique highlights, and encouragement for the client's home program..."
-          value={overallFeedback}
-          onChange={(e) => setOverallFeedback(e.target.value)}
-          className="text-xs leading-relaxed"
-        />
+        {/* 4 Distinct SOAP Textarea Boxes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* S - Subjective */}
+          <div className="space-y-1.5 rounded-xl border border-sky-900/40 bg-zinc-950/60 p-3.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-sky-950 border border-sky-500/40 text-[10px] flex items-center justify-center font-mono">S</span>
+                Subjective
+              </label>
+              <span className="text-[10px] text-zinc-500">Client comments & fatigue/pain</span>
+            </div>
+            <Textarea
+              rows={3}
+              placeholder="Record client-reported symptoms, pain scale, difficulty noted during routine, or skip explanations..."
+              value={soapSubjective}
+              onChange={(e) => setSoapSubjective(e.target.value)}
+              className="text-xs leading-relaxed border-zinc-800 bg-zinc-900/80 focus-visible:ring-sky-500"
+            />
+          </div>
+
+          {/* O - Objective */}
+          <div className="space-y-1.5 rounded-xl border border-teal-900/40 bg-zinc-950/60 p-3.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-teal-400 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-teal-950 border border-teal-500/40 text-[10px] flex items-center justify-center font-mono">O</span>
+                Objective
+              </label>
+              <span className="text-[10px] text-zinc-500">Visual evidence & kinematics</span>
+            </div>
+            <Textarea
+              rows={3}
+              placeholder="Observable metrics, confirmed Spark/SAM kinematic detections, repetitions completed, grasp form..."
+              value={soapObjective}
+              onChange={(e) => setSoapObjective(e.target.value)}
+              className="text-xs leading-relaxed border-zinc-800 bg-zinc-900/80 focus-visible:ring-teal-500"
+            />
+          </div>
+
+          {/* A - Assessment */}
+          <div className="space-y-1.5 rounded-xl border border-amber-900/40 bg-zinc-950/60 p-3.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-amber-950 border border-amber-500/40 text-[10px] flex items-center justify-center font-mono">A</span>
+                Assessment
+              </label>
+              <span className="text-[10px] text-zinc-500">Clinical synthesis & progress</span>
+            </div>
+            <Textarea
+              rows={3}
+              placeholder="Clinical analysis of functional progress, motor re-education, compensatory patterns, tolerance..."
+              value={soapAssessment}
+              onChange={(e) => setSoapAssessment(e.target.value)}
+              className="text-xs leading-relaxed border-zinc-800 bg-zinc-900/80 focus-visible:ring-amber-500"
+            />
+          </div>
+
+          {/* P - Plan */}
+          <div className="space-y-1.5 rounded-xl border border-indigo-900/40 bg-zinc-950/60 p-3.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-indigo-950 border border-indigo-500/40 text-[10px] flex items-center justify-center font-mono">P</span>
+                Plan
+              </label>
+              <span className="text-[10px] text-zinc-500">Target adjustments & homework</span>
+            </div>
+            <Textarea
+              rows={3}
+              placeholder="Modifications to sets/reps, program changes, instructions for next upload, tele-rehab target..."
+              value={soapPlan}
+              onChange={(e) => setSoapPlan(e.target.value)}
+              className="text-xs leading-relaxed border-zinc-800 bg-zinc-900/80 focus-visible:ring-indigo-500"
+            />
+          </div>
+        </div>
+
+        {/* Client-Friendly Summary Box */}
+        <div className="rounded-xl border border-emerald-500/50 bg-emerald-950/20 p-4 space-y-2 mt-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label className="text-xs font-bold text-emerald-300 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              Summary for Client & Family (Easy to Understand • Plain English)
+            </label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateAiSummary}
+              disabled={generatingSummary || (!soapSubjective && !soapObjective && !soapAssessment && !soapPlan)}
+              className="h-6 text-[10px] px-2.5 border-emerald-500/40 text-emerald-300 hover:bg-emerald-950/60 hover:text-emerald-200 gap-1"
+            >
+              <Sparkles className="w-3 h-3 text-emerald-400" />
+              {generatingSummary ? "Generating..." : "AI Generate Summary"}
+            </Button>
+          </div>
+          <p className="text-[11px] text-zinc-400 leading-snug">
+            Write an encouraging, non-jargon summary that directly explains how the client did, praises their efforts, and provides simple guidance for home practice.
+          </p>
+          <Textarea
+            rows={3}
+            placeholder="e.g., You did an outstanding job lifting and releasing the cup smoothly today! Listening to your shoulder and resting was the right call. Keep practicing once daily..."
+            value={clientSummary}
+            onChange={(e) => setClientSummary(e.target.value)}
+            className="text-xs leading-relaxed border-emerald-500/30 bg-zinc-950/80 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-emerald-500"
+          />
+        </div>
       </Card>
 
       {/* Review Actions Bar */}

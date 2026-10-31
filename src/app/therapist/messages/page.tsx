@@ -12,9 +12,19 @@ import {
   Stethoscope,
   Baby,
   Users,
+  Search,
+  GraduationCap,
+  HeartPulse,
+  ChevronLeft,
+  ExternalLink,
+  PlusCircle,
+  Filter,
+  CheckCircle2,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { MentionTextarea, ProgramMentionOption } from "@/components/ui/mention-textarea";
 import { siteConfig } from "@/config/site";
 import { Message, Patient } from "@/types/database";
@@ -47,23 +57,44 @@ function TherapistMessagesContent() {
   const [inputText, setInputText] = useState("");
   const [selectedMentionProgram, setSelectedMentionProgram] = useState<ProgramMentionOption | null>(null);
   const [sending, setSending] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loadingCaseload, setLoadingCaseload] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | "pedia" | "adolescent" | "adult" | "old_people">("all");
+  const [mobileView, setMobileView] = useState<"list" | "chat">("chat");
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Helper to categorize patient demographic
+  const getPatientCategory = (p: Patient): "pedia" | "adolescent" | "adult" | "old_people" => {
+    if (p.client_category) return p.client_category as any;
+    if (p.age < 12) return "pedia";
+    if (p.age < 18) return "adolescent";
+    if (p.age >= 55) return "old_people";
+    return "adult";
+  };
 
   // Fetch all patients for caseload selector
   useEffect(() => {
+    if (!user?.id) {
+      setLoadingCaseload(false);
+      return;
+    }
     const params = new URLSearchParams();
-    if (user?.id) params.set("therapistId", user.id);
+    params.set("therapistId", user.id);
     params.set("isDemo", isDemo ? "true" : "false");
 
     fetch(`/api/therapist/clients?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.clients) {
+        if (data.clients && data.clients.length > 0) {
           setPatients(data.clients);
-          if (!selectedPatientId && data.clients.length > 0) {
+          if (!selectedPatientId || !data.clients.some((c: Patient) => c.id === selectedPatientId)) {
             setSelectedPatientId(data.clients[0].id);
           }
+        } else {
+          setPatients([]);
         }
       })
       .catch(() => {})
@@ -72,16 +103,10 @@ function TherapistMessagesContent() {
 
   const currentPatient =
     patients.find((p) => p.id === selectedPatientId) ||
-    (isDemo
-      ? {
-          id: selectedPatientId || DEMO_PATIENT_ID,
-          name: selectedPatientId === DEMO_PEDIATRIC_PATIENT_ID ? "Leo Chen" : "Marcus Vance",
-          age: selectedPatientId === DEMO_PEDIATRIC_PATIENT_ID ? 6 : 58,
-          caregiver_name: selectedPatientId === DEMO_PEDIATRIC_PATIENT_ID ? "Sarah Chen (Mother)" : null,
-        }
-      : null);
+    (patients.length > 0 ? patients[0] : null);
 
-  const isPediatric = ((currentPatient?.age ?? 0) < 18) || (currentPatient as any)?.client_category === "pedia";
+  const isPediatric =
+    (currentPatient?.age ?? 0) < 18 || (currentPatient as any)?.client_category === "pedia";
 
   const fetchMessages = async () => {
     if (!selectedPatientId) {
@@ -99,10 +124,13 @@ function TherapistMessagesContent() {
       }
     } catch {
       // error
+    } finally {
+      setLoadingMessages(false);
     }
   };
 
   useEffect(() => {
+    setLoadingMessages(true);
     fetchMessages();
     const interval = setInterval(fetchMessages, 5000);
     return () => clearInterval(interval);
@@ -146,16 +174,53 @@ function TherapistMessagesContent() {
     }
   };
 
-  if (!isDemo && !loadingCaseload && patients.length === 0) {
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!confirm("Are you sure you want to delete this message?")) return;
+
+    setDeletingId(messageId);
+    // Optimistic delete
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+
+    try {
+      const res = await fetch(`/api/messages?id=${messageId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        fetchMessages();
+      }
+    } catch {
+      fetchMessages();
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Filter patients by search query and demographic category
+  const filteredPatients = patients.filter((p) => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      p.name.toLowerCase().includes(q) ||
+      p.condition.toLowerCase().includes(q) ||
+      (p.email && p.email.toLowerCase().includes(q)) ||
+      (p.caregiver_name && p.caregiver_name.toLowerCase().includes(q));
+
+    const category = getPatientCategory(p);
+    const matchesCategory = categoryFilter === "all" || category === categoryFilter;
+
+    return matchesSearch && matchesCategory;
+  });
+
+  if (!loadingCaseload && patients.length === 0) {
     return (
       <div className="space-y-4 max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col justify-center items-center text-center p-8">
-        <div className="p-4 rounded-full bg-zinc-900 border border-zinc-800 text-teal-400">
+        <div className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 text-teal-400">
           <MessageSquare className="w-8 h-8" />
         </div>
         <div className="space-y-1">
           <h2 className="text-lg font-bold text-zinc-100">No Patient Caseload Enrolled Yet</h2>
           <p className="text-xs text-zinc-400 max-w-md">
-            You have not enrolled any clients or patients into your caseload yet. To begin a direct communication thread with clinical program citations, enroll a patient first.
+            You do not have any enrolled clients in your caseload yet. Once a client is connected or enrolled, their dedicated asynchronous care thread will appear here.
           </p>
         </div>
         <Link href="/therapist/clients">
@@ -169,189 +234,490 @@ function TherapistMessagesContent() {
   }
 
   return (
-    <div className="space-y-4 max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col">
-      {/* Header with Patient Selector */}
+    <div className="space-y-4 max-w-7xl mx-auto h-[calc(100vh-8rem)] flex flex-col">
+      {/* Top Bar with Caseload Summary & Global Client Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3 shrink-0">
         <div className="flex items-center gap-2.5">
-          <MessageSquare className="w-5 h-5 text-teal-400" />
+          <div className="w-9 h-9 rounded-xl bg-teal-950/80 border border-teal-500/40 text-teal-400 flex items-center justify-center shrink-0">
+            <MessageSquare className="w-4 h-4" />
+          </div>
           <div>
             <h1 className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
-              <span>Care Thread: {currentPatient?.name || "Select Patient"}</span>
-              {currentPatient && (
-                isPediatric ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-sky-950/80 border border-sky-500/40 text-sky-300">
-                    <Baby className="w-3 h-3 text-sky-400" />
-                    Pediatric ({currentPatient.age}y)
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-800 border border-zinc-700/60 text-zinc-300">
-                    <User className="w-3 h-3 text-zinc-400" />
-                    Adult ({currentPatient.age}y)
-                  </span>
-                )
-              )}
+              <span>Clinical Messaging & Care Threads</span>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700/50">
+                {patients.length} {patients.length === 1 ? "Client" : "Clients"} in Caseload
+              </span>
             </h1>
-            {currentPatient?.caregiver_name && (
-              <p className="text-[11px] text-sky-400/90 font-medium">
-                Caregiver / Co-Participant: {currentPatient.caregiver_name}
-              </p>
+            <p className="text-xs text-zinc-400">
+              1 Therapist to Many Clients: Asynchronous communication thread with clinical program citations (@ mentions).
+            </p>
+          </div>
+        </div>
+
+        {/* Global Client Switcher Dropdown (Always visible regardless of client count) */}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-zinc-400 font-medium hidden sm:inline-block">Active Client:</span>
+          <select
+            value={selectedPatientId}
+            onChange={(e) => {
+              setSelectedPatientId(e.target.value);
+              setMobileView("chat");
+            }}
+            className="h-9 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 font-medium shadow-sm max-w-[240px] truncate"
+          >
+            {patients.map((p) => {
+              const cat = getPatientCategory(p);
+              const catLabel =
+                cat === "pedia"
+                  ? "Pediatric"
+                  : cat === "adolescent"
+                  ? "Adolescent"
+                  : cat === "old_people"
+                  ? "Geriatric"
+                  : "Adult";
+              return (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({catLabel}, {p.age}y)
+                </option>
+              );
+            })}
+          </select>
+
+          {/* Mobile view toggle button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMobileView(mobileView === "list" ? "chat" : "list")}
+            className="md:hidden text-xs h-9 border-zinc-700 gap-1.5"
+          >
+            {mobileView === "chat" ? (
+              <>
+                <Users className="w-3.5 h-3.5 text-teal-400" />
+                <span>Caseload ({patients.length})</span>
+              </>
+            ) : (
+              <>
+                <MessageSquare className="w-3.5 h-3.5 text-teal-400" />
+                <span>Chat Thread</span>
+              </>
+            )}
+          </Button>
+
+          <Link href="/therapist/clients" className="hidden lg:inline-block">
+            <Button variant="ghost" size="sm" className="text-xs h-9 text-zinc-400 hover:text-zinc-200 gap-1.5">
+              <Users className="w-3.5 h-3.5" />
+              Manage Caseload
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Main Multi-Client Split-View Layout */}
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 min-h-0">
+        {/* Left Column: Client Selector / Caseload Directory */}
+        <div
+          className={`md:col-span-4 lg:col-span-4 flex flex-col rounded-2xl border border-zinc-800 bg-zinc-900/40 p-3 space-y-3 min-h-0 ${
+            mobileView === "list" ? "flex" : "hidden md:flex"
+          }`}
+        >
+          {/* Header of Client Selector */}
+          <div className="flex items-center justify-between pb-1">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-teal-400" />
+              <span className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                Select Client Conversation
+              </span>
+            </div>
+            <span className="text-[11px] text-zinc-400 font-medium">
+              {filteredPatients.length} of {patients.length}
+            </span>
+          </div>
+
+          {/* Quick Search Input */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search clients by name or diagnosis..."
+              className="pl-8 text-xs h-8 bg-zinc-950 border-zinc-800 focus-visible:ring-teal-500"
+            />
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none text-[11px]">
+            {(
+              [
+                { id: "all", label: "All" },
+                { id: "pedia", label: "Pedia" },
+                { id: "adolescent", label: "Adolescent" },
+                { id: "adult", label: "Adult" },
+                { id: "old_people", label: "Geriatric" },
+              ] as const
+            ).map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => setCategoryFilter(filter.id)}
+                className={`px-2 py-0.5 rounded-full font-medium whitespace-nowrap transition-colors ${
+                  categoryFilter === filter.id
+                    ? "bg-teal-500/20 text-teal-300 border border-teal-500/40"
+                    : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60"
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Scrollable Client List (Always renders all caseload clients) */}
+          <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 min-h-0">
+            {filteredPatients.length === 0 ? (
+              <div className="p-6 text-center text-xs text-zinc-500 space-y-1">
+                <p>No clients match "{searchQuery}"</p>
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setCategoryFilter("all");
+                  }}
+                  className="text-teal-400 hover:underline text-[11px]"
+                >
+                  Clear search filters
+                </button>
+              </div>
+            ) : (
+              filteredPatients.map((p) => {
+                const isSelected = p.id === selectedPatientId;
+                const cat = getPatientCategory(p);
+
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedPatientId(p.id);
+                      setMobileView("chat");
+                    }}
+                    className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-start gap-3 group relative ${
+                      isSelected
+                        ? "bg-teal-950/40 border-teal-500/50 shadow-sm"
+                        : "bg-zinc-900/60 border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-800/40"
+                    }`}
+                  >
+                    {/* Demographic Avatar Icon */}
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border mt-0.5 ${
+                        cat === "pedia"
+                          ? "bg-sky-950/80 border-sky-500/40 text-sky-400"
+                          : cat === "adolescent"
+                          ? "bg-indigo-950/80 border-indigo-500/40 text-indigo-400"
+                          : cat === "old_people"
+                          ? "bg-amber-950/80 border-amber-500/40 text-amber-400"
+                          : "bg-teal-950/80 border-teal-500/40 text-teal-400"
+                      }`}
+                    >
+                      {cat === "pedia" ? (
+                        <Baby className="w-4 h-4" />
+                      ) : cat === "adolescent" ? (
+                        <GraduationCap className="w-4 h-4" />
+                      ) : cat === "old_people" ? (
+                        <HeartPulse className="w-4 h-4" />
+                      ) : (
+                        <User className="w-4 h-4" />
+                      )}
+                    </div>
+
+                    {/* Client Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className={`text-xs font-semibold truncate ${
+                            isSelected ? "text-teal-200" : "text-zinc-200 group-hover:text-zinc-100"
+                          }`}
+                        >
+                          {p.name}
+                        </span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded font-medium shrink-0 ${
+                            cat === "pedia"
+                              ? "bg-sky-950/70 text-sky-300 border border-sky-500/30"
+                              : cat === "adolescent"
+                              ? "bg-indigo-950/70 text-indigo-300 border border-indigo-500/30"
+                              : cat === "old_people"
+                              ? "bg-amber-950/70 text-amber-300 border border-amber-500/30"
+                              : "bg-zinc-800 text-zinc-300"
+                          }`}
+                        >
+                          {cat === "pedia"
+                            ? `Pedia • ${p.age}y`
+                            : cat === "adolescent"
+                            ? `Teen • ${p.age}y`
+                            : cat === "old_people"
+                            ? `Senior • ${p.age}y`
+                            : `Adult • ${p.age}y`}
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-zinc-400 truncate mt-0.5">{p.condition}</p>
+
+                      {p.caregiver_name && (
+                        <p className="text-[10px] text-sky-400/90 truncate mt-0.5">
+                          Caregiver: {p.caregiver_name}
+                        </p>
+                      )}
+                    </div>
+
+                    {isSelected && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-400 absolute right-2 top-2" />
+                    )}
+                  </button>
+                );
+              })
             )}
           </div>
         </div>
 
-        {/* Patient Switcher Tabs */}
-        {isDemo ? (
-          <div className="flex items-center gap-1 p-1 rounded-lg bg-zinc-900/80 border border-zinc-800">
-            <button
-              type="button"
-              onClick={() => setSelectedPatientId(DEMO_PATIENT_ID)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                selectedPatientId === DEMO_PATIENT_ID
-                  ? "bg-zinc-800 text-teal-300 font-semibold"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              <User className="w-3 h-3" />
-              <span>Marcus (Adult)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedPatientId(DEMO_PEDIATRIC_PATIENT_ID)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                selectedPatientId === DEMO_PEDIATRIC_PATIENT_ID
-                  ? "bg-sky-950 text-sky-300 border border-sky-500/40 font-semibold"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              <Baby className="w-3 h-3 text-sky-400" />
-              <span>Leo (Pediatric)</span>
-            </button>
-          </div>
-        ) : (
-          patients.length > 1 && (
-            <div className="flex items-center gap-1 p-1 rounded-lg bg-zinc-900/80 border border-zinc-800">
-              {patients.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setSelectedPatientId(p.id)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                    selectedPatientId === p.id
-                      ? "bg-zinc-800 text-teal-300 font-semibold"
-                      : "text-zinc-400 hover:text-zinc-200"
-                  }`}
-                >
-                  <User className="w-3 h-3" />
-                  <span>{p.name.split(" ")[0]}</span>
-                </button>
-              ))}
-            </div>
-          )
-        )}
-      </div>
-
-      {/* Non-emergency Clinical Notice Banner */}
-      <div className="rounded-lg bg-zinc-900/90 border border-zinc-800 px-3.5 py-2 text-xs text-zinc-400 flex items-center gap-2.5 shrink-0">
-        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-        <span>{siteConfig.messagingNotice}</span>
-      </div>
-
-      {/* Chat Messages Log Area */}
-      <Card className="flex-1 overflow-y-auto border-zinc-800 bg-zinc-900/60 p-4 space-y-4">
-        {messages.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-center p-8 text-zinc-500 space-y-2">
-            <MessageSquare className="w-8 h-8 text-zinc-600" />
-            <div className="font-semibold text-zinc-300 text-sm">No Messages in this Thread</div>
-            <p className="text-xs max-w-sm">
-              Send a message below to direct rehabilitation steps, share instructions, or cite active home routines.
-            </p>
-          </div>
-        )}
-
-        {messages.map((msg) => {
-          const isMe =
-            msg.sender_id === user?.id ||
-            msg.sender_id === "11111111-1111-4111-8111-111111111111" ||
-            (msg as any).sender_profile?.role === "therapist";
-
-          return (
-            <div
-              key={msg.id}
-              className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
-            >
-              <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 mb-1">
-                {isMe ? (
-                  <>
-                    <span className="font-semibold text-teal-400">
-                      {profile?.display_name ? `${profile.display_name} (You)` : "Dr. Elena Ramos (You)"}
-                    </span>
-                    <Stethoscope className="w-3 h-3 text-teal-400" />
-                  </>
-                ) : (
-                  <>
-                    {isPediatric ? <Baby className="w-3 h-3 text-sky-400" /> : <User className="w-3 h-3 text-zinc-400" />}
-                    <span className="font-semibold text-zinc-300">
-                      {(msg as any).sender_profile?.display_name || currentPatient?.name || "Patient"}
-                    </span>
-                  </>
-                )}
-                <span>•</span>
-                <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-              </div>
+        {/* Right Column: Active Conversation Thread */}
+        <div
+          className={`md:col-span-8 lg:col-span-8 flex flex-col rounded-2xl border border-zinc-800 bg-zinc-900/30 p-4 min-h-0 space-y-3 ${
+            mobileView === "chat" ? "flex" : "hidden md:flex"
+          }`}
+        >
+          {/* Thread Header */}
+          <div className="flex items-center justify-between gap-3 border-b border-zinc-800/80 pb-3 shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileView("list")}
+                className="md:hidden text-zinc-400 hover:text-zinc-200 h-8 w-8"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
 
               <div
-                className={`max-w-[80%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed ${
-                  isMe
-                    ? "bg-teal-950/80 border border-teal-500/40 text-zinc-100 rounded-tr-sm"
-                    : "bg-zinc-800/80 border border-zinc-700/60 text-zinc-100 rounded-tl-sm"
+                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
+                  isPediatric
+                    ? "bg-sky-950/80 border-sky-500/40 text-sky-400"
+                    : (currentPatient as any)?.client_category === "old_people"
+                    ? "bg-amber-950/80 border-amber-500/40 text-amber-400"
+                    : "bg-teal-950/80 border-teal-500/40 text-teal-400"
                 }`}
               >
-                <p>{msg.body}</p>
-
-                {/* Referenced Program Mention Chip */}
-                {msg.referenced_program_id && (
-                  <div className="mt-2.5 pt-2 border-t border-zinc-700/50 flex items-center gap-1.5 text-[11px] text-teal-300">
-                    <BookOpen className="w-3.5 h-3.5 shrink-0" />
-                    <span>
-                      Referenced Home Routine:{" "}
-                      <span className="font-semibold underline">
-                        {(msg as any).referenced_program?.title || (isPediatric ? "Playful Pincer Grasp & Bilateral Toy Routine" : "Tabletop Grasp & Precision Release")}
-                      </span>
-                    </span>
-                  </div>
+                {isPediatric ? (
+                  <Baby className="w-5 h-5" />
+                ) : (currentPatient as any)?.client_category === "old_people" ? (
+                  <HeartPulse className="w-5 h-5" />
+                ) : (
+                  <User className="w-5 h-5" />
                 )}
               </div>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-sm sm:text-base font-bold text-zinc-100 truncate">
+                    {currentPatient?.name || "Select Client"}
+                  </h2>
+                  {currentPatient && (
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                        isPediatric
+                          ? "bg-sky-950/80 border border-sky-500/40 text-sky-300"
+                          : (currentPatient as any)?.client_category === "old_people"
+                          ? "bg-amber-950/80 border border-amber-500/40 text-amber-300"
+                          : "bg-zinc-800 border border-zinc-700/60 text-zinc-300"
+                      }`}
+                    >
+                      {isPediatric
+                        ? `Pediatric (${currentPatient.age}y)`
+                        : (currentPatient as any)?.client_category === "old_people"
+                        ? `Geriatric (${currentPatient.age}y)`
+                        : `Adult (${currentPatient.age}y)`}
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-zinc-400 truncate">
+                  {currentPatient?.condition || "Personalized Occupational Therapy"}
+                  {currentPatient?.caregiver_name && (
+                    <span className="text-sky-400 ml-1.5">• Caregiver: {currentPatient.caregiver_name}</span>
+                  )}
+                </p>
+              </div>
             </div>
-          );
-        })}
-        <div ref={messagesEndRef} />
-      </Card>
 
-      {/* Input Composer */}
-      <form onSubmit={handleSend} className="shrink-0 space-y-2">
-        <MentionTextarea
-          value={inputText}
-          onChange={setInputText}
-          selectedProgram={selectedMentionProgram}
-          onSelectProgram={setSelectedMentionProgram}
-          availablePrograms={availablePrograms}
-          placeholder={`Write a message to ${currentPatient?.name || "patient"}... (Type @ to attach an assigned program)`}
-          className="min-h-[80px]"
-        />
+            {/* Quick Actions for Current Client */}
+            {currentPatient && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Link href={`/therapist/clients/${currentPatient.id}`}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-8 border-zinc-700 text-zinc-300 hover:text-teal-300 gap-1"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    <span className="hidden sm:inline">Profile</span>
+                  </Button>
+                </Link>
+                <Link href={`/therapist/clients/${currentPatient.id}/programs/new`}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-8 border-teal-500/40 text-teal-300 hover:bg-teal-950/50 gap-1"
+                  >
+                    <PlusCircle className="w-3 h-3" />
+                    <span className="hidden sm:inline">New Routine</span>
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
 
-        <div className="flex items-center justify-between text-xs text-zinc-500">
-          <span>Type <kbd className="px-1 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">@</kbd> to cite an active program</span>
-          <Button
-            type="submit"
-            isLoading={sending}
-            disabled={!inputText.trim() || !selectedPatientId}
-            className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold"
-          >
-            <Send className="w-3.5 h-3.5" />
-            Send Message
-          </Button>
+          {/* Clinical Non-Emergency Notice Banner */}
+          <div className="rounded-xl bg-zinc-900/90 border border-zinc-800/90 px-3.5 py-2 text-xs text-zinc-400 flex items-center gap-2.5 shrink-0">
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="leading-snug">{siteConfig.messagingNotice}</span>
+          </div>
+
+          {/* Chat Messages Stream Area */}
+          <Card className="flex-1 overflow-y-auto border-zinc-800 bg-zinc-900/50 p-4 space-y-3.5 min-h-0">
+            {loadingMessages ? (
+              <div className="h-full flex items-center justify-center text-xs text-zinc-500">
+                Loading client conversation thread...
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-8 text-zinc-500 space-y-2">
+                <MessageSquare className="w-8 h-8 text-zinc-600" />
+                <div className="font-semibold text-zinc-300 text-sm">
+                  No Messages with {currentPatient?.name || "Client"} Yet
+                </div>
+                <p className="text-xs max-w-sm">
+                  Send an initial care note, instruction, or cite an assigned home exercise routine using the composer below.
+                </p>
+              </div>
+            ) : (
+              messages.map((msg) => {
+                const isMe =
+                  msg.sender_id === user?.id ||
+                  (isDemo && msg.sender_id === "11111111-1111-4111-8111-111111111111") ||
+                  (msg as any).sender_profile?.role === "therapist";
+
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
+                  >
+                    <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 mb-1">
+                      {isMe ? (
+                        <>
+                          <span className="font-semibold text-teal-400">
+                            {profile?.display_name
+                              ? `${profile.display_name} (You)`
+                              : isDemo
+                              ? "Dr. Elena Ramos (You)"
+                              : "Clinician (You)"}
+                          </span>
+                          <Stethoscope className="w-3 h-3 text-teal-400" />
+                        </>
+                      ) : (
+                        <>
+                          {isPediatric ? (
+                            <Baby className="w-3 h-3 text-sky-400" />
+                          ) : (currentPatient as any)?.client_category === "old_people" ? (
+                            <HeartPulse className="w-3 h-3 text-amber-400" />
+                          ) : (
+                            <User className="w-3 h-3 text-zinc-400" />
+                          )}
+                          <span className="font-semibold text-zinc-300">
+                            {(msg as any).sender_profile?.display_name || currentPatient?.name || "Patient"}
+                          </span>
+                        </>
+                      )}
+                      <span>•</span>
+                      <span>
+                        {new Date(msg.created_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+
+                      {/* Delete Message Action */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMessage(msg.id)}
+                        disabled={deletingId === msg.id}
+                        title="Delete message"
+                        className="ml-1 text-zinc-500 hover:text-rose-400 transition-colors p-0.5 rounded hover:bg-rose-950/40 opacity-70 hover:opacity-100"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    <div
+                      className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 text-xs sm:text-sm leading-relaxed ${
+                        isMe
+                          ? "bg-teal-950/80 border border-teal-500/40 text-zinc-100 rounded-tr-sm"
+                          : "bg-zinc-800/90 border border-zinc-700/60 text-zinc-100 rounded-tl-sm shadow-sm"
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap">{msg.body}</p>
+
+                      {/* Referenced Program Mention Chip */}
+                      {msg.referenced_program_id && (
+                        <div className="mt-2.5 pt-2 border-t border-zinc-700/50 flex items-center justify-between gap-1.5 text-[11px] text-teal-300">
+                          <Link
+                            href={`/therapist/clients/${currentPatient?.id}`}
+                            className="flex items-center gap-1.5 hover:text-teal-200 hover:underline transition-colors truncate"
+                            title="View client profile & routine details"
+                          >
+                            <BookOpen className="w-3.5 h-3.5 shrink-0 text-teal-400" />
+                            <span className="truncate">
+                              Referenced Routine:{" "}
+                              <span className="font-semibold">
+                                {(msg as any).referenced_program?.title || "Assigned Tabletop Routine"}
+                              </span>
+                            </span>
+                            <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            <div ref={messagesEndRef} />
+          </Card>
+
+          {/* Input Composer */}
+          <form onSubmit={handleSend} className="shrink-0 space-y-2">
+            <MentionTextarea
+              value={inputText}
+              onChange={setInputText}
+              selectedProgram={selectedMentionProgram}
+              onSelectProgram={setSelectedMentionProgram}
+              availablePrograms={availablePrograms}
+              placeholder={`Write a message to ${currentPatient?.name || "client"}... (Type @ to attach an assigned routine)`}
+              className="min-h-[75px]"
+            />
+
+            <div className="flex items-center justify-between text-xs text-zinc-500">
+              <span className="hidden sm:inline">
+                Type <kbd className="px-1 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">@</kbd> to cite an active program
+              </span>
+              <Button
+                type="submit"
+                isLoading={sending}
+                disabled={!inputText.trim() || !selectedPatientId}
+                className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold ml-auto"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Send Message
+              </Button>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

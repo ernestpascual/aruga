@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   role TEXT NOT NULL CHECK (role IN ('therapist', 'client')),
   display_name TEXT NOT NULL,
   discipline TEXT CHECK (discipline IN ('SLP', 'OT', 'PT') OR discipline IS NULL),
-  client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia') OR client_category IS NULL),
+  client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia', 'old_people') OR client_category IS NULL),
   
   -- Therapist specific fields
   license_number TEXT,
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS public.patients (
   condition VARCHAR(255) NOT NULL DEFAULT 'General Occupational Therapy',
   email VARCHAR(255) NOT NULL UNIQUE,
   caregiver_name TEXT,
-  client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia') OR client_category IS NULL),
+  client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia', 'old_people') OR client_category IS NULL),
   invitation_status TEXT NOT NULL DEFAULT 'accepted',
   invitation_sent_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -29,7 +29,7 @@ export const siteConfig = {
       sam: "sam-3.1",
     },
     apiBaseUrl: process.env.META_API_BASE_URL || "https://api.meta.ai/v1",
-    mode: (process.env.AI_MODE || "mock") as "off" | "live" | "mock",
+    mode: (process.env.AI_MODE || "live") as "off" | "live" | "mock",
   },
   disclaimer:
     "AI assists with organization and draft observations. Your therapist reviews and provides feedback.",

@@ -13,11 +13,30 @@ export async function GET(req: NextRequest) {
 
     if (admin) {
       if (clientUserId && !patientId) {
-        const { data: patientRecord } = await admin
+        let { data: patientRecord } = await admin
           .from("patients")
           .select("id")
           .eq("client_user_id", clientUserId)
           .maybeSingle();
+
+        if (!patientRecord) {
+          try {
+            const { data: authUser } = await admin.auth.admin.getUserById(clientUserId);
+            const email = authUser?.user?.email?.toLowerCase().trim();
+            if (email) {
+              const { data: byEmail } = await admin
+                .from("patients")
+                .select("id")
+                .eq("email", email)
+                .maybeSingle();
+              if (byEmail) {
+                patientRecord = byEmail;
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
 
         if (patientRecord) {
           patientId = patientRecord.id;
@@ -43,7 +62,46 @@ export async function GET(req: NextRequest) {
           .eq("patient_id", patientId)
           .neq("status", "draft");
 
-        if (!mErr && dbMessages) {
+        if (!mErr && dbMessages && dbMessages.length > 0) {
+          if (isDemo && dbMessages.length < 4) {
+            const store = getMockStore();
+            const storeThread = store.messages
+              .filter((m) => m.patient_id === patientId)
+              .map((m) => {
+                const sender = store.profiles.find((p) => p.id === m.sender_id);
+                const refProg = m.referenced_program_id
+                  ? store.programs.find((pr) => pr.id === m.referenced_program_id)
+                  : null;
+                return {
+                  ...m,
+                  sender_profile: sender,
+                  referenced_program: refProg
+                    ? { id: refProg.id, title: refProg.title, status: refProg.status }
+                    : null,
+                };
+              });
+
+            if (storeThread.length > dbMessages.length) {
+              const knownIds = new Set(storeThread.map((m) => m.id));
+              const extraDbMessages = dbMessages.filter((m) => !knownIds.has(m.id));
+              const merged = [...storeThread, ...extraDbMessages].sort(
+                (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+              );
+              return NextResponse.json({
+                messages: merged,
+                availablePrograms:
+                  dbPrograms && dbPrograms.length > 0
+                    ? dbPrograms
+                    : store.programs.filter((p) => p.patient_id === patientId) || [],
+              });
+            }
+          }
+
+          return NextResponse.json({
+            messages: dbMessages,
+            availablePrograms: dbPrograms || [],
+          });
+        } else if (!isDemo && !mErr && dbMessages) {
           return NextResponse.json({
             messages: dbMessages,
             availablePrograms: dbPrograms || [],
@@ -52,7 +110,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    if (!isDemo && !patientId) {
+    if (!isDemo) {
       return NextResponse.json({ messages: [], availablePrograms: [] });
     }
 
@@ -82,7 +140,7 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
     const availablePrograms = store.programs
-      .filter((pr) => pr.patient_id === patientId && pr.status !== "draft")
+      .filter((pr) => pr.patient_id === effectivePatientId && pr.status !== "draft")
       .map((pr) => ({ id: pr.id, title: pr.title, status: pr.status }));
 
     return NextResponse.json({
@@ -238,3 +296,48 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    let messageId = searchParams.get("id") || searchParams.get("messageId");
+
+    if (!messageId) {
+      try {
+        const body = await req.json();
+        messageId = body?.id || body?.messageId;
+      } catch {
+        // no JSON body
+      }
+    }
+
+    if (!messageId) {
+      return NextResponse.json({ error: "Message id is required" }, { status: 400 });
+    }
+
+    const admin = createAdminClient();
+    if (admin) {
+      const { error: delErr } = await admin
+        .from("messages")
+        .delete()
+        .eq("id", messageId);
+
+      if (delErr) {
+        console.warn("Database message deletion error note:", delErr);
+      }
+    }
+
+    // Always remove from mock store as well
+    const store = getMockStore();
+    const idx = store.messages.findIndex((m) => m.id === messageId);
+    if (idx !== -1) {
+      store.messages.splice(idx, 1);
+    }
+
+    return NextResponse.json({ success: true, deletedId: messageId });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+

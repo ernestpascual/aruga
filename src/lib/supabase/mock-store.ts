@@ -9,6 +9,7 @@ import {
   StepReview,
   Message,
   AiAnalysisRecord,
+  SoapNote,
 } from "@/types/database";
 
 export interface MockStoreData {
@@ -22,6 +23,7 @@ export interface MockStoreData {
   stepReviews: StepReview[];
   messages: Message[];
   aiAnalyses: AiAnalysisRecord[];
+  soapNotes: SoapNote[];
 }
 
 // Fixed UUIDs for predictable demo fixtures
@@ -57,6 +59,16 @@ export const DEMO_PEDIATRIC_STEP_SUB_1_ID = "88888884-8888-4888-8888-88888888888
 export const DEMO_PEDIATRIC_STEP_SUB_2_ID = "88888885-8888-4888-8888-888888888885";
 export const DEMO_PEDIATRIC_STEP_SUB_3_ID = "88888886-8888-4888-8888-888888888886";
 
+// Geriatric Demonstration Client (Eleanor Ramos, Age 68)
+export const DEMO_GERIATRIC_CLIENT_ID = "22222222-2222-4222-8222-222222222225";
+export const DEMO_GERIATRIC_PATIENT_ID = "33333333-3333-4333-8333-333333333335";
+export const DEMO_GERIATRIC_PROGRAM_ID = "44444444-4444-4444-8444-444444444446";
+
+// Adolescent Demonstration Client (Jordan Miller, Age 16)
+export const DEMO_ADOLESCENT_CLIENT_ID = "22222222-2222-4222-8222-222222222226";
+export const DEMO_ADOLESCENT_PATIENT_ID = "33333333-3333-4333-8333-333333333336";
+export const DEMO_ADOLESCENT_PROGRAM_ID = "44444444-4444-4444-8444-444444444447";
+
 function getInitialStore(): MockStoreData {
   const profiles: Profile[] = [
     {
@@ -81,6 +93,22 @@ function getInitialStore(): MockStoreData {
       display_name: "Leo Chen (Caregiver: Sarah Chen)",
       discipline: null,
       created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: DEMO_GERIATRIC_CLIENT_ID,
+      role: "client",
+      display_name: "Eleanor Ramos",
+      discipline: null,
+      created_at: new Date(Date.now() - 12 * 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: DEMO_ADOLESCENT_CLIENT_ID,
+      role: "client",
+      display_name: "Jordan Miller",
+      discipline: null,
+      created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
       updated_at: new Date().toISOString(),
     },
   ];
@@ -111,9 +139,42 @@ function getInitialStore(): MockStoreData {
       condition: "Pediatric Bilateral Coordination Delay & Pincer Grasp Development",
       email: "leo.chen.demo@aruga-health.local",
       caregiver_name: "Sarah Chen (Mother)",
+      client_category: "pedia",
       invitation_status: "accepted",
       invitation_sent_at: new Date(Date.now() - 15 * 86400000).toISOString(),
       created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: DEMO_GERIATRIC_PATIENT_ID,
+      therapist_id: DEMO_THERAPIST_ID,
+      client_user_id: DEMO_GERIATRIC_CLIENT_ID,
+      name: "Eleanor Ramos",
+      age: 68,
+      gender: "Female",
+      condition: "Post-fall wrist fracture rehabilitation & tabletop stability",
+      email: "eleanor.ramos.demo@aruga-health.local",
+      caregiver_name: "David Ramos (Son)",
+      client_category: "old_people",
+      invitation_status: "accepted",
+      invitation_sent_at: new Date(Date.now() - 12 * 86400000).toISOString(),
+      created_at: new Date(Date.now() - 12 * 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: DEMO_ADOLESCENT_PATIENT_ID,
+      therapist_id: DEMO_THERAPIST_ID,
+      client_user_id: DEMO_ADOLESCENT_CLIENT_ID,
+      name: "Jordan Miller",
+      age: 16,
+      gender: "Male",
+      condition: "Repetitive strain injury & keyboard dexterity",
+      email: "jordan.miller.demo@aruga-health.local",
+      caregiver_name: "Jenny Miller (Mother)",
+      client_category: "adolescent",
+      invitation_status: "accepted",
+      invitation_sent_at: new Date(Date.now() - 10 * 86400000).toISOString(),
+      created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
       updated_at: new Date().toISOString(),
     },
   ];
@@ -140,6 +201,30 @@ function getInitialStore(): MockStoreData {
         "Complete these 3 playful tabletop activities together with a parent or caregiver once daily. Keep exercises fun and encouraging, and record a 10-20s video clip of each activity.",
       status: "assigned",
       assigned_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: DEMO_GERIATRIC_PROGRAM_ID,
+      patient_id: DEMO_GERIATRIC_PATIENT_ID,
+      creator_id: DEMO_THERAPIST_ID,
+      title: "Gentle Wrist Mobility & Tabletop Stability Routine",
+      main_instructions:
+        "Perform these gentle non-weight bearing wrist and hand stretches once daily in a comfortable seated position with forearm supported.",
+      status: "assigned",
+      assigned_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: DEMO_ADOLESCENT_PROGRAM_ID,
+      patient_id: DEMO_ADOLESCENT_PATIENT_ID,
+      creator_id: DEMO_THERAPIST_ID,
+      title: "Adaptive Handwriting & Keyboard Ergonomics Sequence",
+      main_instructions:
+        "Complete the 10-minute spacing and tripod grip relaxation drills before typing or schoolwork to minimize strain on the thumb joint.",
+      status: "assigned",
+      assigned_at: new Date(Date.now() - 2 * 86400000).toISOString(),
       created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
       updated_at: new Date().toISOString(),
     },
@@ -348,6 +433,16 @@ function getInitialStore(): MockStoreData {
       therapist_id: DEMO_THERAPIST_ID,
       overall_feedback:
         "Great effort on the tabletop transfer, Marcus. Your wrist alignment during the cup release is noticeably improved. Good decision to rest your shoulder on step 3—honoring fatigue prevents compensatory shoulder hiking.",
+      subjective:
+        "Marcus reported feeling smoother during cup lifts but noted residual morning finger stiffness. Made a sound clinical decision to skip step 3 when shoulder fatigue set in.",
+      objective:
+        "Video review demonstrates active cylindrical grasp with 3-4 inch vertical cup lift. Trunk lateral flexion under 5°. Step 2 lateral block stacking completed with 4 clean chuck releases.",
+      assessment:
+        "Right UE hemiparesis shows steady neuromuscular re-education. Tabletop grasp and release are functional; proximal shoulder girdle endurance is the remaining limiting factor.",
+      plan:
+        "Maintain current tabletop routine 1x daily. Introduce 30-second resting intervals between block sets. Re-check active shoulder flexion in next live session.",
+      client_summary:
+        "You did an outstanding job lifting and releasing the cup smoothly without leaning your body. Listening to your shoulder and resting on step 3 was 100% the right call. Keep practicing the cup and block exercises once a day, and remember to take 30-second breathers whenever your shoulder feels tired!",
       status: "draft",
       published_at: null,
       created_at: new Date(Date.now() - 43200000).toISOString(),
@@ -359,8 +454,18 @@ function getInitialStore(): MockStoreData {
       therapist_id: DEMO_THERAPIST_ID,
       overall_feedback:
         "Fantastic progress, Leo! Sarah, his pincer grasp on the pegs showed wonderful isolated finger control with much less whole-hand raking. Great call on loosening the jar lid for step 3.",
-      status: "draft",
-      published_at: null,
+      subjective:
+        "Caregiver (Sarah) reported Leo was engaged and enthusiastic, especially with colored pegs. Step 3 jar lid was too tight for unassisted opening.",
+      objective:
+        "Clean thumb-index pad opposition (pincer grasp) recorded across 5 peg placements. Non-dominant hand maintained stabilizing tabletop contact on container rim.",
+      assessment:
+        "Bilateral coordination and distal fine motor control show marked maturation from baseline raking grasp. Helper hand stabilization is emerging consistently.",
+      plan:
+        "Continue daily peg stacking and play-doh bead squashing. Use pre-loosened plastic containers for bilateral twist-off practice.",
+      client_summary:
+        "Leo did an incredible job using his 'pincer fingers' to place the colorful pegs! Sarah, your encouragement and having him hold the board with his helper hand made all the difference. For tomorrow, start with the jar lid already partly twisted open so Leo can celebrate taking it off all by himself!",
+      status: "published",
+      published_at: new Date(Date.now() - 20000000).toISOString(),
       created_at: new Date(Date.now() - 20000000).toISOString(),
       updated_at: new Date(Date.now() - 20000000).toISOString(),
     },
@@ -416,14 +521,14 @@ function getInitialStore(): MockStoreData {
   ];
 
   const messages: Message[] = [
-    // Adult Thread
+    // 1. Marcus Vance (Adult, 58y) - 5 Messages
     {
       id: "aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
       patient_id: DEMO_PATIENT_ID,
       sender_id: DEMO_THERAPIST_ID,
       body: "Hi Marcus, I have assigned your new home program. Focus on slow, controlled release of the cup.",
       referenced_program_id: DEMO_PROGRAM_ID,
-      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+      created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
     },
     {
       id: "aaaaaaa2-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
@@ -431,16 +536,41 @@ function getInitialStore(): MockStoreData {
       sender_id: DEMO_CLIENT_ID,
       body: "Thanks Dr. Ramos! I completed the first two steps today and rested my shoulder on step 3.",
       referenced_program_id: DEMO_PROGRAM_ID,
-      created_at: new Date(Date.now() - 86400000).toISOString(),
+      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
     },
-    // Pediatric Thread
+    {
+      id: "aaaaaaa5-aaaa-4aaa-8aaa-aaaaaaaaaaa5",
+      patient_id: DEMO_PATIENT_ID,
+      sender_id: DEMO_THERAPIST_ID,
+      body: "Good job pacing yourself! If you feel any deltoid fatigue tomorrow, try taking a 60-second break between block stacking reps.",
+      referenced_program_id: null,
+      created_at: new Date(Date.now() - 36 * 3600000).toISOString(),
+    },
+    {
+      id: "aaaaaaa6-aaaa-4aaa-8aaa-aaaaaaaaaaa6",
+      patient_id: DEMO_PATIENT_ID,
+      sender_id: DEMO_CLIENT_ID,
+      body: "Understood doctor. Today's video clip was much smoother. The washcloth supination helped loosen my wrist beforehand.",
+      referenced_program_id: null,
+      created_at: new Date(Date.now() - 18 * 3600000).toISOString(),
+    },
+    {
+      id: "aaaaaaa7-aaaa-4aaa-8aaa-aaaaaaaaaaa7",
+      patient_id: DEMO_PATIENT_ID,
+      sender_id: DEMO_THERAPIST_ID,
+      body: "I reviewed your submission clip—your forearm rotation angle is improving significantly. Keep up the daily routine!",
+      referenced_program_id: null,
+      created_at: new Date(Date.now() - 4 * 3600000).toISOString(),
+    },
+
+    // 2. Leo Chen (Pediatric, 6y) - 5 Messages
     {
       id: "aaaaaaa3-aaaa-4aaa-8aaa-aaaaaaaaaaa3",
       patient_id: DEMO_PEDIATRIC_PATIENT_ID,
       sender_id: DEMO_THERAPIST_ID,
       body: "Hi Sarah! I've assigned Leo's new play routine. Focus on keeping his helper hand steady while using his pincers.",
       referenced_program_id: DEMO_PEDIATRIC_PROGRAM_ID,
-      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+      created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
     },
     {
       id: "aaaaaaa4-aaaa-4aaa-8aaa-aaaaaaaaaaa4",
@@ -448,7 +578,99 @@ function getInitialStore(): MockStoreData {
       sender_id: DEMO_PEDIATRIC_CLIENT_ID,
       body: "Hi Dr. Elena! Leo had so much fun with the peg stacking today! Uploaded the video for your review.",
       referenced_program_id: DEMO_PEDIATRIC_PROGRAM_ID,
-      created_at: new Date(Date.now() - 30000000).toISOString(),
+      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+    },
+    {
+      id: "aaaaaaa8-aaaa-4aaa-8aaa-aaaaaaaaaaa8",
+      patient_id: DEMO_PEDIATRIC_PATIENT_ID,
+      sender_id: DEMO_THERAPIST_ID,
+      body: "Wonderful progress! Notice how he stabilized the container with his left forearm? That bilateral coordination is exactly our goal.",
+      referenced_program_id: null,
+      created_at: new Date(Date.now() - 24 * 3600000).toISOString(),
+    },
+    {
+      id: "aaaaaaa9-aaaa-4aaa-8aaa-aaaaaaaaaaa9",
+      patient_id: DEMO_PEDIATRIC_PATIENT_ID,
+      sender_id: DEMO_PEDIATRIC_CLIENT_ID,
+      body: "He loved using the colored play-dough too. Should we do 2 sets of dough pinches tomorrow before breakfast?",
+      referenced_program_id: null,
+      created_at: new Date(Date.now() - 10 * 3600000).toISOString(),
+    },
+    {
+      id: "aaaaaa10-aaaa-4aaa-8aaa-aaaaaaaaaa10",
+      patient_id: DEMO_PEDIATRIC_PATIENT_ID,
+      sender_id: DEMO_THERAPIST_ID,
+      body: "Yes, 2 sets of 5 pinches each would be fantastic. Make sure to praise his pincer grip whenever he lifts clean!",
+      referenced_program_id: null,
+      created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
+    },
+
+    // 3. Eleanor Ramos (Geriatric, 68y) - 4 Messages
+    {
+      id: "aaaaaa11-aaaa-4aaa-8aaa-aaaaaaaaaa11",
+      patient_id: DEMO_GERIATRIC_PATIENT_ID,
+      sender_id: DEMO_THERAPIST_ID,
+      body: "Hello Mrs. Ramos, welcome to your digital home routine. We will start with gentle range of motion exercises for your right wrist.",
+      referenced_program_id: DEMO_GERIATRIC_PROGRAM_ID,
+      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+    },
+    {
+      id: "aaaaaa12-aaaa-4aaa-8aaa-aaaaaaaaaa12",
+      patient_id: DEMO_GERIATRIC_PATIENT_ID,
+      sender_id: DEMO_GERIATRIC_CLIENT_ID,
+      body: "Thank you Dr. Ramos. My son David helped set up the phone on the stand. We did the morning tabletop stretches together.",
+      referenced_program_id: DEMO_GERIATRIC_PROGRAM_ID,
+      created_at: new Date(Date.now() - 30 * 3600000).toISOString(),
+    },
+    {
+      id: "aaaaaa13-aaaa-4aaa-8aaa-aaaaaaaaaa13",
+      patient_id: DEMO_GERIATRIC_PATIENT_ID,
+      sender_id: DEMO_THERAPIST_ID,
+      body: "That camera angle setup is perfect. Remember to keep your elbow resting comfortably on the table surface to avoid neck tension.",
+      referenced_program_id: null,
+      created_at: new Date(Date.now() - 14 * 3600000).toISOString(),
+    },
+    {
+      id: "aaaaaa14-aaaa-4aaa-8aaa-aaaaaaaaaa14",
+      patient_id: DEMO_GERIATRIC_PATIENT_ID,
+      sender_id: DEMO_GERIATRIC_CLIENT_ID,
+      body: "The swelling has gone down noticeably after the warm compress routine. Looking forward to tomorrow's session.",
+      referenced_program_id: null,
+      created_at: new Date(Date.now() - 1 * 3600000).toISOString(),
+    },
+
+    // 4. Jordan Miller (Adolescent, 16y) - 4 Messages
+    {
+      id: "aaaaaa15-aaaa-4aaa-8aaa-aaaaaaaaaa15",
+      patient_id: DEMO_ADOLESCENT_PATIENT_ID,
+      sender_id: DEMO_THERAPIST_ID,
+      body: "Hi Jordan! Here is your adaptive handwriting and finger dexterity sequence. Pay attention to relaxing your grip on the stylus.",
+      referenced_program_id: DEMO_ADOLESCENT_PROGRAM_ID,
+      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+    },
+    {
+      id: "aaaaaa16-aaaa-4aaa-8aaa-aaaaaaaaaa16",
+      patient_id: DEMO_ADOLESCENT_PATIENT_ID,
+      sender_id: DEMO_ADOLESCENT_CLIENT_ID,
+      body: "Hi Dr. Ramos! Did the 10-minute spacing drill after homework. My hand didn't cramp up as quickly today.",
+      referenced_program_id: null,
+      created_at: new Date(Date.now() - 20 * 3600000).toISOString(),
+    },
+    {
+      id: "aaaaaa17-aaaa-4aaa-8aaa-aaaaaaaaaa17",
+      patient_id: DEMO_ADOLESCENT_PATIENT_ID,
+      sender_id: DEMO_THERAPIST_ID,
+      body: "Excellent! The tripod grasp modifier is clearly taking pressure off your thumb joint. Keep tracking your fatigue level.",
+      referenced_program_id: null,
+      created_at: new Date(Date.now() - 8 * 3600000).toISOString(),
+    },
+    {
+      id: "aaaaaa18-aaaa-4aaa-8aaa-aaaaaaaaaa18",
+      patient_id: DEMO_ADOLESCENT_PATIENT_ID,
+      sender_id: DEMO_ADOLESCENT_CLIENT_ID,
+      body: "Will do! I'll record the keyboard wrist angle exercise this evening.",
+      referenced_program_id: null,
+      created_at: new Date(Date.now() - 40 * 60000).toISOString(),
     },
   ];
 
@@ -579,6 +801,130 @@ function getInitialStore(): MockStoreData {
     },
   ];
 
+  const soapNotes: SoapNote[] = [
+    // 1. Marcus Vance (Adult, 58y) - 2 Live Session Notes
+    {
+      id: "soap-marcus-01",
+      patient_id: DEMO_PATIENT_ID,
+      therapist_id: DEMO_THERAPIST_ID,
+      session_date: new Date(Date.now() - 6 * 86400000).toISOString(),
+      session_title: "Live Session #3: Tabletop Grasp & Proximal Shoulder Stabilization",
+      subjective:
+        "Marcus reports increased comfort when holding eating utensils with dominant right hand. Rates fatigue 3/10 after 15 minutes of continuous tabletop use. Goals for today: improve release consistency without body sway.",
+      objective:
+        "Active right wrist extension measured at 32° (baseline 20°). Cylindrical grasp achieved over 10 consecutive trials with lightweight 8oz cup. 2/10 trials showed mild compensatory shoulder elevation when reaching across midline.",
+      assessment:
+        "Patient demonstrates significant neuromuscular recovery in distal grasp mechanics. Proximal compensations are reduced when seated with firm lumbar support and elbow resting on table.",
+      plan:
+        "Assigned updated Tabletop Grasp & Precision Release Routine. Instructed on 10-second posture reset between sets. Next live tele-rehab scheduled for Friday 10:00 AM.",
+      client_summary:
+        "Marcus, your wrist strength and finger grip are improving noticeably! You lifted the cup 10 times in a row with great control. Keep your chair close to the table and rest your elbow on the surface so your shoulder stays relaxed. Fantastic work today!",
+      created_at: new Date(Date.now() - 6 * 86400000).toISOString(),
+      updated_at: new Date(Date.now() - 6 * 86400000).toISOString(),
+    },
+    {
+      id: "soap-marcus-02",
+      patient_id: DEMO_PATIENT_ID,
+      therapist_id: DEMO_THERAPIST_ID,
+      session_date: new Date(Date.now() - 2 * 86400000).toISOString(),
+      session_title: "Live Session #4: Midline Crossing & Forearm Supination",
+      subjective:
+        "Marcus reports completing home routine daily. Felt minor tightness in dorsal forearm when rotating palm upward with the washcloth exercise.",
+      objective:
+        "Forearm active supination from pronation measured at 48° (up from 35°). Successfully transferred 6 small blocks across midline with three-jaw chuck grasp. No compensatory trunk flexion observed during the sequence.",
+      assessment:
+        "Excellent progression in active supination range. Bilateral stability and motor control are progressing on schedule toward independent dining activities.",
+      plan:
+        "Maintain current sets and reps. Add warm compress prior to morning stretching if tightness persists. Review next video submission via Aruga portal.",
+      client_summary:
+        "You turned your palm upward much further today with great control, and moved all 6 blocks across the table without leaning over. If your forearm feels tight in the morning, a warm washcloth before exercises will help relax the muscles. Keep up the daily dedication!",
+      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+      updated_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+    },
+
+    // 2. Leo Chen (Pediatric, 6y) - 2 Live Session Notes
+    {
+      id: "soap-leo-01",
+      patient_id: DEMO_PEDIATRIC_PATIENT_ID,
+      therapist_id: DEMO_THERAPIST_ID,
+      session_date: new Date(Date.now() - 5 * 86400000).toISOString(),
+      session_title: "Pediatric Play Session: Bilateral Toy Exploration & Fine Motor Opposition",
+      subjective:
+        "Mom (Sarah) reports Leo was excited to play today. Notes he occasionally switches to a whole-hand fisted grasp when tired or rushing.",
+      objective:
+        "Completed 8/10 peg placements using neat pad-to-pad pincer grasp with right hand. Helper hand spontaneously stabilized the container edge on 6 trials without verbal prompting.",
+      assessment:
+        "Distal finger isolation and bilateral cooperative hand use show marked improvement. Hand dominance is consolidating on the right side.",
+      plan:
+        "Assigned Playful Pincer Grasp Routine. Encourage positive verbal cues when Leo uses his helper hand. Next playful check-in Wednesday.",
+      client_summary:
+        "Leo was a superstar today! He used his 'crocodile pincer fingers' to catch 8 pegs and remembered to hold the box steady with his other hand. Sarah, praising his helper hand whenever you see it on the table will keep him super motivated!",
+      created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+      updated_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+    },
+    {
+      id: "soap-leo-02",
+      patient_id: DEMO_PEDIATRIC_PATIENT_ID,
+      therapist_id: DEMO_THERAPIST_ID,
+      session_date: new Date(Date.now() - 1 * 86400000).toISOString(),
+      session_title: "Pediatric Play Session: Play-Doh Rolling & Two-Handed Tool Use",
+      subjective:
+        "Sarah reported Leo enjoyed making 'play-doh meatballs'. Needed brief hand-over-hand cueing on container opening.",
+      objective:
+        "Rolled 3 small dough balls between palms with bilateral coordination. Isolated index finger squashed each ball flat. Successfully unscrewed pre-loosened toy lid.",
+      assessment:
+        "Tactile tolerance and bilateral hand synchronization are progressing well. Transition from gross grasp to fine motor control is demonstrating functional carry-over.",
+      plan:
+        "Continue play-doh exercises. Incorporate safe plastic tongs for sorting small soft items.",
+      client_summary:
+        "Leo had so much fun making dough balls and squashing them with his pointer finger! He twisted the toy lid off cleanly when it was loosened. Tomorrow, let him practice pinching soft pom-poms with plastic tongs for extra finger power!",
+      created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+      updated_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+    },
+
+    // 3. Eleanor Ramos (Geriatric, 68y) - 1 Live Session Note
+    {
+      id: "soap-eleanor-01",
+      patient_id: DEMO_GERIATRIC_PATIENT_ID,
+      therapist_id: DEMO_THERAPIST_ID,
+      session_date: new Date(Date.now() - 3 * 86400000).toISOString(),
+      session_title: "Live Geriatric Session: Tabletop Wrist Range of Motion & Fall Recovery",
+      subjective:
+        "Mrs. Ramos reports mild stiffness in right wrist in the morning (2/10). Son David assists with camera setup. States she feels more confident carrying light cups with two hands.",
+      objective:
+        "Active wrist extension measured at 28°, flexion 35°. Able to sustain tabletop flat hand contact for 30 seconds without pain. Grip strength measured at 18 lbs right hand (functional).",
+      assessment:
+        "Post-fall wrist rehabilitation is progressing safely. Non-weight bearing tabletop stretches are well tolerated. Confidence and protective balance strategies are improving.",
+      plan:
+        "Assigned Gentle Wrist Mobility Routine. Instructed on warm water soak before morning exercise sequence. Next live telehealth session in 5 days.",
+      client_summary:
+        "Mrs. Ramos, your wrist is healing smoothly and your grip strength is coming back nicely! You rested your palm flat on the table with zero discomfort today. A gentle warm water soak for 5 minutes before your morning exercises will keep your wrist nice and limber.",
+      created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+      updated_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+    },
+
+    // 4. Jordan Miller (Adolescent, 16y) - 1 Live Session Note
+    {
+      id: "soap-jordan-01",
+      patient_id: DEMO_ADOLESCENT_PATIENT_ID,
+      therapist_id: DEMO_THERAPIST_ID,
+      session_date: new Date(Date.now() - 2 * 86400000).toISOString(),
+      session_title: "Live Adolescent Session: Ergonomic Keyboard Setup & Stylus Grip",
+      subjective:
+        "Jordan reports less cramping in thenar eminence after taking 5-minute typing breaks. Homework volume is heavy this week; requested modifications for tablet note-taking.",
+      objective:
+        "Observed writing sequence: dynamic tripod grasp maintained for 8 minutes before thumb collapse into lateral pinch. Wrist extension maintained neutral at 10-15° on ergonomic pad.",
+      assessment:
+        "Adolescent repetitive strain injury shows positive response to ergonomic positioning and timed micro-breaks. Sustained writing tolerance is trending upward.",
+      plan:
+        "Assigned Adaptive Handwriting & Keyboard Ergonomics Sequence. Introduce foam grip sleeve on tablet stylus. Follow-up video check in 3 days.",
+      client_summary:
+        "Jordan, your typing wrist angle was spot-on today, and using the foam grip on your stylus gave your thumb joint a well-deserved break! Remember the 20-20-20 micro-break rule during homework: after 20 minutes of typing, take 20 seconds to stretch your hands.",
+      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+      updated_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+    },
+  ];
+
   return {
     profiles,
     patients,
@@ -590,6 +936,7 @@ function getInitialStore(): MockStoreData {
     stepReviews,
     messages,
     aiAnalyses,
+    soapNotes,
   };
 }
 
@@ -600,7 +947,12 @@ declare global {
 }
 
 export function getMockStore(): MockStoreData {
-  if (!globalThis.__aruga_mock_store) {
+  if (
+    !globalThis.__aruga_mock_store ||
+    !globalThis.__aruga_mock_store.patients.some((p) => p.id === DEMO_GERIATRIC_PATIENT_ID) ||
+    !globalThis.__aruga_mock_store.programs.some((pr) => pr.id === DEMO_GERIATRIC_PROGRAM_ID) ||
+    !globalThis.__aruga_mock_store.soapNotes
+  ) {
     globalThis.__aruga_mock_store = getInitialStore();
   }
   return globalThis.__aruga_mock_store;
@@ -610,3 +962,4 @@ export function resetMockStore(): MockStoreData {
   globalThis.__aruga_mock_store = getInitialStore();
   return globalThis.__aruga_mock_store;
 }
+

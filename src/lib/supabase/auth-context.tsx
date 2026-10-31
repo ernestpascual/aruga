@@ -123,10 +123,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const isTherapist = email.includes("therapist");
         const isPedia = email.includes("pedia");
         const isTeen = email.includes("teen") || email.includes("adolescent");
+        const isOld = email.includes("elderly") || email.includes("senior") || email.includes("old") || email.includes("arthur");
+        const clientCat: ClientCategory = isPedia ? "pedia" : isTeen ? "adolescent" : isOld ? "old_people" : "adult";
         const demoId = isTherapist
           ? "11111111-1111-4111-8111-111111111111"
           : isPedia
           ? "22222222-2222-4222-8222-222222222223"
+          : isOld
+          ? "22222222-2222-4222-8222-222222222224"
           : "22222222-2222-4222-8222-222222222222";
 
         const mockDemoUser = {
@@ -136,13 +140,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user_metadata: {
             is_demo: true,
             role: isTherapist ? "therapist" : "client",
-            client_category: isPedia ? "pedia" : isTeen ? "adolescent" : "adult",
+            client_category: clientCat,
             name: isTherapist
               ? "Dr. Elena Ramos, OTR/L"
               : isPedia
               ? "Leo Chen"
               : isTeen
               ? "Maya Patel"
+              : isOld
+              ? "Arthur Pendelton"
               : "Marcus Vance",
           },
           aud: "authenticated",
@@ -159,16 +165,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ? "Leo Chen"
             : isTeen
             ? "Maya Patel"
+            : isOld
+            ? "Arthur Pendelton"
             : "Marcus Vance",
           discipline: isTherapist ? ("OT" as Discipline) : null,
-          client_category: isPedia ? ("pedia" as ClientCategory) : isTeen ? ("adolescent" as ClientCategory) : ("adult" as ClientCategory),
+          client_category: clientCat,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         });
 
         return {
           role: isTherapist ? ("therapist" as UserRole) : ("client" as UserRole),
-          clientCategory: isPedia ? ("pedia" as ClientCategory) : isTeen ? ("adolescent" as ClientCategory) : ("adult" as ClientCategory),
+          clientCategory: clientCat,
         };
       }
       return { error: error.message };
@@ -241,6 +249,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: data.user.id,
         role,
         display_name: name,
+        email: email.trim().toLowerCase(),
         discipline: role === "therapist" ? "OT" : null,
         client_category: role === "client" ? (clientCategory || "adult") : null,
       };
@@ -289,6 +298,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error) {
       return { error: error.message };
+    }
+
+    // Sync demographic changes to linked patients record in Supabase
+    try {
+      const patientUpdates: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (updates.display_name) patientUpdates.name = updates.display_name;
+      if (updates.age !== undefined && updates.age !== null) patientUpdates.age = Number(updates.age);
+      if (updates.primary_condition !== undefined && updates.primary_condition !== null) patientUpdates.condition = updates.primary_condition;
+      if (updates.caregiver_name !== undefined) patientUpdates.caregiver_name = updates.caregiver_name;
+      if (updates.client_category !== undefined) patientUpdates.client_category = updates.client_category;
+
+      if (Object.keys(patientUpdates).length > 1) {
+        await supabase.from("patients").update(patientUpdates).eq("client_user_id", user.id);
+      }
+    } catch (patientSyncErr) {
+      console.warn("Could not sync profile to patients table:", patientSyncErr);
     }
 
     setProfile((prev) => (prev ? { ...prev, ...cleanUpdates } : null));

@@ -23,8 +23,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MockBadge } from "@/components/ui/mock-badge";
-import { siteConfig } from "@/config/site";
 import { DraftProgramOutput } from "@/types/meta";
 
 interface StepItem {
@@ -459,7 +457,6 @@ function NewHomeProgramContent({
                 <CardTitle className="text-base text-zinc-100">
                   Refine with Meta Muse Spark 1.3
                 </CardTitle>
-                {siteConfig.ai.mode === "mock" && <MockBadge />}
               </div>
               <p className="text-xs text-zinc-400">
                 Restructures your rough notes into patient-accessible steps. Review and explicitly accept before replacing.

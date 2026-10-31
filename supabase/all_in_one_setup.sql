@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   role TEXT NOT NULL CHECK (role IN ('therapist', 'client')),
   display_name TEXT NOT NULL,
   discipline TEXT CHECK (discipline IN ('SLP', 'OT', 'PT') OR discipline IS NULL),
-  client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia') OR client_category IS NULL),
+  client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia', 'old_people') OR client_category IS NULL),
+  email TEXT,
   
   -- Therapist specific fields
   license_number TEXT,
@@ -55,9 +56,13 @@ CREATE TABLE IF NOT EXISTS public.patients (
   condition VARCHAR(255) NOT NULL DEFAULT 'General Occupational Therapy',
   email VARCHAR(255) NOT NULL UNIQUE,
   caregiver_name TEXT,
-  client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia') OR client_category IS NULL),
+  client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia', 'old_people') OR client_category IS NULL),
   invitation_status TEXT NOT NULL DEFAULT 'accepted',
+  invitation_initiated_by TEXT DEFAULT 'therapist' CHECK (invitation_initiated_by IN ('therapist', 'client') OR invitation_initiated_by IS NULL),
   invitation_sent_at TIMESTAMPTZ DEFAULT NOW(),
+  previous_therapist_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  handover_notes TEXT,
+  pending_therapist_email TEXT,
   -- SECURITY: short-lived bootstrap secret only; nulled on first login via /api/auth/clear-temp-credentials.
   -- Owning therapist only (RLS). Production: replace with invite/reset-password flow.
   temporary_password TEXT,
@@ -68,11 +73,22 @@ CREATE TABLE IF NOT EXISTS public.patients (
 );
 
 -- Safe migrations for existing databases
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email TEXT;
+CREATE INDEX IF NOT EXISTS idx_profiles_email ON public.profiles(LOWER(email));
+
 ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS temporary_password TEXT;
 ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS first_login_at TIMESTAMPTZ;
 ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS credentials_cleared_at TIMESTAMPTZ;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS invitation_status TEXT NOT NULL DEFAULT 'accepted';
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS invitation_initiated_by TEXT DEFAULT 'therapist';
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS invitation_sent_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS previous_therapist_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS handover_notes TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS pending_therapist_email TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_patients_therapist ON public.patients(therapist_id);
+CREATE INDEX IF NOT EXISTS idx_patients_pending_therapist_email ON public.patients(LOWER(pending_therapist_email));
+CREATE INDEX IF NOT EXISTS idx_patients_invitation_status ON public.patients(invitation_status);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_patients_client_user_idx ON public.patients(client_user_id) WHERE client_user_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_patients_email_idx ON public.patients(email);
 
@@ -452,8 +468,11 @@ DECLARE
   v_role TEXT;
   v_name TEXT;
   v_category TEXT;
+  v_therapist_id UUID;
+  v_email TEXT;
 BEGIN
   v_role := COALESCE(new.raw_user_meta_data->>'role', 'client');
+  v_email := LOWER(TRIM(new.email));
   v_name := COALESCE(
     new.raw_user_meta_data->>'name',
     new.raw_user_meta_data->>'display_name',
@@ -461,11 +480,23 @@ BEGIN
   );
   v_category := new.raw_user_meta_data->>'client_category';
 
-  -- Upsert Profile (Prevents duplicate profiles by ID)
+  -- Extract therapist_id if provided in raw_user_meta_data
+  IF (new.raw_user_meta_data->>'therapist_id' IS NOT NULL AND new.raw_user_meta_data->>'therapist_id' <> '') THEN
+    BEGIN
+      v_therapist_id := (new.raw_user_meta_data->>'therapist_id')::uuid;
+    EXCEPTION WHEN OTHERS THEN
+      v_therapist_id := NULL;
+    END;
+  ELSE
+    v_therapist_id := NULL;
+  END IF;
+
+  -- Upsert Profile (Prevents duplicate profiles by ID, preserves email)
   INSERT INTO public.profiles (
     id,
     display_name,
     role,
+    email,
     client_category,
     created_at,
     updated_at
@@ -473,6 +504,7 @@ BEGIN
     new.id,
     v_name,
     v_role,
+    v_email,
     v_category,
     NOW(),
     NOW()
@@ -480,12 +512,21 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET
     display_name = COALESCE(EXCLUDED.display_name, public.profiles.display_name),
     role = COALESCE(EXCLUDED.role, public.profiles.role),
+    email = COALESCE(EXCLUDED.email, public.profiles.email),
     client_category = COALESCE(EXCLUDED.client_category, public.profiles.client_category),
     updated_at = NOW();
 
-  -- If Client, ensure linked patient record without duplication
+  -- If therapist_id is provided, ensure therapist profile exists so foreign key is satisfied
+  IF (v_therapist_id IS NOT NULL) THEN
+    INSERT INTO public.profiles (id, display_name, role, created_at, updated_at)
+    VALUES (v_therapist_id, 'Occupational Therapist', 'therapist', NOW(), NOW())
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+
+  -- If Client, ensure linked patient record with therapist_id
   IF (v_role = 'client') THEN
     INSERT INTO public.patients (
+      therapist_id,
       client_user_id,
       name,
       email,
@@ -495,20 +536,30 @@ BEGIN
       created_at,
       updated_at
     ) VALUES (
+      v_therapist_id,
       new.id,
       v_name,
-      LOWER(TRIM(new.email)),
+      v_email,
       v_category,
       'Personalized Rehabilitation Care',
-      'accepted',
+      CASE WHEN v_therapist_id IS NOT NULL THEN 'pending' ELSE 'unlinked' END,
       NOW(),
       NOW()
     )
     ON CONFLICT (email) DO UPDATE SET
+      therapist_id = COALESCE(EXCLUDED.therapist_id, public.patients.therapist_id),
       client_user_id = EXCLUDED.client_user_id,
       client_category = COALESCE(EXCLUDED.client_category, public.patients.client_category),
       name = COALESCE(EXCLUDED.name, public.patients.name),
       updated_at = NOW();
+  END IF;
+
+  -- If a Therapist signs up, self-heal any patients waiting for this therapist email
+  IF (v_role = 'therapist') THEN
+    UPDATE public.patients
+    SET therapist_id = new.id
+    WHERE (LOWER(TRIM(pending_therapist_email)) = v_email)
+      AND (therapist_id IS NULL OR therapist_id <> new.id);
   END IF;
 
   RETURN new;

@@ -10,6 +10,7 @@ import {
   MessageSquare,
   LogOut,
   User,
+  HeartPulse,
   Baby,
   GraduationCap,
   Bot,
@@ -18,6 +19,7 @@ import {
 import { Logo } from "@/components/ui/logo";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { NotificationsDropdown } from "@/components/ui/notifications-dropdown";
 import { useAuth } from "@/lib/supabase/auth-context";
 
 export function ClientNav() {
@@ -45,6 +47,8 @@ export function ClientNav() {
       ? "Pediatric"
       : category === "adolescent"
       ? "Adolescent"
+      : category === "old_people"
+      ? "Old People (55+)"
       : "Adult Client";
 
   const CategoryIcon =
@@ -52,6 +56,8 @@ export function ClientNav() {
       ? Baby
       : category === "adolescent"
       ? GraduationCap
+      : category === "old_people"
+      ? HeartPulse
       : User;
 
   return (
@@ -106,6 +112,8 @@ export function ClientNav() {
               {profile?.display_name || "Profile"}
             </span>
           </Link>
+
+          <NotificationsDropdown role="client" />
 
           <ThemeToggle />
 

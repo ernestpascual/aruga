@@ -9,6 +9,7 @@ import {
   User,
   Baby,
   GraduationCap,
+  HeartPulse,
   Lock,
   Mail,
   ArrowRight,
@@ -17,7 +18,6 @@ import {
   Sparkles,
   AlertCircle,
   CheckCircle2,
-  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -190,7 +190,7 @@ export default function LoginPage() {
     if (category) setClientCategory(category);
     setEmail(presetEmail || (targetRole === "therapist" ? "therapist@aruga.local" : `${category || "adult"}.client@aruga.local`));
     setPassword("ArugaSecure2026!");
-    setName(presetName || (targetRole === "therapist" ? "Dr. Elena Ramos, OTR/L" : category === "pedia" ? "Leo Chen" : category === "adolescent" ? "Maya Patel" : "Marcus Vance"));
+    setName(presetName || (targetRole === "therapist" ? "Dr. Elena Ramos, OTR/L" : category === "pedia" ? "Leo Chen" : category === "adolescent" ? "Maya Patel" : category === "old_people" ? "Arthur Pendelton" : "Marcus Vance"));
   };
 
   const handleDirectBypass = async (
@@ -439,7 +439,7 @@ export default function LoginPage() {
                         <label className="block text-xs font-medium text-zinc-300">
                           Client Care Demographic:
                         </label>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           <button
                             type="button"
                             onClick={() => setClientCategory("adult")}
@@ -451,7 +451,21 @@ export default function LoginPage() {
                           >
                             <User className="w-4 h-4 text-teal-400" />
                             <span className="text-[11px] font-semibold text-zinc-200">Adult</span>
-                            <span className="text-[9px] text-zinc-500">18+ Neuro/Ortho</span>
+                            <span className="text-[9px] text-zinc-500">18-54 Neuro/Ortho</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setClientCategory("old_people")}
+                            className={`p-2.5 rounded-lg border text-center transition-all flex flex-col items-center gap-1 ${
+                              clientCategory === "old_people"
+                                ? "bg-amber-950/50 border-amber-500 text-amber-200"
+                                : "bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                            }`}
+                          >
+                            <HeartPulse className="w-4 h-4 text-amber-400" />
+                            <span className="text-[11px] font-semibold text-zinc-200">Old People</span>
+                            <span className="text-[9px] text-zinc-500">55+ Mobility/Daily</span>
                           </button>
 
                           <button
@@ -459,11 +473,11 @@ export default function LoginPage() {
                             onClick={() => setClientCategory("adolescent")}
                             className={`p-2.5 rounded-lg border text-center transition-all flex flex-col items-center gap-1 ${
                               clientCategory === "adolescent"
-                                ? "bg-teal-950/50 border-teal-500 text-teal-200"
+                                ? "bg-indigo-950/50 border-indigo-500 text-indigo-200"
                                 : "bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:border-zinc-700"
                             }`}
                           >
-                            <GraduationCap className="w-4 h-4 text-teal-400" />
+                            <GraduationCap className="w-4 h-4 text-indigo-400" />
                             <span className="text-[11px] font-semibold text-zinc-200">Adolescent</span>
                             <span className="text-[9px] text-zinc-500">12-17 School/Coord</span>
                           </button>
@@ -588,20 +602,15 @@ export default function LoginPage() {
                 isLoading={loading}
                 className="w-full py-2.5 mt-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold transition-all shadow-md"
               >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Connecting...
-                  </span>
-                ) : mode === "signin" ? (
-                  "Sign In to Dashboard"
-                ) : mode === "register" ? (
-                  "Create Account & Proceed"
-                ) : mode === "forgot" ? (
-                  "Send Password Reset Link"
-                ) : (
-                  "Update Password & Continue"
-                )}
+                {loading
+                  ? "Connecting..."
+                  : mode === "signin"
+                  ? "Sign In to Dashboard"
+                  : mode === "register"
+                  ? "Create Account & Proceed"
+                  : mode === "forgot"
+                  ? "Send Password Reset Link"
+                  : "Update Password & Continue"}
               </Button>
             </form>
 
@@ -629,6 +638,13 @@ export default function LoginPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => handleDirectBypass("client", "old_people", "elderly.arthur@aruga.local")}
+                    className="p-2 rounded-xl bg-amber-950/40 border border-amber-500/40 text-xs font-semibold text-amber-300 hover:bg-amber-900/60 hover:border-amber-400 transition-all text-center"
+                  >
+                    Bypass as Arthur (55+)
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handleDirectBypass("client", "pedia", "pedia.leo@aruga.local")}
                     className="p-2 rounded-xl bg-sky-950/40 border border-sky-500/40 text-xs font-semibold text-sky-300 hover:bg-sky-900/60 hover:border-sky-400 transition-all text-center"
                   >
@@ -642,7 +658,7 @@ export default function LoginPage() {
                   <span>Pre-fill login form:</span>
                   <span className="text-[10px] text-zinc-500">Manual review</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                   <button
                     type="button"
                     onClick={() => handleQuickFill("therapist", undefined, "therapist@aruga.local", "Dr. Elena Ramos, OTR/L")}
@@ -655,7 +671,14 @@ export default function LoginPage() {
                     onClick={() => handleQuickFill("client", "adult", "adult.marcus@aruga.local", "Marcus Vance")}
                     className="px-2 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[10px] font-medium text-zinc-300 hover:border-teal-500/50 hover:text-teal-300 transition-colors"
                   >
-                    Adult Client
+                    Adult (18-54)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickFill("client", "old_people", "elderly.arthur@aruga.local", "Arthur Pendelton")}
+                    className="px-2 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[10px] font-medium text-zinc-300 hover:border-amber-500/50 hover:text-amber-300 transition-colors"
+                  >
+                    Old People (55+)
                   </button>
                   <button
                     type="button"

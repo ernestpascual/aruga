@@ -13,18 +13,19 @@ export type SubmissionState = "draft" | "submitted" | "reviewed";
 
 export type ReviewStatus = "draft" | "published";
 
-export type InvitationStatus = "pending" | "accepted" | "failed";
+export type InvitationStatus = "pending" | "accepted" | "declined" | "failed" | "unlinked";
 
 export type AiAnalysisStatus = "pending" | "processing" | "completed" | "failed";
 
 export type AiAnalysisKind = "spark_observation" | "sam_segmentation" | "full_review";
 
-export type ClientCategory = "adult" | "adolescent" | "pedia";
+export type ClientCategory = "adult" | "adolescent" | "pedia" | "old_people";
 
 export interface Profile {
   id: string;
   role: UserRole;
   display_name: string;
+  email?: string | null;
   discipline: Discipline | null;
   client_category?: ClientCategory | null;
 
@@ -116,6 +117,12 @@ export interface Patient {
   client_category?: ClientCategory | null;
   invitation_status: InvitationStatus;
   invitation_sent_at: string | null;
+  invitation_initiated_by?: "therapist" | "client" | null;
+  therapist_name?: string | null;
+  previous_therapist_id?: string | null;
+  previous_therapist_name?: string | null;
+  handover_notes?: string | null;
+  pending_therapist_email?: string | null;
   temporary_password?: string | null;
   first_login_at?: string | null;
   credentials_cleared_at?: string | null;
@@ -163,6 +170,11 @@ export interface StepSubmission {
     width?: number;
     height?: number;
     formatSupported?: boolean;
+    storagePath?: string;
+    bucket?: string;
+    freeTierCompliant?: boolean;
+    uploadedAt?: string;
+    uploadedToSupabaseStorage?: boolean;
   };
   client_comment: string | null;
   skipped: boolean;
@@ -206,11 +218,33 @@ export interface SubmissionReview {
   submission_id: string;
   therapist_id: string;
   overall_feedback: string | null;
+  subjective?: string | null;
+  objective?: string | null;
+  assessment?: string | null;
+  plan?: string | null;
+  client_summary?: string | null;
   status: ReviewStatus;
   published_at: string | null;
   created_at: string;
   updated_at: string;
   step_reviews?: StepReview[];
+}
+
+export interface SoapNote {
+  id: string;
+  patient_id: string;
+  therapist_id: string;
+  session_date: string;
+  session_title: string;
+  subjective: string;
+  objective: string;
+  assessment: string;
+  plan: string;
+  client_summary: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  therapist_profile?: Profile;
 }
 
 export interface Message {

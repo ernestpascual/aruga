@@ -14,12 +14,15 @@ import {
   Send,
   X,
   Baby,
+  GraduationCap,
+  HeartPulse,
   User,
   Filter,
   Copy,
   Check,
   Key,
   Shield,
+  Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,12 +38,32 @@ export default function TherapistClientsPage() {
   const [clients, setClients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [populationFilter, setPopulationFilter] = useState<"all" | "adult" | "pediatric">("all");
+  const [populationFilter, setPopulationFilter] = useState<"all" | "pending" | "pedia" | "adolescent" | "adult" | "old_people">("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"intake" | "link_email">("intake");
+  const [linkEmail, setLinkEmail] = useState("");
+  const [linkCondition, setLinkCondition] = useState("");
+  const [linkSubmitting, setLinkSubmitting] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [linkSuccess, setLinkSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const filter = params.get("filter");
+      if (filter === "pending") {
+        setPopulationFilter("pending");
+      }
+      if (params.get("action") === "link") {
+        setModalMode("link_email");
+        setIsAddModalOpen(true);
+      }
+    }
+  }, []);
 
   // Form state
   const [name, setName] = useState("");
-  const [age, setAge] = useState<number | "">(58);
+  const [age, setAge] = useState<number | "">("");
   const [gender, setGender] = useState("Prefer not to say");
   const [condition, setCondition] = useState("");
   const [email, setEmail] = useState("");
@@ -82,6 +105,35 @@ Please sign in at ${portalUrl} and update your password under Profile > Security
     }
   };
 
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+
+  const handleConfirmClientLink = async (clientId: string, action: "accept" | "decline", e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (confirmingId) return;
+
+    setConfirmingId(clientId);
+    setConfirmError(null);
+    try {
+      const res = await fetch("/api/therapist/clients", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: clientId, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update connection status.");
+      window.dispatchEvent(new Event("aruga:notification-action"));
+      await fetchClients();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setConfirmError(msg);
+      console.error("Failed to update status:", err);
+    } finally {
+      setConfirmingId(null);
+    }
+  };
+
   const copyRowAccessInfo = async (client: Patient, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -118,12 +170,77 @@ Note: For client privacy and safety, temporary credentials are automatically del
     }
   };
 
+  const openAddModal = (mode: "intake" | "link_email" = "intake") => {
+    setModalMode(mode);
+    setName("");
+    setAge("");
+    setGender("Prefer not to say");
+    setCondition("");
+    setEmail("");
+    setCaregiverName("");
+    setFormError(null);
+    setFormSuccess(null);
+    setLinkEmail("");
+    setLinkCondition("");
+    setLinkError(null);
+    setLinkSuccess(null);
+    setIsAddModalOpen(true);
+  };
+
+  const handleLinkClientByEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!linkEmail.trim() || linkSubmitting) return;
+
+    setLinkSubmitting(true);
+    setLinkError(null);
+    setLinkSuccess(null);
+
+    try {
+      const res = await fetch("/api/therapist/client-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientEmail: linkEmail.trim(),
+          condition: linkCondition.trim() || undefined,
+          therapistId: user?.id,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to link client by email.");
+      }
+
+      setLinkSuccess(data.message || "Connection invitation sent to client.");
+      setLinkEmail("");
+      setLinkCondition("");
+      window.dispatchEvent(new Event("aruga:notification-action"));
+      await fetchClients();
+
+      // Automatically switch to pending filter so therapist immediately sees the new link
+      setPopulationFilter("pending");
+
+      setTimeout(() => {
+        setIsAddModalOpen(false);
+        setLinkSuccess(null);
+      }, 2000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setLinkError(msg);
+    } finally {
+      setLinkSubmitting(false);
+    }
+  };
+
   const fetchClients = async () => {
+    if (!user?.id) {
+      setLoading(false);
+      setClients([]);
+      return;
+    }
     try {
       setLoading(true);
-      const url = user?.id
-        ? `/api/therapist/clients?therapistId=${user.id}&isDemo=${isDemo}`
-        : `/api/therapist/clients?isDemo=${isDemo}`;
+      const url = `/api/therapist/clients?therapistId=${user.id}&isDemo=${isDemo}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.clients) {
@@ -138,6 +255,12 @@ Note: For client privacy and safety, temporary credentials are automatically del
 
   useEffect(() => {
     fetchClients();
+
+    const handleRefresh = () => fetchClients();
+    window.addEventListener("aruga:notification-action", handleRefresh);
+    return () => {
+      window.removeEventListener("aruga:notification-action", handleRefresh);
+    };
   }, [user?.id, isDemo]);
 
   const isPediatricInput = typeof age === "number" && age < 18;
@@ -145,6 +268,10 @@ Note: For client privacy and safety, temporary credentials are automatically del
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formSubmitting) return;
+    if (!user?.id) {
+      setFormError("Therapist account not authenticated. Please refresh or sign in again.");
+      return;
+    }
     setFormError(null);
     setFormSuccess(null);
     setFormSubmitting(true);
@@ -160,7 +287,7 @@ Note: For client privacy and safety, temporary credentials are automatically del
           condition,
           email,
           caregiverName: isPediatricInput ? caregiverName : null,
-          therapistId: user?.id || null,
+          therapistId: user.id,
         }),
       });
 
@@ -169,13 +296,25 @@ Note: For client privacy and safety, temporary credentials are automatically del
         throw new Error(data.error || "Failed to add client");
       }
 
-      setFormSuccess(`Client ${name} created. Secure setup invitation issued.`);
+      setFormSuccess(data.message || `Client ${name} created. Secure setup invitation issued.`);
       setName("");
+      setAge("");
+      setGender("Prefer not to say");
       setCondition("");
       setEmail("");
       setCaregiverName("");
       setIsAddModalOpen(false);
-      fetchClients();
+
+      if (data.client) {
+        setClients((prev) => {
+          const exists = prev.some((c) => c.id === data.client.id || c.email === data.client.email);
+          return exists
+            ? prev.map((c) => (c.id === data.client.id || c.email === data.client.email ? data.client : c))
+            : [data.client, ...prev];
+        });
+      }
+
+      await fetchClients();
 
       if (data.credentials) {
         setCreatedCredentials(data.credentials);
@@ -189,8 +328,11 @@ Note: For client privacy and safety, temporary credentials are automatically del
 
   const filteredClients = clients
     .filter((c) => {
-      if (populationFilter === "adult") return c.age >= 18;
-      if (populationFilter === "pediatric") return c.age < 18;
+      if (populationFilter === "pending") return c.invitation_status === "pending";
+      if (populationFilter === "adult") return c.age >= 18 && c.age < 55;
+      if (populationFilter === "old_people") return c.age >= 55;
+      if (populationFilter === "adolescent") return c.age >= 12 && c.age < 18;
+      if (populationFilter === "pedia") return c.age < 12;
       return true;
     })
     .filter(
@@ -201,8 +343,11 @@ Note: For client privacy and safety, temporary credentials are automatically del
         (c.caregiver_name && c.caregiver_name.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
-  const adultCount = clients.filter((c) => c.age >= 18).length;
-  const pediatricCount = clients.filter((c) => c.age < 18).length;
+  const pediaCount = clients.filter((c) => c.age < 12).length;
+  const adolescentCount = clients.filter((c) => c.age >= 12 && c.age < 18).length;
+  const adultCount = clients.filter((c) => c.age >= 18 && c.age < 55).length;
+  const oldPeopleCount = clients.filter((c) => c.age >= 55).length;
+  const pendingConfirmations = clients.filter((c) => c.invitation_status === "pending");
 
   return (
     <div className="space-y-6">
@@ -218,14 +363,93 @@ Note: For client privacy and safety, temporary credentials are automatically del
           </p>
         </div>
 
-        <Button
-          onClick={() => setIsAddModalOpen(true)}
-          className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold self-start sm:self-auto shadow-sm"
-        >
-          <UserPlus className="w-4 h-4" />
-          Add Client
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <Button
+            onClick={() => openAddModal("link_email")}
+            variant="outline"
+            className="gap-2 border-teal-500/40 text-teal-300 hover:bg-teal-950/50 hover:text-teal-200 font-semibold shadow-sm"
+          >
+            <Link2 className="w-4 h-4" />
+            Link Client by Email
+          </Button>
+          <Button
+            onClick={() => openAddModal("intake")}
+            className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold shadow-sm"
+          >
+            <UserPlus className="w-4 h-4" />
+            Add Client
+          </Button>
+        </div>
       </div>
+
+      {/* Pending Connection Confirmations Banner */}
+      {pendingConfirmations.length > 0 && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-950/20 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-amber-400" />
+              <h3 className="text-sm font-semibold text-amber-200">
+                Pending Link Confirmations ({pendingConfirmations.length})
+              </h3>
+            </div>
+            <span className="text-xs text-amber-400/80">
+              Confirm link or wait for client acceptance
+            </span>
+          </div>
+
+          {confirmError && (
+            <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-xs text-rose-200 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <span className="leading-relaxed">{confirmError}</span>
+            </div>
+          )}
+
+          <div className="divide-y divide-amber-900/40">
+            {pendingConfirmations.map((pendingClient) => (
+              <div
+                key={pendingClient.id}
+                className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-zinc-100">{pendingClient.name}</p>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-900/50 text-amber-300 border border-amber-500/30">
+                      {pendingClient.invitation_initiated_by === "client"
+                        ? "Requested by Client"
+                        : "Awaiting Client Acceptance"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    {pendingClient.email} • {pendingClient.condition}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={(e) => handleConfirmClientLink(pendingClient.id, "accept", e)}
+                    disabled={confirmingId === pendingClient.id}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-semibold h-8 text-xs gap-1.5 shadow-sm"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Confirm Link
+                  </Button>
+                  {pendingClient.invitation_initiated_by === "client" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => handleConfirmClientLink(pendingClient.id, "decline", e)}
+                      disabled={confirmingId === pendingClient.id}
+                      className="border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 h-8 text-xs"
+                    >
+                      Decline
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
@@ -241,7 +465,7 @@ Note: For client privacy and safety, temporary credentials are automatically del
         </div>
 
         {/* Population Filter Tabs */}
-        <div className="flex items-center gap-1.5 p-1 rounded-lg bg-zinc-900/80 border border-zinc-800 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-lg bg-zinc-900/80 border border-zinc-800 self-start sm:self-auto">
           <button
             type="button"
             onClick={() => setPopulationFilter("all")}
@@ -252,6 +476,44 @@ Note: For client privacy and safety, temporary credentials are automatically del
             }`}
           >
             All ({clients.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setPopulationFilter("pending")}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              populationFilter === "pending"
+                ? "bg-amber-950/80 text-amber-300 border border-amber-500/40 font-semibold shadow-sm"
+                : pendingConfirmations.length > 0
+                ? "text-amber-400/90 hover:text-amber-300 font-semibold"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <Clock className="w-3 h-3 text-amber-400" />
+            Pending Requests ({pendingConfirmations.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setPopulationFilter("pedia")}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              populationFilter === "pedia"
+                ? "bg-sky-950/80 text-sky-300 border border-sky-500/40 font-semibold shadow-sm"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <Baby className="w-3 h-3 text-sky-400" />
+            Pediatric ({pediaCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setPopulationFilter("adolescent")}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              populationFilter === "adolescent"
+                ? "bg-indigo-950/80 text-indigo-300 border border-indigo-500/40 font-semibold shadow-sm"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <GraduationCap className="w-3 h-3 text-indigo-400" />
+            Adolescent ({adolescentCount})
           </button>
           <button
             type="button"
@@ -267,15 +529,15 @@ Note: For client privacy and safety, temporary credentials are automatically del
           </button>
           <button
             type="button"
-            onClick={() => setPopulationFilter("pediatric")}
+            onClick={() => setPopulationFilter("old_people")}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-              populationFilter === "pediatric"
-                ? "bg-sky-950/80 text-sky-300 border border-sky-500/40 font-semibold shadow-sm"
+              populationFilter === "old_people"
+                ? "bg-amber-950/80 text-amber-300 border border-amber-500/40 font-semibold shadow-sm"
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            <Baby className="w-3 h-3 text-sky-400" />
-            Pediatric ({pediatricCount})
+            <HeartPulse className="w-3 h-3 text-amber-400" />
+            Old People (55+) ({oldPeopleCount})
           </button>
         </div>
       </div>
@@ -290,21 +552,34 @@ Note: For client privacy and safety, temporary credentials are automatically del
       ) : filteredClients.length === 0 ? (
         <Card className="border-dashed border-zinc-800 bg-zinc-950/40 p-12 text-center">
           <Users className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
-          <h3 className="text-base font-semibold text-zinc-200">No clients found</h3>
+          <h3 className="text-base font-semibold text-zinc-200">
+            {populationFilter === "pending" ? "No Pending Requests" : "No clients found"}
+          </h3>
           <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
-            {searchQuery
+            {populationFilter === "pending"
+              ? "All client accounts in your caseload have been confirmed and are active."
+              : searchQuery
               ? "No clients match your filter or search query."
               : "Get started by adding your first pediatric or adult client record."}
           </p>
-          {!searchQuery && (
-            <Button
-              onClick={() => setIsAddModalOpen(true)}
-              variant="outline"
-              size="sm"
-              className="mt-4 gap-1.5"
-            >
-              <UserPlus className="w-4 h-4" /> Add Client
-            </Button>
+          {!searchQuery && populationFilter !== "pending" && (
+            <div className="flex flex-wrap items-center gap-2 mt-4 justify-center">
+              <Button
+                onClick={() => openAddModal("link_email")}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 border-teal-500/40 text-teal-300 hover:bg-teal-950/50"
+              >
+                <Link2 className="w-4 h-4" /> Link by Email
+              </Button>
+              <Button
+                onClick={() => openAddModal("intake")}
+                size="sm"
+                className="gap-1.5 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold"
+              >
+                <UserPlus className="w-4 h-4" /> Add Client
+              </Button>
+            </div>
           )}
         </Card>
       ) : (
@@ -330,15 +605,25 @@ Note: For client privacy and safety, temporary credentials are automatically del
                         </span>
 
                         {/* Population / Age Pill */}
-                        {isPediatric ? (
+                        {client.age < 12 ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-sky-950/80 border border-sky-500/40 text-sky-300">
                             <Baby className="w-3 h-3 text-sky-400" />
                             Pediatric ({client.age}y)
                           </span>
-                        ) : (
+                        ) : client.age < 18 ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-950/80 border border-indigo-500/40 text-indigo-300">
+                            <GraduationCap className="w-3 h-3 text-indigo-400" />
+                            Adolescent ({client.age}y)
+                          </span>
+                        ) : client.age < 55 ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-800 border border-zinc-700/60 text-zinc-300">
                             <User className="w-3 h-3 text-zinc-400" />
                             Adult ({client.age}y)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-950/80 border border-amber-500/40 text-amber-300">
+                            <HeartPulse className="w-3 h-3 text-amber-400" />
+                            Old People ({client.age}y)
                           </span>
                         )}
 
@@ -349,10 +634,14 @@ Note: For client privacy and safety, temporary credentials are automatically del
                         {/* Invitation status badge */}
                         {client.invitation_status === "accepted" ? (
                           <Badge variant="emerald" statusText="Active Care" icon={<CheckCircle2 className="w-3 h-3" />} />
-                        ) : client.invitation_status === "failed" ? (
-                          <Badge variant="rose" statusText="Invite Failed" icon={<AlertCircle className="w-3 h-3" />} />
+                        ) : client.invitation_status === "declined" ? (
+                          <Badge variant="rose" statusText="Link Declined" icon={<AlertCircle className="w-3 h-3" />} />
                         ) : (
-                          <Badge variant="amber" statusText="Invite Pending" icon={<Clock className="w-3 h-3" />} />
+                          <Badge
+                            variant="amber"
+                            statusText={client.invitation_initiated_by === "client" ? "Client Requested Link" : "Invite Pending"}
+                            icon={<Clock className="w-3 h-3" />}
+                          />
                         )}
 
                         {/* Temporary Credential Lifecycle Badge */}
@@ -390,6 +679,31 @@ Note: For client privacy and safety, temporary credentials are automatically del
                     {/* Right: Stats & Chevron */}
                     <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-zinc-800">
                       <div className="flex items-center gap-3 text-xs">
+                        {/* Quick Confirm/Decline Link Buttons if Pending */}
+                        {client.invitation_status === "pending" && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => handleConfirmClientLink(client.id, "accept", e)}
+                              disabled={confirmingId === client.id}
+                              className="px-2.5 py-1 rounded-md border border-emerald-500/50 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 font-semibold flex items-center gap-1.5 text-[11px] transition-colors shadow-sm"
+                              title="Confirm and immediately activate this client in your caseload"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>Confirm Link</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleConfirmClientLink(client.id, "decline", e)}
+                              disabled={confirmingId === client.id}
+                              className="px-2 py-1 rounded-md border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-[11px] transition-colors"
+                              title="Decline this client connection request"
+                            >
+                              <span>Decline</span>
+                            </button>
+                          </div>
+                        )}
+
                         {/* Copy Access Info / Temp Creds Button */}
                         <button
                           type="button"
@@ -466,148 +780,260 @@ Note: For client privacy and safety, temporary credentials are automatically del
               <X className="w-5 h-5" />
             </button>
 
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2 text-zinc-100">
-                <UserPlus className="w-5 h-5 text-teal-400" />
-                Add Client Record
-              </CardTitle>
-              <p className="text-xs text-zinc-400">
-                Create a patient profile for pediatric or adult care and issue a secure onboarding invitation.
-              </p>
-            </CardHeader>
+            {/* Mode Tabs */}
+            <div className="flex border-b border-zinc-800 px-6 pt-5 gap-3">
+              <button
+                type="button"
+                onClick={() => setModalMode("link_email")}
+                className={`pb-3 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-colors ${
+                  modalMode === "link_email"
+                    ? "border-teal-400 text-teal-300"
+                    : "border-transparent text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                <Link2 className="w-4 h-4" />
+                Link Client by Email
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalMode("intake")}
+                className={`pb-3 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-colors ${
+                  modalMode === "intake"
+                    ? "border-teal-400 text-teal-300"
+                    : "border-transparent text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                <UserPlus className="w-4 h-4" />
+                New Intake Profile
+              </button>
+            </div>
 
-            <CardContent>
-              {formError && (
-                <div className="mb-4 rounded-lg bg-red-950/60 border border-red-800 p-3 text-xs text-red-200 flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                  <span>{formError}</span>
-                </div>
-              )}
+            {modalMode === "link_email" ? (
+              <>
+                <CardHeader className="pt-4 pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2 text-zinc-100">
+                    <Link2 className="w-5 h-5 text-teal-400" />
+                    Link Client by Email Address
+                  </CardTitle>
+                  <p className="text-xs text-zinc-400">
+                    Connect an existing registered client or caregiver to your caseload using their email. They will receive a care connection request in their portal.
+                  </p>
+                </CardHeader>
 
-              {formSuccess && (
-                <div className="mb-4 rounded-lg bg-emerald-950/60 border border-emerald-800 p-3 text-xs text-emerald-200 flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>{formSuccess}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleAddClient} className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-300">Client Full Name</label>
-                  <Input
-                    required
-                    placeholder="e.g. Leo Chen or Marcus Vance"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium text-zinc-300">Age</label>
-                      <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded ${
-                        isPediatricInput
-                          ? "bg-sky-950/80 text-sky-300 border border-sky-600/40"
-                          : "bg-zinc-800 text-zinc-300"
-                      }`}>
-                        {isPediatricInput ? "Pediatric (<18)" : "Adult (≥18)"}
-                      </span>
+                <CardContent className="pt-2">
+                  {linkError && (
+                    <div className="mb-4 rounded-lg bg-red-950/60 border border-red-800 p-3 text-xs text-red-200 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      <span>{linkError}</span>
                     </div>
-                    <Input
-                      type="number"
-                      required
-                      min={1}
-                      max={125}
-                      placeholder="e.g. 6 or 58"
-                      value={age}
-                      onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))}
-                    />
-                  </div>
+                  )}
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-zinc-300">Gender</label>
-                    <select
-                      value={gender}
-                      onChange={(e) => setGender(e.target.value)}
-                      className="flex h-10 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
-                    >
-                      <option value="Female">Female</option>
-                      <option value="Male">Male</option>
-                      <option value="Non-binary">Non-binary</option>
-                      <option value="Prefer not to say">Prefer not to say</option>
-                    </select>
-                  </div>
-                </div>
+                  {linkSuccess && (
+                    <div className="mb-4 rounded-lg bg-emerald-950/60 border border-emerald-800 p-3 text-xs text-emerald-200 flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span>{linkSuccess}</span>
+                    </div>
+                  )}
 
-                {/* Conditional Caregiver Field for Pediatric */}
-                {isPediatricInput && (
-                  <div className="space-y-1 p-3 rounded-lg bg-sky-950/30 border border-sky-500/30 animate-in fade-in">
-                    <label className="text-xs font-medium text-sky-200 flex items-center gap-1.5">
-                      <Baby className="w-3.5 h-3.5 text-sky-400" />
-                      Caregiver / Guardian Name (Pediatric Co-Runner)
-                    </label>
-                    <Input
-                      placeholder="e.g. Sarah Chen (Mother)"
-                      value={caregiverName}
-                      onChange={(e) => setCaregiverName(e.target.value)}
-                      className="bg-zinc-900 border-sky-500/40"
-                    />
-                    <p className="text-[11px] text-zinc-400">
-                      Caregiver assists with guided video recording and fatigue monitoring.
-                    </p>
-                  </div>
-                )}
+                  <form onSubmit={handleLinkClientByEmail} className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-zinc-300">
+                        Client or Caregiver Email Address <span className="text-teal-400">*</span>
+                      </label>
+                      <Input
+                        type="email"
+                        required
+                        placeholder="client@example.com"
+                        value={linkEmail}
+                        onChange={(e) => setLinkEmail(e.target.value)}
+                        className="bg-zinc-950 border-zinc-800 focus-visible:ring-teal-500"
+                      />
+                      <p className="text-[11px] text-zinc-500">
+                        Enter the email address registered with the client's account.
+                      </p>
+                    </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-300">
-                    Condition / Diagnosis (Therapist-entered text)
-                  </label>
-                  <Input
-                    required
-                    placeholder={
-                      isPediatricInput
-                        ? "e.g. Pediatric Bilateral Coordination Delay & Pincer Grasp Development"
-                        : "e.g. Right ischemic CVA with upper extremity hemiparesis"
-                    }
-                    value={condition}
-                    onChange={(e) => setCondition(e.target.value)}
-                  />
-                  <p className="text-[11px] text-zinc-500">Enter clinical description; never AI-generated.</p>
-                </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-zinc-300">
+                        Diagnosis / Clinical Focus (Optional)
+                      </label>
+                      <Input
+                        placeholder="e.g. Fine motor coordination, upper extremity rehabilitation"
+                        value={linkCondition}
+                        onChange={(e) => setLinkCondition(e.target.value)}
+                        className="bg-zinc-950 border-zinc-800"
+                      />
+                      <p className="text-[11px] text-zinc-500">
+                        Optional clinical focus for this connection.
+                      </p>
+                    </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-300">
-                    {isPediatricInput ? "Parent / Caregiver Email" : "Client Email (For Secure Invitation)"}
-                  </label>
-                  <Input
-                    type="email"
-                    required
-                    placeholder="client@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
+                    <div className="pt-2 flex justify-end gap-2 border-t border-zinc-800/80">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setIsAddModalOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        isLoading={linkSubmitting}
+                        className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold"
+                      >
+                        <Link2 className="w-4 h-4" />
+                        Send Link Invitation
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </>
+            ) : (
+              <>
+                <CardHeader className="pt-4 pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2 text-zinc-100">
+                    <UserPlus className="w-5 h-5 text-teal-400" />
+                    Add Client Record
+                  </CardTitle>
+                  <p className="text-xs text-zinc-400">
+                    Create a patient profile for pediatric or adult care and issue a secure onboarding invitation.
+                  </p>
+                </CardHeader>
 
-                <div className="pt-2 flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setIsAddModalOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    isLoading={formSubmitting}
-                    className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold"
-                  >
-                    <Send className="w-4 h-4" />
-                    Create & Send Invite
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
+                <CardContent className="pt-2">
+                  {formError && (
+                    <div className="mb-4 rounded-lg bg-red-950/60 border border-red-800 p-3 text-xs text-red-200 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      <span>{formError}</span>
+                    </div>
+                  )}
+
+                  {formSuccess && (
+                    <div className="mb-4 rounded-lg bg-emerald-950/60 border border-emerald-800 p-3 text-xs text-emerald-200 flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span>{formSuccess}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleAddClient} className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-zinc-300">Client Full Name</label>
+                      <Input
+                        required
+                        placeholder="e.g. Client full name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-medium text-zinc-300">Age</label>
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded ${
+                            isPediatricInput
+                              ? "bg-sky-950/80 text-sky-300 border border-sky-600/40"
+                              : "bg-zinc-800 text-zinc-300"
+                          }`}>
+                            {isPediatricInput ? "Pediatric (<18)" : "Adult (≥18)"}
+                          </span>
+                        </div>
+                        <Input
+                          type="number"
+                          required
+                          min={1}
+                          max={125}
+                          placeholder="e.g. 35"
+                          value={age}
+                          onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-zinc-300">Gender</label>
+                        <select
+                          value={gender}
+                          onChange={(e) => setGender(e.target.value)}
+                          className="flex h-10 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                        >
+                          <option value="Female">Female</option>
+                          <option value="Male">Male</option>
+                          <option value="Non-binary">Non-binary</option>
+                          <option value="Prefer not to say">Prefer not to say</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Conditional Caregiver Field for Pediatric */}
+                    {isPediatricInput && (
+                      <div className="space-y-1 p-3 rounded-lg bg-sky-950/30 border border-sky-500/30 animate-in fade-in">
+                        <label className="text-xs font-medium text-sky-200 flex items-center gap-1.5">
+                          <Baby className="w-3.5 h-3.5 text-sky-400" />
+                          Caregiver / Guardian Name (Pediatric Co-Runner)
+                        </label>
+                        <Input
+                          placeholder="e.g. Guardian Name (Relationship)"
+                          value={caregiverName}
+                          onChange={(e) => setCaregiverName(e.target.value)}
+                          className="bg-zinc-900 border-sky-500/40"
+                        />
+                        <p className="text-[11px] text-zinc-400">
+                          Caregiver assists with guided video recording and fatigue monitoring.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-zinc-300">
+                        Condition / Diagnosis (Therapist-entered text)
+                      </label>
+                      <Input
+                        required
+                        placeholder={
+                          isPediatricInput
+                            ? "e.g. Bilateral coordination delay, fine motor planning"
+                            : "e.g. Post-stroke hemiparesis, upper extremity rehabilitation"
+                        }
+                        value={condition}
+                        onChange={(e) => setCondition(e.target.value)}
+                      />
+                      <p className="text-[11px] text-zinc-500">Enter clinical description; never AI-generated.</p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-zinc-300">
+                        {isPediatricInput ? "Parent / Caregiver Email" : "Client Email (For Secure Invitation)"}
+                      </label>
+                      <Input
+                        type="email"
+                        required
+                        placeholder="client@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="pt-2 flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setIsAddModalOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        isLoading={formSubmitting}
+                        className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold"
+                      >
+                        <Send className="w-4 h-4" />
+                        Create & Send Invite
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </>
+            )}
           </Card>
         </div>
       )}

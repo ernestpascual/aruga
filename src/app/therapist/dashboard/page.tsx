@@ -15,9 +15,15 @@ import {
   Baby,
   GraduationCap,
   User,
+  HeartPulse,
   ShieldCheck,
   PlusCircle,
   Stethoscope,
+  UserPlus,
+  CheckCircle2,
+  X,
+  Loader2,
+  Link2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,12 +37,15 @@ export default function TherapistDashboardPage() {
   const isDemo = isDemoUser(user, profile);
   const [clients, setClients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<{ id: string; message: string; type: "success" | "error" } | null>(null);
 
-  useEffect(() => {
-    const url = user?.id
-      ? `/api/therapist/clients?therapistId=${user.id}&isDemo=${isDemo}`
-      : `/api/therapist/clients?isDemo=${isDemo}`;
-
+  const fetchCaseload = React.useCallback(() => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+    const url = `/api/therapist/clients?therapistId=${user.id}&isDemo=${isDemo}`;
     fetch(url)
       .then((res) => res.json())
       .then((data) => {
@@ -48,7 +57,70 @@ export default function TherapistDashboardPage() {
       .finally(() => setLoading(false));
   }, [user?.id, isDemo]);
 
-  const adultCount = clients.filter((c) => c.age >= 18 || c.client_category === "adult").length;
+  useEffect(() => {
+    fetchCaseload();
+
+    const handleRefresh = () => fetchCaseload();
+    window.addEventListener("aruga:notification-action", handleRefresh);
+    return () => {
+      window.removeEventListener("aruga:notification-action", handleRefresh);
+    };
+  }, [fetchCaseload]);
+
+  const handleLinkAction = async (clientId: string, action: "confirm" | "decline") => {
+    if (approvingId) return;
+    setApprovingId(clientId);
+    setActionFeedback(null);
+
+    try {
+      const res = await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: clientId,
+          action: action === "confirm" ? "approve" : "decline",
+          role: "therapist",
+          userId: user?.id,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update connection status.");
+
+      setActionFeedback({
+        id: clientId,
+        message: action === "confirm" ? "Connection confirmed & approved!" : "Request declined.",
+        type: "success",
+      });
+
+      // Dispatch global event so top navbar notification count updates
+      window.dispatchEvent(new Event("aruga:notification-action"));
+
+      setTimeout(() => {
+        fetchCaseload();
+        setActionFeedback(null);
+      }, 1500);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setActionFeedback({
+        id: clientId,
+        message: msg,
+        type: "error",
+      });
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const oldPeopleCount = clients.filter(
+    (c) => c.age >= 55 || c.client_category === "old_people"
+  ).length;
+  const adultCount = clients.filter(
+    (c) =>
+      ((c.age >= 18 && c.age < 55) || c.client_category === "adult") &&
+      c.age < 55 &&
+      c.client_category !== "old_people"
+  ).length;
   const adolescentCount = clients.filter(
     (c) => (c.age >= 12 && c.age < 18) || c.client_category === "adolescent"
   ).length;
@@ -58,6 +130,7 @@ export default function TherapistDashboardPage() {
 
   const totalPrograms = clients.reduce((acc, c) => acc + (c.active_programs_count || 0), 0);
   const totalAwaiting = clients.reduce((acc, c) => acc + (c.awaiting_review_count || 0), 0);
+  const pendingRequests = clients.filter((c) => c.invitation_status === "pending");
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
@@ -79,6 +152,12 @@ export default function TherapistDashboardPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            <Link href="/therapist/clients?action=link">
+              <Button variant="outline" className="gap-2 border-teal-500/40 text-teal-300 hover:bg-teal-950/50 hover:text-teal-200 font-semibold shadow-md">
+                <Link2 className="w-4 h-4" />
+                Link Client by Email
+              </Button>
+            </Link>
             <Link href="/therapist/clients">
               <Button className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold shadow-md">
                 <Users className="w-4 h-4" />
@@ -95,6 +174,109 @@ export default function TherapistDashboardPage() {
         </div>
       </div>
 
+      {/* Pending Client Connection Requests Dedicated Section */}
+      {pendingRequests.length > 0 && (
+        <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/30 via-zinc-900/90 to-zinc-950 p-5 sm:p-6 shadow-xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-900/40 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0">
+                <UserPlus className="w-4 h-4 text-amber-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm sm:text-base font-semibold text-zinc-100">
+                    Pending Client Connection Requests ({pendingRequests.length})
+                  </h2>
+                  <Badge variant="amber" statusText="Action Required" icon={<Clock className="w-3 h-3" />} />
+                </div>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Clients who requested to link with your care caseload or awaiting confirmation. Approve to grant access to prescribed routines, video uploads, and therapist feedback.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/therapist/clients?filter=pending"
+              className="text-xs text-amber-400 hover:text-amber-300 font-medium self-end sm:self-auto transition-colors"
+            >
+              View in Caseload →
+            </Link>
+          </div>
+
+          <div className="divide-y divide-zinc-800/80">
+            {pendingRequests.map((req) => {
+              const isProcessing = approvingId === req.id;
+              const feedback = actionFeedback?.id === req.id ? actionFeedback : null;
+
+              return (
+                <div
+                  key={req.id}
+                  className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-zinc-100">{req.name}</span>
+                      <span className="text-xs text-zinc-400">({req.email})</span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-800 text-teal-300 border border-teal-500/30 font-medium">
+                        Age {req.age} • {req.client_category || "Adult"}
+                      </span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-950/60 text-amber-300 border border-amber-500/30 font-medium">
+                        {req.invitation_initiated_by === "client" ? "Client Requested" : "Awaiting Confirmation"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-300">
+                      Primary Condition: <strong className="text-zinc-200">{req.condition}</strong>
+                      {req.caregiver_name && (
+                        <span className="text-zinc-400"> • Caregiver: {req.caregiver_name}</span>
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {feedback ? (
+                      <span
+                        className={`text-xs px-3 py-1.5 rounded-lg border flex items-center gap-1.5 ${
+                          feedback.type === "success"
+                            ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
+                            : "bg-rose-950/40 border-rose-500/40 text-rose-300"
+                        }`}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        {feedback.message}
+                      </span>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => handleLinkAction(req.id, "confirm")}
+                          disabled={isProcessing}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-semibold gap-1.5 h-8 text-xs shadow-sm"
+                        >
+                          {isProcessing ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          )}
+                          Approve & Connect
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleLinkAction(req.id, "decline")}
+                          disabled={isProcessing}
+                          className="border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 h-8 text-xs"
+                        >
+                          Decline
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Overview Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 transition-colors">
@@ -105,6 +287,21 @@ export default function TherapistDashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold text-zinc-100">{clients.length}</div>
             <p className="text-[11px] text-zinc-500 mt-1">Across all care demographics</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 transition-colors">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-medium text-zinc-400">Pending Requests</CardTitle>
+            <UserPlus className={`w-4 h-4 ${pendingRequests.length > 0 ? "text-amber-400" : "text-zinc-500"}`} />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${pendingRequests.length > 0 ? "text-amber-400" : "text-zinc-100"}`}>
+              {pendingRequests.length}
+            </div>
+            <p className="text-[11px] text-zinc-500 mt-1">
+              {pendingRequests.length > 0 ? "Awaiting clinician approval" : "No pending link requests"}
+            </p>
           </CardContent>
         </Card>
 
@@ -129,17 +326,6 @@ export default function TherapistDashboardPage() {
             <p className="text-[11px] text-zinc-500 mt-1">Awaiting clinician sign-off</p>
           </CardContent>
         </Card>
-
-        <Card className="bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 transition-colors">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium text-zinc-400">Meta AI Assistance</CardTitle>
-            <Sparkles className="w-4 h-4 text-teal-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-zinc-100">Active</div>
-            <p className="text-[11px] text-zinc-500 mt-1">SAM 3.1 & Spark observation</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Lifespan Caseload Breakdown & Quick Hub */}
@@ -156,17 +342,17 @@ export default function TherapistDashboardPage() {
             </Link>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Adult */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Pediatric */}
               <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800 hover:border-zinc-700 transition-colors">
                 <div className="flex items-center justify-between mb-2">
                   <div className="p-2 rounded-lg bg-teal-950/50 text-teal-400">
-                    <User className="w-4 h-4" />
+                    <Baby className="w-4 h-4" />
                   </div>
-                  <span className="text-lg font-bold text-zinc-100">{adultCount}</span>
+                  <span className="text-lg font-bold text-zinc-100">{pediaCount}</span>
                 </div>
-                <div className="text-xs font-semibold text-zinc-200">Adult Population</div>
-                <div className="text-[11px] text-zinc-500 mt-0.5">Neuro/stroke recovery & ortho functional tasks</div>
+                <div className="text-xs font-semibold text-zinc-200">Pediatric (1-11)</div>
+                <div className="text-[11px] text-zinc-500 mt-0.5">Play-based therapy, toys & caregiver co-activity</div>
               </div>
 
               {/* Adolescent */}
@@ -181,16 +367,28 @@ export default function TherapistDashboardPage() {
                 <div className="text-[11px] text-zinc-500 mt-0.5">School ergonomics, coordination & fine motor</div>
               </div>
 
-              {/* Pediatric */}
+              {/* Adult */}
               <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800 hover:border-zinc-700 transition-colors">
                 <div className="flex items-center justify-between mb-2">
                   <div className="p-2 rounded-lg bg-teal-950/50 text-teal-400">
-                    <Baby className="w-4 h-4" />
+                    <User className="w-4 h-4" />
                   </div>
-                  <span className="text-lg font-bold text-zinc-100">{pediaCount}</span>
+                  <span className="text-lg font-bold text-zinc-100">{adultCount}</span>
                 </div>
-                <div className="text-xs font-semibold text-zinc-200">Pediatric (1-11)</div>
-                <div className="text-[11px] text-zinc-500 mt-0.5">Play-based therapy, toys & caregiver co-activity</div>
+                <div className="text-xs font-semibold text-zinc-200">Adult (18-54)</div>
+                <div className="text-[11px] text-zinc-500 mt-0.5">Neuro/stroke recovery & workplace ergonomics</div>
+              </div>
+
+              {/* Old People */}
+              <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800 hover:border-zinc-700 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-2 rounded-lg bg-teal-950/50 text-teal-400">
+                    <HeartPulse className="w-4 h-4" />
+                  </div>
+                  <span className="text-lg font-bold text-zinc-100">{oldPeopleCount}</span>
+                </div>
+                <div className="text-xs font-semibold text-zinc-200">Old People (55+)</div>
+                <div className="text-[11px] text-zinc-500 mt-0.5">Mobility, fall prevention & daily independence</div>
               </div>
             </div>
 
@@ -208,7 +406,13 @@ export default function TherapistDashboardPage() {
                         <div className="text-xs font-semibold text-zinc-100 flex items-center gap-2">
                           {client.name}
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
-                            {client.age < 12 ? "Pediatric" : client.age < 18 ? "Adolescent" : "Adult"} ({client.age}y)
+                            {client.age < 12
+                              ? "Pediatric"
+                              : client.age < 18
+                              ? "Adolescent"
+                              : client.age < 55
+                              ? "Adult"
+                              : "Old People (55+)"} ({client.age}y)
                           </span>
                         </div>
                         <div className="text-[11px] text-zinc-400">{client.condition}</div>

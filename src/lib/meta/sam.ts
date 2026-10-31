@@ -163,6 +163,13 @@ export async function runSamVideoPrompt(
   params: RunSamPromptParams
 ): Promise<{ result: SamResultParsed; latencyMs: number }> {
   const config = getMetaConfig();
+  if (!config.apiKey) {
+    throw new MetaApiError(
+      "MODEL_API_KEY is missing from environment. Real SAM API calls require an authenticated API key.",
+      "MISSING_API_KEY",
+      401
+    );
+  }
   const startTime = Date.now();
   const fps = params.fps && params.fps > 0 ? params.fps : 30;
   const label = params.label;

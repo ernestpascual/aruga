@@ -6,6 +6,7 @@ import { HomeProgram, ProgramStep } from "@/types/database";
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+    const programId = searchParams.get("programId") || searchParams.get("id");
     const patientId = searchParams.get("patientId");
     const clientUserId = searchParams.get("clientUserId");
     const therapistId = searchParams.get("therapistId");
@@ -15,6 +16,22 @@ export async function GET(req: NextRequest) {
     const isExplicitRealUser = (clientUserId || (therapistId && therapistId !== DEMO_THERAPIST_ID)) && !isDemo;
 
     if (admin) {
+      if (programId) {
+        const { data: dbProg, error } = await admin
+          .from("home_programs")
+          .select("*, steps:program_steps(*), patient:patients(*)")
+          .eq("id", programId)
+          .maybeSingle();
+
+        if (!error && dbProg) {
+          // Sort steps by position
+          if (Array.isArray(dbProg.steps)) {
+            dbProg.steps.sort((a: ProgramStep, b: ProgramStep) => a.position - b.position);
+          }
+          return NextResponse.json({ program: dbProg, programs: [dbProg] });
+        }
+      }
+
       let resolvedPatientId = patientId;
 
       // If clientUserId is provided, find this specific client's linked patient record
@@ -43,12 +60,17 @@ export async function GET(req: NextRequest) {
       const { data: dbPrograms, error } = await query.order("created_at", { ascending: false });
 
       if (!error && dbPrograms) {
-        if (isExplicitRealUser && dbPrograms.length === 0) {
+        if (dbPrograms.length === 0) {
           return NextResponse.json({ programs: [] });
         }
-        if (dbPrograms.length > 0) {
-          return NextResponse.json({ programs: dbPrograms });
-        }
+
+        // Sort steps per program
+        dbPrograms.forEach((p) => {
+          if (Array.isArray(p.steps)) {
+            p.steps.sort((a: ProgramStep, b: ProgramStep) => a.position - b.position);
+          }
+        });
+        return NextResponse.json({ programs: dbPrograms });
       }
     }
 
@@ -59,6 +81,18 @@ export async function GET(req: NextRequest) {
 
     // Fallback store (only for demo bypass mode)
     const store = getMockStore();
+    if (programId) {
+      const prog = store.programs.find((p) => p.id === programId);
+      if (prog) {
+        const enriched = {
+          ...prog,
+          steps: store.steps.filter((s) => s.program_id === prog.id).sort((a, b) => a.position - b.position),
+          patient: store.patients.find((pt) => pt.id === prog.patient_id),
+        };
+        return NextResponse.json({ program: enriched, programs: [enriched] });
+      }
+    }
+
     let programs = store.programs;
     if (patientId) {
       programs = programs.filter((p) => p.patient_id === patientId);
@@ -66,7 +100,7 @@ export async function GET(req: NextRequest) {
 
     const enriched = programs.map((p) => ({
       ...p,
-      steps: store.steps.filter((s) => s.program_id === p.id),
+      steps: store.steps.filter((s) => s.program_id === p.id).sort((a, b) => a.position - b.position),
     }));
 
     return NextResponse.json({ programs: enriched });
@@ -324,3 +358,168 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { searchParams } = new URL(req.url);
+    const targetId = body.programId || body.id || searchParams.get("id") || searchParams.get("programId");
+
+    if (!targetId) {
+      return NextResponse.json({ error: "programId or id is required for update" }, { status: 400 });
+    }
+
+    const { title, mainInstructions, status, steps } = body;
+    const admin = createAdminClient();
+
+    const updates: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (title !== undefined) updates.title = title.trim();
+    if (mainInstructions !== undefined) updates.main_instructions = mainInstructions.trim();
+    if (status) {
+      updates.status = status;
+      if (status === "assigned") {
+        updates.assigned_at = new Date().toISOString();
+      }
+    }
+
+    if (admin) {
+      const { data: updatedProg, error: pErr } = await admin
+        .from("home_programs")
+        .update(updates)
+        .eq("id", targetId)
+        .select()
+        .single();
+
+      if (pErr) {
+        return NextResponse.json({ error: pErr.message }, { status: 500 });
+      }
+
+      let savedSteps: ProgramStep[] = [];
+      if (Array.isArray(steps) && steps.length > 0) {
+        await admin.from("program_steps").delete().eq("program_id", targetId);
+        const stepRecords = steps.map((s: { title?: string; instructions: string }, idx: number) => ({
+          program_id: targetId,
+          position: idx + 1,
+          title: s.title || `Step ${idx + 1}`,
+          instructions: s.instructions,
+        }));
+        const { data: createdSteps } = await admin.from("program_steps").insert(stepRecords).select();
+        savedSteps = createdSteps || (stepRecords as ProgramStep[]);
+      } else {
+        const { data: existingSteps } = await admin
+          .from("program_steps")
+          .select("*")
+          .eq("program_id", targetId)
+          .order("position", { ascending: true });
+        savedSteps = existingSteps || [];
+      }
+
+      return NextResponse.json({
+        success: true,
+        program: { ...updatedProg, steps: savedSteps },
+      });
+    }
+
+    // Fallback in-memory
+    const store = getMockStore();
+    const existing = store.programs.find((p) => p.id === targetId);
+    if (!existing) {
+      return NextResponse.json({ error: "Program not found" }, { status: 404 });
+    }
+
+    if (title !== undefined) existing.title = title.trim();
+    if (mainInstructions !== undefined) existing.main_instructions = mainInstructions.trim();
+    if (status) {
+      existing.status = status;
+      if (status === "assigned") existing.assigned_at = new Date().toISOString();
+    }
+    existing.updated_at = new Date().toISOString();
+
+    if (Array.isArray(steps) && steps.length > 0) {
+      store.steps = store.steps.filter((s) => s.program_id !== targetId);
+      const newSteps: ProgramStep[] = steps.map((s: { title?: string; instructions: string }, idx: number) => ({
+        id: `step-${Date.now()}-${idx + 1}`,
+        program_id: targetId,
+        position: idx + 1,
+        title: s.title || `Step ${idx + 1}`,
+        instructions: s.instructions,
+        created_at: new Date().toISOString(),
+      }));
+      store.steps.push(...newSteps);
+    }
+
+    return NextResponse.json({
+      success: true,
+      program: {
+        ...existing,
+        steps: store.steps.filter((s) => s.program_id === targetId).sort((a, b) => a.position - b.position),
+      },
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    let targetId = searchParams.get("id") || searchParams.get("programId");
+
+    if (!targetId) {
+      try {
+        const body = await req.json();
+        targetId = body.id || body.programId;
+      } catch {
+        // body might not be JSON
+      }
+    }
+
+    if (!targetId) {
+      return NextResponse.json({ error: "Program id is required for deletion" }, { status: 400 });
+    }
+
+    const admin = createAdminClient();
+
+    if (admin) {
+      // 1. Delete associated submissions and their reviews/step submissions
+      const { data: subs } = await admin.from("submissions").select("id").eq("program_id", targetId);
+      const subIds = subs?.map((s) => s.id) || [];
+      if (subIds.length > 0) {
+        const { data: revs } = await admin.from("submission_reviews").select("id").in("submission_id", subIds);
+        const revIds = revs?.map((r) => r.id) || [];
+        if (revIds.length > 0) {
+          await admin.from("step_reviews").delete().in("review_id", revIds);
+        }
+        await admin.from("submission_reviews").delete().in("submission_id", subIds);
+        await admin.from("step_submissions").delete().in("submission_id", subIds);
+        await admin.from("submissions").delete().eq("program_id", targetId);
+      }
+
+      // 2. Delete program steps
+      await admin.from("program_steps").delete().eq("program_id", targetId);
+
+      // 3. Delete home program
+      const { error: delErr } = await admin.from("home_programs").delete().eq("id", targetId);
+      if (delErr) {
+        return NextResponse.json({ error: delErr.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true, message: "Program deleted successfully from database." });
+    }
+
+    // Fallback in-memory
+    const store = getMockStore();
+    store.programs = store.programs.filter((p) => p.id !== targetId);
+    store.steps = store.steps.filter((s) => s.program_id !== targetId);
+    store.submissions = store.submissions.filter((s) => s.program_id !== targetId);
+
+    return NextResponse.json({ success: true, message: "Program deleted successfully." });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+

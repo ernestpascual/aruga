@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { segmentStepVideoMulti } from "@/lib/meta-ai";
 import { MetaApiError } from "@/lib/meta/errors";
 import { getMetaConfig } from "@/lib/meta/client";
 import { sam3Engine, normalizeConcepts } from "@/lib/meta/sam-engine";
@@ -14,6 +13,71 @@ const MAX_VIDEO_DATA_URL_CHARS = 140_000_000; // ~100MB binary as base64
  * (segmentConcepts) — buildObjectPrompt is only for pre-located boxes/points
  * and cannot accept text, so text targets do not use it.
  */
+// Global in-memory ring buffer for fallback and instant retrieval
+interface StoredSamSession {
+  id: string;
+  user_id: string | null;
+  prompt: string;
+  file_name: string;
+  duration_seconds: number | null;
+  object_concepts: string[];
+  tracks: unknown[];
+  boxes: unknown[];
+  svg_paths: unknown[];
+  billed_requests: number;
+  model_id: string;
+  latency_ms: number;
+  created_at: string;
+}
+
+const inMemorySessions: StoredSamSession[] = [];
+
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get("userId");
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const admin = createAdminClient();
+
+    let dbSessions: StoredSamSession[] = [];
+    if (admin) {
+      let query = admin
+        .from("sam_test_results")
+        .select(
+          "id, user_id, prompt, file_name, duration_seconds, object_concepts, tracks, boxes, svg_paths, billed_requests, model_id, latency_ms, created_at"
+        )
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (userId) {
+        query = query.or(`user_id.eq.${userId},user_id.is.null`);
+      }
+
+      const { data, error } = await query;
+      if (!error && data) {
+        dbSessions = data as StoredSamSession[];
+      }
+    }
+
+    // Merge DB records and memory cache, deduplicating by id
+    const seenIds = new Set(dbSessions.map((s) => s.id));
+    const merged = [...dbSessions];
+    for (const mem of inMemorySessions) {
+      if (!seenIds.has(mem.id)) {
+        merged.push(mem);
+        seenIds.add(mem.id);
+      }
+    }
+
+    merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    return NextResponse.json({ sessions: merged });
+  } catch (err: unknown) {
+    console.error("[sam-test GET] Failed to fetch sessions:", err);
+    return NextResponse.json({ sessions: inMemorySessions });
+  }
+}
+
 export async function POST(req: NextRequest) {
   const start = Date.now();
   try {
@@ -91,82 +155,88 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Temporary test tab: call live SAM whenever a key is present, even if
-    // AI_MODE=mock, so this page tests the real engine. Without a key it
-    // falls back to the mock facade so the UI still demonstrates tracking.
     const fileName: string = typeof body?.fileName === "string" ? body.fileName : "video.mp4";
     const userId: string | undefined = typeof body?.userId === "string" ? body.userId : undefined;
 
-    let responseData;
-    if (apiKey) {
-      const result = await sam3Engine.segmentConcepts({
-        videoUrl: samVideoUrl,
-        concepts,
-        durationSeconds,
-        mediaSize,
-      });
-      responseData = {
-        objectConcepts: result.conceptsRequested,
-        tracks: result.tracks.map((t) => ({
-          trackId: t.trackId,
-          label: t.label,
-          objectId: t.objectId,
-          frames: t.frames,
-        })),
-        boxes: result.boxes,
-        svgPaths: result.svgPaths,
-        failures: result.failures,
-        billedRequests: result.billedRequests,
-        modelId: models.sam,
-        latencyMs: result.latencyMs,
-        mode: "live",
-      };
-    } else {
-      const mock = await segmentStepVideoMulti({
-        stepSubmissionId: `sam-test-${Date.now()}`,
-        videoUrl: samVideoUrl,
-        objectConcepts: concepts,
-        durationSeconds,
-        mediaSize,
-      });
-      responseData = { ...mock, mode: "mock" };
+    if (!apiKey) {
+      throw new MetaApiError(
+        "MODEL_API_KEY is missing from environment. Real SAM API calls require an authenticated API key.",
+        "MISSING_API_KEY",
+        401
+      );
     }
 
-    // Store in Supabase under the user if user is signed in
-    if (userId) {
-      try {
-        const { createAdminClient } = await import("@/lib/supabase/admin");
-        const admin = createAdminClient();
-        if (admin) {
-          const recentWindow = new Date(Date.now() - 5000).toISOString();
-          const { data: existingRecent } = await admin
-            .from("sam_test_results")
-            .select("id")
-            .eq("user_id", userId)
-            .eq("prompt", promptText)
-            .eq("file_name", fileName)
-            .gte("created_at", recentWindow)
-            .maybeSingle();
+    const result = await sam3Engine.segmentConcepts({
+      videoUrl: samVideoUrl,
+      concepts,
+      durationSeconds,
+      mediaSize,
+    });
+    const responseData = {
+      objectConcepts: result.conceptsRequested,
+      tracks: result.tracks.map((t) => ({
+        trackId: t.trackId,
+        label: t.label,
+        objectId: t.objectId,
+        frames: t.frames,
+      })),
+      boxes: result.boxes,
+      svgPaths: result.svgPaths,
+      failures: result.failures,
+      billedRequests: result.billedRequests,
+      modelId: models.sam,
+      latencyMs: result.latencyMs,
+      mode: "live" as const,
+    };
 
-          if (!existingRecent) {
-            await admin.from("sam_test_results").insert({
-              user_id: userId,
-              prompt: promptText,
-              file_name: fileName,
-              duration_seconds: durationSeconds ?? null,
-              object_concepts: responseData.objectConcepts || [],
-              tracks: responseData.tracks || [],
-              boxes: responseData.boxes || [],
-              svg_paths: responseData.svgPaths || [],
-              billed_requests: responseData.billedRequests || 1,
-              model_id: responseData.modelId || "sam-3.1",
-              latency_ms: responseData.latencyMs || (Date.now() - start),
-            });
-          }
-        }
-      } catch (dbErr) {
-        console.warn("[sam-test] Database persist skipped:", dbErr);
+    // Accurate total processing time
+    const totalProcessingTimeMs = Date.now() - start;
+    responseData.latencyMs = Math.round(totalProcessingTimeMs);
+    (responseData as Record<string, unknown>).processingTimeMs = Math.round(totalProcessingTimeMs);
+
+    const sessionRecord: StoredSamSession = {
+      id: crypto.randomUUID(),
+      user_id: userId || null,
+      prompt: promptText,
+      file_name: fileName,
+      duration_seconds: durationSeconds ?? null,
+      object_concepts: responseData.objectConcepts || [],
+      tracks: responseData.tracks || [],
+      boxes: responseData.boxes || [],
+      svg_paths: responseData.svgPaths || [],
+      billed_requests: responseData.billedRequests || 1,
+      model_id: responseData.modelId || "sam-3.1",
+      latency_ms: Math.round(totalProcessingTimeMs),
+      created_at: new Date().toISOString(),
+    };
+
+    // Keep in-memory ring buffer
+    inMemorySessions.unshift(sessionRecord);
+    if (inMemorySessions.length > 50) {
+      inMemorySessions.pop();
+    }
+
+    // Store in Supabase if admin is available
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const admin = createAdminClient();
+      if (admin) {
+        await admin.from("sam_test_results").insert({
+          user_id: userId || null,
+          prompt: promptText,
+          file_name: fileName,
+          duration_seconds: durationSeconds ?? null,
+          object_concepts: responseData.objectConcepts || [],
+          tracks: responseData.tracks || [],
+          boxes: responseData.boxes || [],
+          svg_paths: responseData.svgPaths || [],
+          billed_requests: responseData.billedRequests || 1,
+          model_id: responseData.modelId || "sam-3.1",
+          latency_ms: Math.round(totalProcessingTimeMs),
+        });
       }
+    } catch (dbErr) {
+      console.warn("[sam-test] Database persist skipped:", dbErr);
     }
 
     return NextResponse.json(responseData);

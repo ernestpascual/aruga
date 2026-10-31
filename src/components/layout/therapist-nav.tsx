@@ -9,15 +9,14 @@ import {
   MessageSquare,
   LogOut,
   Stethoscope,
-  Sparkles,
   Bot,
   Scan,
   UserCheck,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Badge } from "@/components/ui/badge";
-import { siteConfig } from "@/config/site";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { NotificationsDropdown } from "@/components/ui/notifications-dropdown";
 import { useAuth } from "@/lib/supabase/auth-context";
 
 export function TherapistNav() {
@@ -69,12 +68,6 @@ export function TherapistNav() {
 
         {/* Right side status, profile, and role */}
         <div className="flex items-center gap-2.5 sm:gap-3">
-          {siteConfig.ai.mode === "mock" && (
-            <div className="hidden sm:flex items-center gap-1 text-[11px] text-amber-300 bg-amber-950/50 border border-amber-700/50 px-2 py-0.5 rounded-full">
-              <Sparkles className="w-3 h-3 text-amber-400" />
-              <span>Mock AI Active</span>
-            </div>
-          )}
 
           <Link
             href="/therapist/profile"
@@ -89,6 +82,8 @@ export function TherapistNav() {
               {profile?.display_name || "Profile"}
             </span>
           </Link>
+
+          <NotificationsDropdown role="therapist" />
 
           <ThemeToggle />
 

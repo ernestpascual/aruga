@@ -43,6 +43,7 @@ function ClientHomeContent() {
   const [selectedPersona, setSelectedPersona] = useState<"adult" | "pediatric">(initialMode);
   const [programs, setPrograms] = useState<HomeProgram[]>([]);
   const [loading, setLoading] = useState(true);
+  const [participationStats, setParticipationStats] = useState({ submitted: 0, reviewed: 0 });
 
   useEffect(() => {
     const param = searchParams.get("demoPatient");
@@ -69,6 +70,19 @@ function ClientHomeContent() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    if (!isDemo && user?.id) {
+      fetch(`/api/client/submissions?clientUserId=${user.id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.submissions && Array.isArray(data.submissions)) {
+            const subs = data.submissions;
+            const revs = subs.filter((s: any) => s.state === "reviewed" || s.review);
+            setParticipationStats({ submitted: subs.length, reviewed: revs.length });
+          }
+        })
+        .catch(() => {});
+    }
   }, [user?.id, isDemo]);
 
   const activeAssignedProgram = programs.length > 0 ? programs[0] : null;
@@ -288,11 +302,15 @@ function ClientHomeContent() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-center">
-              <div className="text-2xl font-bold text-teal-400">{isDemo ? 1 : 0}</div>
+              <div className="text-2xl font-bold text-teal-400">
+                {isDemo ? 1 : participationStats.submitted}
+              </div>
               <div className="text-xs text-zinc-400 mt-0.5">Routines Submitted</div>
             </div>
             <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-center">
-              <div className="text-2xl font-bold text-zinc-100">{isDemo ? 1 : 0}</div>
+              <div className="text-2xl font-bold text-zinc-100">
+                {isDemo ? 1 : participationStats.reviewed}
+              </div>
               <div className="text-xs text-zinc-400 mt-0.5">Reviews Received</div>
             </div>
           </div>

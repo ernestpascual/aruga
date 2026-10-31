@@ -37,6 +37,7 @@ DECLARE
   v_role TEXT;
   v_name TEXT;
   v_category TEXT;
+  v_therapist_id UUID;
 BEGIN
   v_role := COALESCE(new.raw_user_meta_data->>'role', 'client');
   v_name := COALESCE(
@@ -45,6 +46,17 @@ BEGIN
     split_part(new.email, '@', 1)
   );
   v_category := new.raw_user_meta_data->>'client_category';
+
+  -- Extract therapist_id if provided in raw_user_meta_data
+  IF (new.raw_user_meta_data->>'therapist_id' IS NOT NULL AND new.raw_user_meta_data->>'therapist_id' <> '') THEN
+    BEGIN
+      v_therapist_id := (new.raw_user_meta_data->>'therapist_id')::uuid;
+    EXCEPTION WHEN OTHERS THEN
+      v_therapist_id := NULL;
+    END;
+  ELSE
+    v_therapist_id := NULL;
+  END IF;
 
   -- 1. Upsert Profile (Prevents duplicate profiles by user ID)
   INSERT INTO public.profiles (
@@ -68,9 +80,17 @@ BEGIN
     client_category = COALESCE(EXCLUDED.client_category, public.profiles.client_category),
     updated_at = NOW();
 
-  -- 2. If user is a Client, ensure Patient record is linked without duplication
+  -- If therapist_id is provided, ensure therapist profile exists so foreign key is satisfied
+  IF (v_therapist_id IS NOT NULL) THEN
+    INSERT INTO public.profiles (id, display_name, role, created_at, updated_at)
+    VALUES (v_therapist_id, 'Occupational Therapist', 'therapist', NOW(), NOW())
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+
+  -- 2. If user is a Client, ensure Patient record is linked with therapist_id
   IF (v_role = 'client') THEN
     INSERT INTO public.patients (
+      therapist_id,
       client_user_id,
       name,
       email,
@@ -80,6 +100,7 @@ BEGIN
       created_at,
       updated_at
     ) VALUES (
+      v_therapist_id,
       new.id,
       v_name,
       LOWER(TRIM(new.email)),
@@ -90,6 +111,7 @@ BEGIN
       NOW()
     )
     ON CONFLICT (email) DO UPDATE SET
+      therapist_id = COALESCE(EXCLUDED.therapist_id, public.patients.therapist_id),
       client_user_id = EXCLUDED.client_user_id,
       client_category = COALESCE(EXCLUDED.client_category, public.patients.client_category),
       name = COALESCE(EXCLUDED.name, public.patients.name),
