@@ -401,14 +401,16 @@ function TherapistSubmissionReviewContent({
     fetchSubmission();
   }, [submissionId, isDemo]);
 
-  // Load activity completions (digital coloring + printed photo) for each step submission
+  // Load activity completions (private per patient — therapist must own patient)
   useEffect(() => {
     if (stepSubmissions.length === 0) return;
     let cancelled = false;
+    const userId = (()=> { try { return JSON.parse(localStorage.getItem("aruga_user")||"null")?.id || ""; } catch { return ""; } })();
     Promise.all(
       stepSubmissions.map(async (ss) => {
         try {
-          const r = await fetch(`/api/activity-completions?stepSubmissionId=${ss.id}`);
+          const qs = userId ? `&requesterId=${userId}` : "";
+          const r = await fetch(`/api/activity-completions?stepSubmissionId=${ss.id}${qs}`);
           const d = await r.json();
           const comp = d.completions?.[0] as Record<string, unknown> | undefined;
           return { id: ss.id, comp: comp || null };

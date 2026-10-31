@@ -7,14 +7,17 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Palette } from "lucide-react";
+import { useAuth } from "@/lib/supabase/auth-context";
 
 export default function ClientActivitiesGalleryPage() {
+  const { user } = useAuth();
   const [activities, setActivities] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/activities").then(r=>r.json()).then(d=> setActivities(d.activities || [])).finally(()=> setLoading(false));
-  }, []);
+    if (!user?.id) return;
+    fetch(`/api/activities?clientUserId=${user.id}`).then(r=>r.json()).then(d=> setActivities(d.activities || [])).finally(()=> setLoading(false));
+  }, [user?.id]);
 
   if (loading) return <div className="p-8 text-center text-xs text-zinc-500">Loading activities...</div>;
 

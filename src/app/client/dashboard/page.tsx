@@ -634,7 +634,7 @@ export default function ClientDashboardPage() {
           {/* Clinician Connection Card */}
           {linkData?.linked ? (
             <Card className="bg-teal-950/20 border-teal-500/30 flex flex-col h-full">
-              <CardContent className="p-6 space-y-3">
+              <CardContent className="p-6 pt-6 space-y-3">
                 <div className="flex items-center">
                   <span className="text-[11px] font-semibold text-teal-400 uppercase tracking-wider">
                     Care Team Clinician
@@ -663,7 +663,7 @@ export default function ClientDashboardPage() {
             </Card>
           ) : linkData?.invitation_status === "pending" ? (
             <Card className="bg-gradient-to-b from-amber-950/30 to-zinc-900 border-amber-500/40 flex flex-col h-full">
-              <CardContent className="p-6 space-y-3.5">
+              <CardContent className="p-6 pt-6 space-y-3.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider">
                     Pending Connection

@@ -3,6 +3,11 @@ import { getMockStore, DEMO_CLIENT_ID } from "@/lib/supabase/mock-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ProgramStep, Submission, StepSubmission } from "@/types/database";
 
+async function ownsPatientCheck(admin: NonNullable<ReturnType<typeof createAdminClient>>, patientId: string, requesterId: string) {
+  const { data: pat } = await admin.from("patients").select("client_user_id, therapist_id").eq("id", patientId).maybeSingle();
+  if (!pat) return false;
+  return pat.client_user_id === requesterId || pat.therapist_id === requesterId;
+}
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -10,6 +15,7 @@ export async function GET(req: NextRequest) {
     const programId = searchParams.get("programId");
     let patientId = searchParams.get("patientId");
     const clientUserId = searchParams.get("clientUserId");
+    const requesterId = searchParams.get("requesterId") || clientUserId;
     const scheduledDate = searchParams.get("scheduledDate") || searchParams.get("scheduled_date");
 
     const admin = createAdminClient();
@@ -25,6 +31,14 @@ export async function GET(req: NextRequest) {
         if (patientRecord) {
           patientId = patientRecord.id;
         }
+      }
+
+      // Ownership check: if patientId filter supplied, verify requester owns it
+      if (patientId && requesterId) {
+        const ok = await ownsPatientCheck(admin, patientId, requesterId);
+        if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      } else if (patientId && !requesterId) {
+        return NextResponse.json({ error: "requesterId required" }, { status: 403 });
       }
 
       let query = admin.from("submissions").select(`
@@ -50,6 +64,23 @@ export async function GET(req: NextRequest) {
       if (!error && dbSubs) {
         if (dbSubs.length === 0) {
           return NextResponse.json({ submissions: [], submission: null });
+        }
+
+        // Post-filter: verify each result's patient belongs to requester (prevents IDOR via submissionId)
+        if (requesterId) {
+          const filtered = [];
+          for (const s of dbSubs) {
+            const ok = await ownsPatientCheck(admin, s.patient_id, requesterId);
+            if (ok) filtered.push(s);
+          }
+          if (filtered.length === 0) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+          filtered.forEach((sub) => {
+            if (sub.program && Array.isArray(sub.program.steps)) {
+              sub.program.steps.sort((a: ProgramStep, b: ProgramStep) => a.position - b.position);
+            }
+          });
+          if (submissionId) return NextResponse.json({ submission: filtered[0], submissions: filtered });
+          return NextResponse.json({ submissions: filtered, submission: filtered[0] });
         }
 
         // Sort steps in program and order step_submissions to match step position

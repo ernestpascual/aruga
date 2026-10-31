@@ -17,16 +17,27 @@ const AddClientSchema = z.object({
   therapistId: z.string().optional().nullable(),
 });
 
+async function ownsPatientCheck(admin: NonNullable<ReturnType<typeof createAdminClient>>, patientId: string, requesterId: string) {
+  const { data: pat } = await admin.from("patients").select("client_user_id, therapist_id").eq("id", patientId).maybeSingle();
+  if (!pat) return false;
+  return pat.client_user_id === requesterId || pat.therapist_id === requesterId;
+}
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const therapistId = searchParams.get("therapistId");
+    const requesterId = searchParams.get("requesterId") || therapistId;
     const requestedId = searchParams.get("id") || searchParams.get("patientId");
     const isDemo = searchParams.get("isDemo") === "true";
     const admin = createAdminClient();
 
     if (admin) {
       if (requestedId) {
+        // Single-patient fetch requires ownership proof to prevent IDOR enumeration
+        if (requesterId) {
+          const ok = await ownsPatientCheck(admin, requestedId, requesterId);
+          if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
         const { data: patient, error } = await admin
           .from("patients")
           .select("*")
@@ -245,6 +256,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ clients: [] });
+    // List path falls through below with therapistId scoping (not broad dump)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -780,6 +792,7 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const { searchParams } = new URL(req.url);
     const id = body.id || body.clientId || searchParams.get("id");
+    const patchRequester = body.requesterId || searchParams.get("requesterId") || req.headers.get("x-requester-id");
 
     if (!id) {
       return NextResponse.json({ error: "Client id is required for update" }, { status: 400 });
@@ -815,6 +828,10 @@ export async function PATCH(req: NextRequest) {
     if (action === "decline") updates.invitation_status = "declined";
 
     if (admin) {
+      if (patchRequester) {
+        const ok = await ownsPatientCheck(admin, id, patchRequester);
+        if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       const { data: updatedPatient, error: updateError } = await admin
         .from("patients")
         .update(updates)
@@ -888,6 +905,7 @@ export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     let id = searchParams.get("id");
+    const delReq = searchParams.get("requesterId") || req.headers.get("x-requester-id");
 
     if (!id) {
       try {
@@ -905,6 +923,10 @@ export async function DELETE(req: NextRequest) {
     const admin = createAdminClient();
 
     if (admin) {
+      if (delReq) {
+        const ok = await ownsPatientCheck(admin, id!, delReq);
+        if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       // 1. Delete associated messages
       await admin.from("messages").delete().eq("patient_id", id);
 

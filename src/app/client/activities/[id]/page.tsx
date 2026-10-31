@@ -23,8 +23,19 @@ export default function ClientActivityPage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   useEffect(() => {
-    fetch(`/api/activities?id=${id}`).then(r=>r.json()).then(d=> setActivity(d.activity || null)).finally(()=> setLoading(false));
-    // Resolve patientId from user's linked patient
+    if (!id) return;
+    // Load activity scoped to this client's assigned programs for privacy
+    const loadActivity = async () => {
+      try {
+        const q = user?.id ? `?id=${id}&clientUserId=${user.id}` : `?id=${id}`;
+        const res = await fetch(`/api/activities${q}`);
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || "Not assigned to your program");
+        setActivity(d.activity || null);
+      } catch { setActivity(null); }
+      finally { setLoading(false); }
+    };
+    loadActivity();
     if (user?.id) {
       fetch(`/api/therapist/clients?clientUserId=${user.id}`).then(r=>r.json()).then(d=> {
         const p = d.patients?.[0] || d.patient || d.patients;
@@ -32,8 +43,6 @@ export default function ClientActivityPage() {
         else if (d.patient?.id) setPatientId(d.patient.id);
         else if (p?.id) setPatientId(p.id);
       }).catch(()=>{});
-      // fallback via programs API lookup
-      fetch(`/api/therapist/clients`).then(()=>{}).catch(()=>{});
     }
   }, [id, user?.id]);
 

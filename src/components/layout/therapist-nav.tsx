@@ -15,6 +15,7 @@ import {
   Palette,
   Wrench,
   ChevronDown,
+  BookOpen,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { NotificationsDropdown } from "@/components/ui/notifications-dropdown";
@@ -44,6 +45,7 @@ export function TherapistNav() {
       label: "Tools",
       icon: Wrench,
       children: [
+        { href: "/therapist/guide", label: "How to use Aruga", icon: BookOpen },
         { href: "/aruga-guide", label: "Guide", icon: HeartHandshake },
         { href: "/sam-test", label: "SAM Test", icon: Scan },
       ],

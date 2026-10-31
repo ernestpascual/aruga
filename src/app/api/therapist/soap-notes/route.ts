@@ -5,11 +5,17 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { SoapNote } from "@/types/database";
 import { logAuditEvent } from "@/lib/hipaa/audit";
 
+async function ownsPatientCheck(admin: NonNullable<ReturnType<typeof createAdminClient>>, patientId: string, requesterId: string) {
+  const { data: pat } = await admin.from("patients").select("client_user_id, therapist_id").eq("id", patientId).maybeSingle();
+  if (!pat) return false;
+  return pat.client_user_id === requesterId || pat.therapist_id === requesterId;
+}
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     let patientId = searchParams.get("patientId");
     const clientUserId = searchParams.get("clientUserId");
+    const requesterId = searchParams.get("requesterId") || clientUserId || req.headers.get("x-requester-id");
     const noteId = searchParams.get("id");
     const isDemo = searchParams.get("isDemo") === "true";
     const all = searchParams.get("all") === "true";
@@ -27,6 +33,14 @@ export async function GET(req: NextRequest) {
         if (patientRecord) {
           patientId = patientRecord.id;
         }
+      }
+
+      if (all) return NextResponse.json({ error: "Forbidden: unscoped list not allowed" }, { status: 403 });
+      if (patientId && requesterId) {
+        const ok = await ownsPatientCheck(admin, patientId, requesterId);
+        if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      } else if (patientId && !requesterId) {
+        return NextResponse.json({ error: "requesterId required" }, { status: 403 });
       }
 
       if (all || patientId || noteId) {

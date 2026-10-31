@@ -29,8 +29,12 @@ export function AttachActivityPanel({
 
   useEffect(() => {
     setLoading(true);
-    fetch("/api/activities").then(r=>r.json()).then(d=> setActivities(d.activities || [])).finally(()=> setLoading(false));
-  }, []);
+    // Therapist library: only activities they created (privacy) — can re-assign to this patient’s Home Program
+    // If they attach it, client then sees it via patientId scope.
+    const uid = typeof window !== "undefined" ? (()=>{ try{return JSON.parse(localStorage.getItem("aruga_user")||"null")?.id||""}catch{return ""}})() : "";
+    const q = uid ? `/api/activities?creatorId=${uid}` : `/api/activities?patientId=${patientId}`;
+    fetch(q).then(r=>r.json()).then(d=> setActivities(d.activities || [])).finally(()=> setLoading(false));
+  }, [patientId]);
 
   function attach(activity: Record<string, unknown>, stepIndex: number) {
     const copy = [...steps];

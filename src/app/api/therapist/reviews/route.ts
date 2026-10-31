@@ -4,11 +4,19 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { logAuditEvent } from "@/lib/hipaa/audit";
 
+async function ownsSubmissionPatient(admin: NonNullable<ReturnType<typeof createAdminClient>>, submissionId: string, requesterId: string) {
+  const { data: sub } = await admin.from("submissions").select("patient_id").eq("id", submissionId).maybeSingle();
+  if (!sub?.patient_id) return false;
+  const { data: pat } = await admin.from("patients").select("client_user_id, therapist_id").eq("id", sub.patient_id).maybeSingle();
+  if (!pat) return false;
+  return pat.client_user_id === requesterId || pat.therapist_id === requesterId;
+}
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const submissionId = searchParams.get("submissionId");
     const reviewId = searchParams.get("reviewId") || searchParams.get("id");
+    const requesterId = searchParams.get("requesterId") || searchParams.get("therapistId") || req.headers.get("x-requester-id");
 
     if (!submissionId && !reviewId) {
       return NextResponse.json({ error: "submissionId or reviewId is required" }, { status: 400 });
@@ -32,6 +40,13 @@ export async function GET(req: NextRequest) {
       const { data: dbReview, error } = await query.maybeSingle();
 
       if (!error && dbReview) {
+        if (requesterId) {
+          const sid = (dbReview.submission_id as string) || submissionId;
+          if (sid) {
+            const ok = await ownsSubmissionPatient(admin, sid as string, requesterId);
+            if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+          }
+        }
         return NextResponse.json({ review: dbReview });
       }
     }

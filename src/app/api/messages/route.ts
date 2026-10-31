@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { getMockStore, DEMO_THERAPIST_ID, DEMO_CLIENT_ID } from "@/lib/supabase/mock-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+async function ownsPatientCheck(admin: NonNullable<ReturnType<typeof createAdminClient>>, patientId: string, requesterId: string | null) {
+  if (!requesterId) return false;
+  const { data: pat } = await admin.from("patients").select("client_user_id, therapist_id").eq("id", patientId).maybeSingle();
+  if (!pat) return false;
+  return pat.client_user_id === requesterId || pat.therapist_id === requesterId;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const clientUserId = searchParams.get("clientUserId");
     const isDemo = searchParams.get("isDemo") === "true";
     let patientId = searchParams.get("patientId");
+    const requesterId = searchParams.get("requesterId") || searchParams.get("therapistId") || clientUserId;
 
     const admin = createAdminClient();
 
@@ -50,6 +58,14 @@ export async function GET(req: NextRequest) {
       }
 
       if (patientId) {
+        // IDOR fix: verify requester owns this patient thread
+        if (!isDemo && requesterId) {
+          const ok = await ownsPatientCheck(admin, patientId, requesterId);
+          if (!ok) return NextResponse.json({ error: "Forbidden: not your care thread" }, { status: 403 });
+        } else if (!isDemo && !requesterId) {
+          // No proof of ownership for patientId direct fetch — deny to prevent guessing
+          return NextResponse.json({ error: "requesterId required" }, { status: 403 });
+        }
         const { data: dbMessages, error: mErr } = await admin
           .from("messages")
           .select("*, sender_profile:profiles(*), referenced_program:home_programs(id, title, status)")
@@ -220,7 +236,18 @@ export async function POST(req: NextRequest) {
 
     const store = getMockStore();
     const admin = createAdminClient();
+    const postRequesterId = (typeof clientUserId === "string" && clientUserId) ? clientUserId : (customSenderId || null);
+    // Prefer explicit requesterId from form/body header if supplied
+    const bodyRequester = (customSenderId && !customSenderId.startsWith("demo-")) ? customSenderId : postRequesterId;
     patientId = await resolvePatientId(patientId, clientUserId, admin);
+    // Ownership check before write
+    if (admin && patientId && (clientUserId || customSenderId)) {
+      const rId = clientUserId || customSenderId;
+      if (rId && !rId.startsWith("demo-")) {
+        const ok = await ownsPatientCheck(admin, patientId, rId);
+        if (!ok) return NextResponse.json({ error: "Forbidden: patient not in your care" }, { status: 403 });
+      }
+    }
 
     const hasText = typeof text === "string" && text.trim().length > 0;
     const hasImage = !!imageFile;
@@ -422,6 +449,8 @@ export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     let messageId = searchParams.get("id") || searchParams.get("messageId");
+    const delRequesterId = searchParams.get("requesterId") || searchParams.get("clientUserId");
+    const hdrRequester = req.headers.get("x-requester-id") || delRequesterId;
 
     if (!messageId) {
       try {
@@ -438,6 +467,12 @@ export async function DELETE(req: NextRequest) {
 
     const admin = createAdminClient();
     if (admin) {
+      // Ownership check before delete: message -> patient -> owner
+      const { data: row } = await admin.from("messages").select("patient_id, sender_id").eq("id", messageId).maybeSingle();
+      if (row?.patient_id && hdrRequester) {
+        const ok = await ownsPatientCheck(admin, row.patient_id as string, hdrRequester);
+        if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       // try to clean storage object if any
       try {
         const { data: msgRow } = await admin.from("messages").select("attachment_storage_path").eq("id", messageId).maybeSingle();

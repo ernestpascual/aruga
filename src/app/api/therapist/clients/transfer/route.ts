@@ -49,12 +49,15 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient();
 
     if (admin) {
-      // 1. Verify patient exists
+      // 1. Verify patient exists and requester owns it
       const { data: patient, error: patientError } = await admin
         .from("patients")
         .select("*")
         .eq("id", patientId)
         .maybeSingle();
+      if (patient && currentTherapistId && patient.therapist_id !== currentTherapistId) {
+        return NextResponse.json({ error: "Forbidden: not your caseload patient" }, { status: 403 });
+      }
 
       if (patientError || !patient) {
         return NextResponse.json(

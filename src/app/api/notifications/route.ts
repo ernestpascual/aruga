@@ -55,6 +55,16 @@ export async function GET(req: NextRequest) {
     const notifications: AppNotification[] = [];
 
     if (admin) {
+      // Impersonation guard: if session exists, enforce userId == session user id
+      try {
+        const serverClient = await createServerClient();
+        if (serverClient) {
+          const { data: { user } } = await serverClient.auth.getUser();
+          if (user?.id && userId && user.id !== userId) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+          }
+        }
+      } catch {}
       if (role === "therapist") {
         const therapistId = userId || DEMO_THERAPIST_ID;
 

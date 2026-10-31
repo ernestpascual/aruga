@@ -49,7 +49,8 @@ export function StepActivityWorksheet({
     if (!stepSubmissionId || !activity.id) return;
     let cancelled = false;
     setLoadingCompletion(true);
-    fetch(`/api/activity-completions?stepSubmissionId=${stepSubmissionId}`)
+    const qs = clientId ? `&requesterId=${clientId}` : "";
+    fetch(`/api/activity-completions?stepSubmissionId=${stepSubmissionId}${qs}`)
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return;
@@ -59,12 +60,13 @@ export function StepActivityWorksheet({
       .catch(() => {})
       .finally(() => !cancelled && setLoadingCompletion(false));
     return () => { cancelled = true; };
-  }, [stepSubmissionId, activity.id]);
+  }, [stepSubmissionId, activity.id, clientId]);
 
   // Also try lookup by generatedActivityId+patient when no stepSubmission yet
   useEffect(() => {
     if (completion || !activity.id || !patientId || stepSubmissionId) return;
-    fetch(`/api/activity-completions?generatedActivityId=${activity.id}&patientId=${patientId}`)
+    const qs = clientId ? `&requesterId=${clientId}` : `&requesterId=${patientId}`;
+    fetch(`/api/activity-completions?generatedActivityId=${activity.id}&patientId=${patientId}${qs}`)
       .then((r) => r.json())
       .then((d) => {
         const list = (d.completions || []) as Record<string, unknown>[];

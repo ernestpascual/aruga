@@ -66,6 +66,26 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient();
 
     if (admin) {
+      // Ownership gate: verify submissionId+stepId belong to requester's patient before storage write
+      if (submissionId) {
+        const { data: subRow } = await admin.from("submissions").select("patient_id").eq("id", submissionId).maybeSingle();
+        const rq = formData.get("requesterId") as string | null || formData.get("clientUserId") as string | null || req.headers.get("x-requester-id");
+        if (subRow?.patient_id && rq) {
+          const { data: pat } = await admin.from("patients").select("client_user_id, therapist_id").eq("id", subRow.patient_id).maybeSingle();
+          if (pat && pat.client_user_id !== rq && pat.therapist_id !== rq) {
+            return NextResponse.json({ error: "Forbidden: submission not in your care" }, { status: 403 });
+          }
+        }
+        if (stepId) {
+          const { data: ps } = await admin.from("program_steps").select("program_id").eq("id", stepId).maybeSingle();
+          if (ps?.program_id) {
+            const { data: prog } = await admin.from("home_programs").select("patient_id").eq("id", ps.program_id).maybeSingle();
+            if (prog?.patient_id && subRow?.patient_id && prog.patient_id !== subRow.patient_id) {
+              return NextResponse.json({ error: "Step does not belong to this submission's program" }, { status: 400 });
+            }
+          }
+        }
+      }
       // Determine file extension based on mime/name
       let ext = mediaKind === "photo" ? "jpg" : "mp4";
       if (mediaKind === "video") {

@@ -3,6 +3,11 @@ import { getMockStore, DEMO_THERAPIST_ID } from "@/lib/supabase/mock-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { HomeProgram, ProgramStep } from "@/types/database";
 
+async function ownsPatientCheck(admin: NonNullable<ReturnType<typeof createAdminClient>>, patientId: string, requesterId: string) {
+  const { data: pat } = await admin.from("patients").select("client_user_id, therapist_id").eq("id", patientId).maybeSingle();
+  if (!pat) return false;
+  return pat.client_user_id === requesterId || pat.therapist_id === requesterId;
+}
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -10,6 +15,7 @@ export async function GET(req: NextRequest) {
     const patientId = searchParams.get("patientId");
     const clientUserId = searchParams.get("clientUserId");
     const therapistId = searchParams.get("therapistId");
+    const requesterId = searchParams.get("requesterId") || clientUserId || therapistId;
     const isDemo = searchParams.get("isDemo") === "true";
 
     const admin = createAdminClient();
@@ -17,6 +23,13 @@ export async function GET(req: NextRequest) {
 
     if (admin) {
       if (programId) {
+        if (requesterId) {
+          const { data: progRow } = await admin.from("home_programs").select("patient_id").eq("id", programId).maybeSingle();
+          if (progRow?.patient_id) {
+            const ok = await ownsPatientCheck(admin, progRow.patient_id, requesterId);
+            if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+          }
+        }
         const { data: dbProg, error } = await admin
           .from("home_programs")
           .select("*, steps:program_steps(*, generated_activity:generated_activities(*)), patient:patients(*)")
@@ -50,6 +63,10 @@ export async function GET(req: NextRequest) {
         }
       }
 
+      if (resolvedPatientId && requesterId) {
+        const ok = await ownsPatientCheck(admin, resolvedPatientId, requesterId);
+        if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       let query = admin.from("home_programs").select("*, steps:program_steps(*, generated_activity:generated_activities(*))");
       if (resolvedPatientId) {
         query = query.eq("patient_id", resolvedPatientId);
