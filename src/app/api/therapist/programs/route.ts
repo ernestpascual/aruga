@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMockStore, DEMO_THERAPIST_ID } from "@/lib/supabase/mock-store";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 import { HomeProgram, ProgramStep } from "@/types/database";
 
 async function ownsPatientCheck(admin: NonNullable<ReturnType<typeof createAdminClient>>, patientId: string, requesterId: string) {
@@ -166,8 +167,24 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { action, patientId, programId, title, mainInstructions, steps, scheduledDates, scheduled_dates } = body;
     const store = getMockStore();
-    const therapistId = DEMO_THERAPIST_ID;
     const admin = createAdminClient();
+    const headerRequester = req.headers.get("x-requester-id") || req.headers.get("x-user-id");
+    let resolvedTherapistId: string | null = (body.therapistId || body.requesterId || body.creatorId || headerRequester || null) as string | null;
+    if (!resolvedTherapistId) {
+      try {
+        const serverClient = await createServerClient();
+        if (serverClient) {
+          const { data: { user } } = await serverClient.auth.getUser();
+          if (user?.id) resolvedTherapistId = user.id;
+        }
+      } catch {}
+    }
+    const isDemoPrograms = body.isDemo === true || new URL(req.url).searchParams.get("isDemo") === "true";
+    if (!resolvedTherapistId) {
+      if (isDemoPrograms || !admin) resolvedTherapistId = DEMO_THERAPIST_ID;
+      else return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const therapistId = resolvedTherapistId;
 
     const rawDates = scheduledDates || scheduled_dates || [];
     const cleanedDates: string[] = Array.isArray(rawDates)
@@ -185,6 +202,8 @@ export async function POST(req: NextRequest) {
       if (admin) {
         const { data: srcProg } = await admin.from("home_programs").select("*").eq("id", programId).single();
         if (srcProg) {
+          const okDup = await ownsPatientCheck(admin, srcProg.patient_id, therapistId);
+          if (!okDup) return NextResponse.json({ error: "Not found" }, { status: 404 });
           const targetTitle = `${srcProg.title} (Copy)`;
           // Deduplicate: check if a copy was created within the last 4 seconds
           const recentWindow = new Date(Date.now() - 4000).toISOString();
@@ -283,6 +302,11 @@ export async function POST(req: NextRequest) {
     // 2. ASSIGN PROGRAM
     if (action === "assign" && programId) {
       if (admin) {
+        const { data: progRowAssign } = await admin.from("home_programs").select("patient_id").eq("id", programId).maybeSingle();
+        if (progRowAssign?.patient_id) {
+          const okAssign = await ownsPatientCheck(admin, progRowAssign.patient_id, therapistId);
+          if (!okAssign) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        }
         await admin
           .from("home_programs")
           .update({ status: "assigned", assigned_at: new Date().toISOString(), updated_at: new Date().toISOString() })
@@ -302,6 +326,11 @@ export async function POST(req: NextRequest) {
     // 3. ARCHIVE PROGRAM
     if (action === "archive" && programId) {
       if (admin) {
+        const { data: progRowArch } = await admin.from("home_programs").select("patient_id").eq("id", programId).maybeSingle();
+        if (progRowArch?.patient_id) {
+          const okArch = await ownsPatientCheck(admin, progRowArch.patient_id, therapistId);
+          if (!okArch) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        }
         await admin
           .from("home_programs")
           .update({ status: "archived", updated_at: new Date().toISOString() })
@@ -328,6 +357,8 @@ export async function POST(req: NextRequest) {
     const trimmedTitle = title.trim();
 
     if (admin) {
+      const okCreate = await ownsPatientCheck(admin, patientId, therapistId);
+      if (!okCreate) return NextResponse.json({ error: "Not found" }, { status: 404 });
       // Deduplicate: check if a program with the same title for this patient was created within 5 seconds
       const recentWindow = new Date(Date.now() - 5000).toISOString();
       const { data: existingProg } = await admin
@@ -436,6 +467,16 @@ export async function PATCH(req: NextRequest) {
 
     const { title, mainInstructions, status, steps, scheduledDates, scheduled_dates } = body;
     const admin = createAdminClient();
+    let patchRequester: string | null = (body.requesterId || body.therapistId || searchParams.get("requesterId") || req.headers.get("x-requester-id")) as string | null;
+    if (!patchRequester) {
+      try {
+        const serverClient = await createServerClient();
+        if (serverClient) {
+          const { data: { user } } = await serverClient.auth.getUser();
+          if (user?.id) patchRequester = user.id;
+        }
+      } catch {}
+    }
 
     const updates: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -463,6 +504,16 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (admin) {
+      if (patchRequester) {
+        const { data: progRowPatch } = await admin.from("home_programs").select("patient_id").eq("id", targetId).maybeSingle();
+        if (progRowPatch?.patient_id) {
+          const okPatch = await ownsPatientCheck(admin, progRowPatch.patient_id, patchRequester);
+          if (!okPatch) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        }
+      } else {
+        const isDemoPatchPrograms = body.isDemo === true || searchParams.get("isDemo") === "true";
+        if (!isDemoPatchPrograms) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
       const { data: updatedProg, error: pErr } = await admin
         .from("home_programs")
         .update(updates)
@@ -566,6 +617,26 @@ export async function DELETE(req: NextRequest) {
     const admin = createAdminClient();
 
     if (admin) {
+      let delRequesterProg: string | null = (searchParams.get("requesterId") || searchParams.get("therapistId") || req.headers.get("x-requester-id")) as string | null;
+      if (!delRequesterProg) {
+        try {
+          const serverClient = await createServerClient();
+          if (serverClient) {
+            const { data: { user } } = await serverClient.auth.getUser();
+            if (user?.id) delRequesterProg = user.id;
+          }
+        } catch {}
+      }
+      if (delRequesterProg) {
+        const { data: progRowDel } = await admin.from("home_programs").select("patient_id").eq("id", targetId).maybeSingle();
+        if (progRowDel?.patient_id) {
+          const okDel = await ownsPatientCheck(admin, progRowDel.patient_id, delRequesterProg);
+          if (!okDel) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        }
+      } else {
+        const isDemoDel = searchParams.get("isDemo") === "true";
+        if (!isDemoDel) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
       // 1. Delete associated submissions and their reviews/step submissions
       const { data: subs } = await admin.from("submissions").select("id").eq("program_id", targetId);
       const subIds = subs?.map((s) => s.id) || [];

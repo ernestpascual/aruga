@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 import { generateActivity } from "@/lib/meta-ai";
 import { MetaApiError } from "@/lib/meta/errors";
 
@@ -39,6 +40,27 @@ export async function POST(req: NextRequest) {
     let dbTemplateTitle: string | undefined;
 
     const admin = createAdminClient();
+    // C1 write-guard: verify requester owns patientId and derive creatorId from auth
+    let authenticatedCreatorId: string | null = null;
+    try {
+      const serverClient = await createServerClient();
+      if (serverClient) {
+        const { data: { user } } = await serverClient.auth.getUser();
+        if (user?.id) authenticatedCreatorId = user.id;
+      }
+    } catch {}
+    const headerRequester = req.headers.get("x-requester-id") || req.headers.get("x-user-id");
+    const effectiveRequesterId = authenticatedCreatorId || headerRequester || (creatorId as string | null) || null;
+    if (admin && patientId) {
+      if (!effectiveRequesterId) {
+        return NextResponse.json({ error: "requesterId required" }, { status: 403 });
+      }
+      const { data: pat } = await admin.from("patients").select("client_user_id, therapist_id").eq("id", patientId).maybeSingle();
+      if (!pat) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      const owns = pat.client_user_id === effectiveRequesterId || pat.therapist_id === effectiveRequesterId;
+      if (!owns) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const verifiedCreatorId = authenticatedCreatorId || effectiveRequesterId || (creatorId as string | null) || null;
     if (templateId && admin) {
       const { data: tmpl } = await admin.from("activity_templates").select("*").eq("id", templateId).maybeSingle();
       if (tmpl) {
@@ -77,7 +99,7 @@ export async function POST(req: NextRequest) {
       // For data URLs (mock), store as-is in base_image_url; for http URLs keep as URL
       // For generation, we want to persist spark_spec and prompts
       const insertRow = {
-        creator_id: creatorId || null,
+        creator_id: verifiedCreatorId || null,
         patient_id: patientId || null,
         template_id: templateId || null,
         age_band: ageBand,

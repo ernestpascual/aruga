@@ -61,9 +61,8 @@ export async function GET(req: NextRequest) {
         // IDOR fix: verify requester owns this patient thread
         if (!isDemo && requesterId) {
           const ok = await ownsPatientCheck(admin, patientId, requesterId);
-          if (!ok) return NextResponse.json({ error: "Forbidden: not your care thread" }, { status: 403 });
+          if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
         } else if (!isDemo && !requesterId) {
-          // No proof of ownership for patientId direct fetch — deny to prevent guessing
           return NextResponse.json({ error: "requesterId required" }, { status: 403 });
         }
         const { data: dbMessages, error: mErr } = await admin
@@ -77,6 +76,18 @@ export async function GET(req: NextRequest) {
           .select("id, title, status")
           .eq("patient_id", patientId)
           .neq("status", "draft");
+
+        if (!mErr && dbMessages) {
+          for (const msg of dbMessages) {
+            const sp = (msg as Record<string, unknown>).attachment_storage_path as string | null;
+            if (sp && typeof sp === "string" && sp.length > 0) {
+              try {
+                const { data: signed } = await admin.storage.from(CHAT_BUCKET).createSignedUrl(sp, 60 * 60);
+                if (signed?.signedUrl) (msg as Record<string, unknown>).attachment_url = signed.signedUrl;
+              } catch {}
+            }
+          }
+        }
 
         if (!mErr && dbMessages && dbMessages.length > 0) {
           if (isDemo && dbMessages.length < 4) {
@@ -245,7 +256,7 @@ export async function POST(req: NextRequest) {
       const rId = clientUserId || customSenderId;
       if (rId && !rId.startsWith("demo-")) {
         const ok = await ownsPatientCheck(admin, patientId, rId);
-        if (!ok) return NextResponse.json({ error: "Forbidden: patient not in your care" }, { status: 403 });
+        if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
     }
 
@@ -296,22 +307,37 @@ export async function POST(req: NextRequest) {
       if (admin) {
         try {
           const ext = imageFile.name.split(".").pop() || "jpg";
-          const storagePath = `${patientId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-          const { error: upErr } = await admin.storage.from(CHAT_BUCKET).upload(storagePath, imageFile, {
+          const storagePath = `${patientId}/${Date.now()}-${Math.random().toString(36).slice(2, 14)}.${ext}`;
+          let uploadPayload: File | Buffer = imageFile;
+          if (imageFile.type.startsWith("image/")) {
+            try {
+              const ab = await imageFile.arrayBuffer();
+              let buf: Buffer = Buffer.from(ab);
+              const sharp = (eval("require") as unknown as (m: string) => unknown)("sharp") as unknown as (b: Buffer) => { rotate: () => { withMetadata: (o: Record<string, unknown>) => { toBuffer: () => Promise<Buffer> } } };
+              const processed = await sharp(buf).rotate().withMetadata({}).toBuffer();
+              buf = processed;
+              uploadPayload = buf;
+            } catch {
+              // fallback to original file - client canvas already stripped
+            }
+          }
+          const { error: upErr } = await admin.storage.from(CHAT_BUCKET).upload(storagePath, uploadPayload as File, {
             contentType: imageFile.type,
             cacheControl: "3600",
             upsert: false,
           });
           if (!upErr) {
             attachmentStoragePath = storagePath;
-            // try signed URL (bucket is private); fallback to public URL if signed fails
+            // try signed URL (bucket is private) with short TTL (60 min for chat-attachments)
             try {
-              const { data: signed } = await admin.storage.from(CHAT_BUCKET).createSignedUrl(storagePath, 60 * 60 * 24 * 7);
+              const { data: signed } = await admin.storage.from(CHAT_BUCKET).createSignedUrl(storagePath, 60 * 60);
               attachmentUrl = signed?.signedUrl || null;
             } catch {}
             if (!attachmentUrl) {
-              const { data: pub } = admin.storage.from(CHAT_BUCKET).getPublicUrl(storagePath);
-              attachmentUrl = pub?.publicUrl || null;
+              try {
+                const { data: signedRetry } = await admin.storage.from(CHAT_BUCKET).createSignedUrl(storagePath, 60 * 60);
+                if (signedRetry?.signedUrl) attachmentUrl = signedRetry.signedUrl;
+              } catch {}
             }
           } else {
             // upload failed (bucket missing/policy) → fallback to base64 inline (still free-tier small due to client compression)
@@ -471,7 +497,7 @@ export async function DELETE(req: NextRequest) {
       const { data: row } = await admin.from("messages").select("patient_id, sender_id").eq("id", messageId).maybeSingle();
       if (row?.patient_id && hdrRequester) {
         const ok = await ownsPatientCheck(admin, row.patient_id as string, hdrRequester);
-        if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
       // try to clean storage object if any
       try {

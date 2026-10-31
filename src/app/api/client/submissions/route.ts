@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       // Ownership check: if patientId filter supplied, verify requester owns it
       if (patientId && requesterId) {
         const ok = await ownsPatientCheck(admin, patientId, requesterId);
-        if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
       } else if (patientId && !requesterId) {
         return NextResponse.json({ error: "requesterId required" }, { status: 403 });
       }
@@ -73,12 +73,27 @@ export async function GET(req: NextRequest) {
             const ok = await ownsPatientCheck(admin, s.patient_id, requesterId);
             if (ok) filtered.push(s);
           }
-          if (filtered.length === 0) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+          if (filtered.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
           filtered.forEach((sub) => {
             if (sub.program && Array.isArray(sub.program.steps)) {
               sub.program.steps.sort((a: ProgramStep, b: ProgramStep) => a.position - b.position);
             }
           });
+          for (const s of filtered) {
+            if (Array.isArray((s as unknown as { step_submissions?: unknown[] }).step_submissions)) {
+              for (const ss of (s as unknown as { step_submissions: Array<Record<string, unknown>> }).step_submissions) {
+                const sp = (ss as Record<string, unknown>).media_meta && typeof (ss as Record<string, unknown>).media_meta === "object"
+                  ? ((ss as Record<string, unknown>).media_meta as Record<string, unknown>).storagePath as string || ((ss as Record<string, unknown>).media_meta as Record<string, unknown>).storage_path as string || ss.video_path as string
+                  : ss.video_path as string;
+                if (sp && typeof sp === "string" && sp.startsWith("submissions/")) {
+                  try {
+                    const { data: signed } = await admin.storage.from("program-videos").createSignedUrl(sp, 60 * 15);
+                    if (signed?.signedUrl) ss.video_path = signed.signedUrl;
+                  } catch {}
+                }
+              }
+            }
+          }
           if (submissionId) return NextResponse.json({ submission: filtered[0], submissions: filtered });
           return NextResponse.json({ submissions: filtered, submission: filtered[0] });
         }
@@ -89,6 +104,21 @@ export async function GET(req: NextRequest) {
             sub.program.steps.sort((a: ProgramStep, b: ProgramStep) => a.position - b.position);
           }
         });
+        for (const s of dbSubs) {
+          if (Array.isArray((s as unknown as { step_submissions?: unknown[] }).step_submissions)) {
+            for (const ss of (s as unknown as { step_submissions: Array<Record<string, unknown>> }).step_submissions) {
+              const sp = (ss as Record<string, unknown>).media_meta && typeof (ss as Record<string, unknown>).media_meta === "object"
+                ? ((ss as Record<string, unknown>).media_meta as Record<string, unknown>).storagePath as string || ((ss as Record<string, unknown>).media_meta as Record<string, unknown>).storage_path as string || ss.video_path as string
+                : ss.video_path as string;
+              if (sp && typeof sp === "string" && sp.startsWith("submissions/")) {
+                try {
+                  const { data: signed } = await admin.storage.from("program-videos").createSignedUrl(sp, 60 * 15);
+                  if (signed?.signedUrl) ss.video_path = signed.signedUrl;
+                } catch {}
+              }
+            }
+          }
+        }
 
         if (submissionId) {
           return NextResponse.json({ submission: dbSubs[0], submissions: dbSubs });

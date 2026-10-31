@@ -3,6 +3,21 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { getMockStore, DEMO_THERAPIST_ID, DEMO_CLIENT_ID, DEMO_PEDIATRIC_CLIENT_ID } from "@/lib/supabase/mock-store";
 
+function maskEmail(e?: string | null): string | undefined {
+  if (!e) return undefined;
+  const at = e.indexOf("@");
+  if (at <= 0) return e;
+  const local = e.slice(0, at);
+  const domain = e.slice(at + 1);
+  return `${local[0]}***@${domain}`;
+}
+
+async function ownsPatientCheckNotif(admin: NonNullable<ReturnType<typeof createAdminClient>>, patientId: string, requesterId: string) {
+  const { data: pat } = await admin.from("patients").select("client_user_id, therapist_id").eq("id", patientId).maybeSingle();
+  if (!pat) return false;
+  return pat.client_user_id === requesterId || pat.therapist_id === requesterId;
+}
+
 export interface AppNotification {
   id: string;
   type: "client_link_request" | "therapist_invitation" | "pending_status" | "info";
@@ -66,7 +81,9 @@ export async function GET(req: NextRequest) {
         }
       } catch {}
       if (role === "therapist") {
-        const therapistId = userId || DEMO_THERAPIST_ID;
+        const isDemoNotifTherapist = searchParams.get("isDemo") === "true" || req.headers.get("x-demo-mode") === "true";
+        const therapistId = userId || (isDemoNotifTherapist || !admin ? DEMO_THERAPIST_ID : null);
+        if (!therapistId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         // Resolve therapist's email
         let therapistEmail: string | null = null;
@@ -141,12 +158,12 @@ export async function GET(req: NextRequest) {
                 ? "Incoming Client Link Request"
                 : "Invitation Sent — Awaiting Client Acceptance",
               description: isClientInitiated
-                ? `${p.name} (${p.email}) requested to connect to your caseload for ${p.condition || "rehabilitation care"}.`
-                : `Invitation sent to ${p.name} (${p.email}). Waiting for client to confirm in their portal.`,
+                ? `${p.name} (${maskEmail(p.email) || p.email}) requested to connect to your caseload for ${p.condition || "rehabilitation care"}.`
+                : `Invitation sent to ${p.name} (${maskEmail(p.email) || p.email}). Waiting for client to confirm in their portal.`,
               timestamp: p.invitation_sent_at || p.created_at || new Date().toISOString(),
               patientId: p.id,
               patientName: p.name,
-              patientEmail: p.email,
+              patientEmail: maskEmail(p.email),
               patientCondition: p.condition,
               patientAge: p.age,
               caregiverName: p.caregiver_name,
@@ -158,7 +175,9 @@ export async function GET(req: NextRequest) {
         }
       } else {
         // Client role: find patient record for this user
-        const clientUserId = userId || DEMO_CLIENT_ID;
+        const isDemoNotifClient = searchParams.get("isDemo") === "true" || req.headers.get("x-demo-mode") === "true";
+        const clientUserId = userId || (isDemoNotifClient || !admin ? DEMO_CLIENT_ID : null);
+        if (!clientUserId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         let patient = null;
 
         const { data: byUser } = await admin
@@ -213,7 +232,7 @@ export async function GET(req: NextRequest) {
             timestamp: patient.invitation_sent_at || patient.created_at || new Date().toISOString(),
             patientId: patient.id,
             patientName: patient.name,
-            patientEmail: patient.email,
+            patientEmail: maskEmail(patient.email),
             therapistId: patient.therapist_id,
             therapistName,
             therapistDiscipline,
@@ -258,12 +277,12 @@ export async function GET(req: NextRequest) {
             ? "Incoming Client Link Request"
             : "Invitation Sent — Awaiting Client Acceptance",
           description: isClientInitiated
-            ? `${p.name} (${p.email}) requested to connect to your caseload for ${p.condition || "rehabilitation care"}.`
-            : `Invitation sent to ${p.name} (${p.email}). Waiting for client to confirm in their portal.`,
+            ? `${p.name} (${maskEmail(p.email) || p.email}) requested to connect to your caseload for ${p.condition || "rehabilitation care"}.`
+            : `Invitation sent to ${p.name} (${maskEmail(p.email) || p.email}). Waiting for client to confirm in their portal.`,
           timestamp: p.invitation_sent_at || p.created_at || new Date().toISOString(),
           patientId: p.id,
           patientName: p.name,
-          patientEmail: p.email,
+          patientEmail: maskEmail(p.email),
           patientCondition: p.condition,
           patientAge: p.age,
           caregiverName: p.caregiver_name,
@@ -298,7 +317,7 @@ export async function GET(req: NextRequest) {
           timestamp: patient.invitation_sent_at || patient.created_at || new Date().toISOString(),
           patientId: patient.id,
           patientName: patient.name,
-          patientEmail: patient.email,
+          patientEmail: maskEmail(patient.email),
           therapistId: patient.therapist_id,
           therapistName,
           therapistDiscipline,
@@ -343,6 +362,20 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient();
 
     if (admin) {
+      let postReqId: string | null = (body.requesterId || body.userId || req.headers.get("x-requester-id")) as string | null;
+      if (!postReqId) {
+        try {
+          const serverClient = await createServerClient();
+          if (serverClient) {
+            const { data: { user } } = await serverClient.auth.getUser();
+            if (user?.id) postReqId = user.id;
+          }
+        } catch {}
+      }
+      if (postReqId) {
+        const okPost = await ownsPatientCheckNotif(admin, patientId, postReqId);
+        if (!okPost) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
       const { data: updatedPatient, error } = await admin
         .from("patients")
         .update({

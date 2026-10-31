@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
         // Single-patient fetch requires ownership proof to prevent IDOR enumeration
         if (requesterId) {
           const ok = await ownsPatientCheck(admin, requestedId, requesterId);
-          if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+          if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
         }
         const { data: patient, error } = await admin
           .from("patients")
@@ -311,8 +311,10 @@ export async function POST(req: NextRequest) {
         // session lookup fallback
       }
     }
+    const isDemoCreate = body.isDemo === true || new URL(req.url).searchParams.get("isDemo") === "true" || req.headers.get("x-demo-mode") === "true";
     if (!creatingTherapistId) {
-      creatingTherapistId = DEMO_THERAPIST_ID;
+      if (isDemoCreate || !admin) creatingTherapistId = DEMO_THERAPIST_ID;
+      else return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     if (admin) {
@@ -830,7 +832,7 @@ export async function PATCH(req: NextRequest) {
     if (admin) {
       if (patchRequester) {
         const ok = await ownsPatientCheck(admin, id, patchRequester);
-        if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
       const { data: updatedPatient, error: updateError } = await admin
         .from("patients")
@@ -925,7 +927,7 @@ export async function DELETE(req: NextRequest) {
     if (admin) {
       if (delReq) {
         const ok = await ownsPatientCheck(admin, id!, delReq);
-        if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
       // 1. Delete associated messages
       await admin.from("messages").delete().eq("patient_id", id);

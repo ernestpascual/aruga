@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
           const sid = (dbReview.submission_id as string) || submissionId;
           if (sid) {
             const ok = await ownsSubmissionPatient(admin, sid as string, requesterId);
-            if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
           }
         }
         return NextResponse.json({ review: dbReview });
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
     }
 
     const store = getMockStore();
-    let therapistId = body.therapistId;
+    let therapistId = body.therapistId || body.requesterId || req.headers.get("x-requester-id") || null;
     if (!therapistId) {
       try {
         const serverClient = await createServerClient();
@@ -128,8 +128,16 @@ export async function POST(req: NextRequest) {
         // ignore
       }
     }
-    if (!therapistId) therapistId = DEMO_THERAPIST_ID;
     const admin = createAdminClient();
+    const isDemoReview = body.isDemo === true || new URL(req.url).searchParams.get("isDemo") === "true" || req.headers.get("x-demo-mode") === "true";
+    if (!therapistId) {
+      if (isDemoReview || !admin) therapistId = DEMO_THERAPIST_ID;
+      else return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (admin && submissionId && therapistId) {
+      const okReview = await ownsSubmissionPatient(admin, submissionId, therapistId);
+      if (!okReview) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
     // 1. CONFIRM OBSERVATIONS
     if (action === "confirm_observation" && stepSubmissionId) {

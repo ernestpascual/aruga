@@ -42,11 +42,12 @@ export async function POST(req: NextRequest) {
         // fallback
       }
     }
-    if (!currentTherapistId) {
-      currentTherapistId = DEMO_THERAPIST_ID;
-    }
-
     const admin = createAdminClient();
+    const isDemoTransfer = (body as Record<string, unknown>).isDemo === true || req.headers.get("x-demo-mode") === "true" || new URL(req.url).searchParams.get("isDemo") === "true";
+    if (!currentTherapistId) {
+      if (isDemoTransfer || !admin) currentTherapistId = DEMO_THERAPIST_ID;
+      else return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     if (admin) {
       // 1. Verify patient exists and requester owns it
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
         .eq("id", patientId)
         .maybeSingle();
       if (patient && currentTherapistId && patient.therapist_id !== currentTherapistId) {
-        return NextResponse.json({ error: "Forbidden: not your caseload patient" }, { status: 403 });
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
 
       if (patientError || !patient) {

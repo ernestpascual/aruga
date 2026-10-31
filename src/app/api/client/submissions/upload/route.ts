@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     if (effectiveSize > maxBytes) {
       return NextResponse.json(
         {
-          error: `File size (${(effectiveSize / 1024 / 1024).toFixed(1)}MB) exceeds the maximum for ${mediaKind} (${maxBytes / 1024 / 1024}MB). ${mediaKind === "photo" ? "Please use a smaller photo." : "Please record a shorter clip (under 30 seconds)."}`,
+          error: `File size (${(effectiveSize / 1024 / 1024).toFixed(1)}MB) exceeds the maximum allowed size of ${maxBytes / 1024 / 1024}MB for ${mediaKind}. ${mediaKind === "photo" ? "Please use a smaller photo." : "Please record a shorter clip (under 30 seconds)."}`,
         },
         { status: 400 }
       );
@@ -102,30 +102,42 @@ export async function POST(req: NextRequest) {
 
       const sanitizedSubId = (submissionId || "demo-sub").replace(/[^a-zA-Z0-9_-]/g, "");
       const sanitizedStepId = (stepId || "step").replace(/[^a-zA-Z0-9_-]/g, "");
-      const storagePath = `submissions/${sanitizedSubId}/${sanitizedStepId}_${Date.now()}.${ext}`;
+      const randomPrefix = Math.random().toString(36).slice(2, 14) + Math.random().toString(36).slice(2, 6);
+      const storagePath = `submissions/${sanitizedSubId}/${randomPrefix}/${sanitizedStepId}_${Date.now()}.${ext}`;
 
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
+      let bufferToUpload: Buffer = buffer;
+      if (mediaKind === "photo") {
+        try {
+          const sharp = (eval("require") as unknown as (m: string) => unknown)("sharp") as unknown as (b: Buffer) => { rotate: () => { withMetadata: (o: Record<string, unknown>) => { toBuffer: () => Promise<Buffer> } } };
+          const processed = await sharp(buffer).rotate().withMetadata({}).toBuffer();
+          bufferToUpload = processed;
+        } catch {
+          // sharp not available — client canvas already strips most GPS
+        }
+      }
 
       // Upload to Cloud Storage (Supabase program-videos hosts both photos & videos)
       let { error: uploadError } = await admin.storage
         .from(BUCKET_NAME)
-        .upload(storagePath, buffer, {
+        .upload(storagePath, bufferToUpload, {
           contentType: effectiveMime,
           upsert: true,
         });
 
       // If bucket does not exist, attempt to create it and retry
+
       if (uploadError && uploadError.message?.toLowerCase().includes("bucket not found")) {
         await admin.storage.createBucket(BUCKET_NAME, {
-          public: true, // public read for therapist/client playback; RLS still protects DB links
+          public: false,
           fileSizeLimit: MAX_VIDEO_BYTES,
           allowedMimeTypes: ["video/mp4", "video/webm", "video/quicktime", "image/jpeg", "image/png", "image/webp", "image/heic"],
         });
 
         const retry = await admin.storage
           .from(BUCKET_NAME)
-          .upload(storagePath, buffer, {
+          .upload(storagePath, bufferToUpload, {
             contentType: effectiveMime,
             upsert: true,
           });
@@ -139,24 +151,26 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Generate signed URL with time-limited token (private bucket)
+      // Generate signed URL with short TTL (C2: 15 min for program-videos, not 7 days)
       let videoUrl = "";
       try {
         const { data: signedData } = await admin.storage
           .from(BUCKET_NAME)
-          .createSignedUrl(storagePath, 60 * 60 * 24 * 7); // 7 days time-limited signed URL
+          .createSignedUrl(storagePath, 60 * 15); // 15 min TTL
         if (signedData?.signedUrl) {
           videoUrl = signedData.signedUrl;
         }
       } catch {
-        // fallback to public url if signed URL generation fails
-        const { data: publicUrlData } = admin.storage.from(BUCKET_NAME).getPublicUrl(storagePath);
-        videoUrl = publicUrlData.publicUrl;
+        // do not fallback to public URL for PHI; leave empty and fallback below will handle
       }
 
       if (!videoUrl) {
-        const { data: publicUrlData } = admin.storage.from(BUCKET_NAME).getPublicUrl(storagePath);
-        videoUrl = publicUrlData.publicUrl;
+        try {
+          const { data: signedRetry } = await admin.storage.from(BUCKET_NAME).createSignedUrl(storagePath, 60 * 15);
+          if (signedRetry?.signedUrl) videoUrl = signedRetry.signedUrl;
+        } catch {}
+        // last resort: store path only; client will request per-view URL via GET
+        if (!videoUrl) videoUrl = storagePath;
       }
 
       // Update step_submissions in database if IDs provided — video_path now holds photo OR video URL
