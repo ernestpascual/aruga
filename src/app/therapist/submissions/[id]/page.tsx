@@ -88,6 +88,7 @@ function TherapistSubmissionReviewContent({
   const [collapsedAssistants, setCollapsedAssistants] = useState<Record<string, boolean>>({});
   const [aiRecords, setAiRecords] = useState<Record<string, AiAnalysisRecord>>({});
   const [confirmedObs, setConfirmedObs] = useState<Record<string, string[]>>({});
+  const [activityCompletions, setActivityCompletions] = useState<Record<string, Record<string, unknown>>>({});
 
   useEffect(() => {
     // Load submission data
@@ -399,6 +400,28 @@ function TherapistSubmissionReviewContent({
 
     fetchSubmission();
   }, [submissionId, isDemo]);
+
+  // Load activity completions (digital coloring + printed photo) for each step submission
+  useEffect(() => {
+    if (stepSubmissions.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      stepSubmissions.map(async (ss) => {
+        try {
+          const r = await fetch(`/api/activity-completions?stepSubmissionId=${ss.id}`);
+          const d = await r.json();
+          const comp = d.completions?.[0] as Record<string, unknown> | undefined;
+          return { id: ss.id, comp: comp || null };
+        } catch { return { id: ss.id, comp: null }; }
+      })
+    ).then((results) => {
+      if (cancelled) return;
+      const map: Record<string, Record<string, unknown>> = {};
+      results.forEach(({ id, comp }) => { if (comp) map[id] = comp; });
+      setActivityCompletions(map);
+    });
+    return () => { cancelled = true; };
+  }, [stepSubmissions.map((s)=>s.id).join("|")]);
 
   // Toggle Assistant Collapse
   const toggleCollapse = (stepSubId: string) => {
@@ -824,11 +847,16 @@ function TherapistSubmissionReviewContent({
                   </h2>
                 </div>
 
-                {stepSub.skipped ? (
-                  <Badge variant="amber" statusText="Skipped by Client" />
-                ) : (
-                  <Badge variant="emerald" statusText="Video Submitted" icon={<Video className="w-3 h-3" />} />
-                )}
+                {(() => {
+                  const mime = (stepSub.media_meta as unknown as { mime?: string; mediaKind?: string })?.mime || "";
+                  const kind = (stepSub.media_meta as unknown as { mediaKind?: string })?.mediaKind;
+                  const isPhoto = kind === "photo" || mime.startsWith("image/");
+                  return stepSub.skipped ? (
+                    <Badge variant="amber" statusText="Skipped by Client" />
+                  ) : (
+                    <Badge variant="emerald" statusText={isPhoto ? "Photo Submitted" : "Video Submitted"} icon={<Video className="w-3 h-3" />} />
+                  );
+                })()}
               </div>
 
               {/* Original Instructions */}
@@ -838,6 +866,48 @@ function TherapistSubmissionReviewContent({
                 </span>
                 <p className="leading-relaxed">{step?.instructions}</p>
               </div>
+
+              {/* Coloring / worksheet activity: show assigned worksheet + client saved version */}
+              {(() => {
+                const ga = (step as unknown as { generated_activity?: { id: string; title: string; instructions: string; base_image_url: string | null; base_image_path?: string | null; age_band?: string } | null })?.generated_activity;
+                if (!ga?.base_image_url) return null;
+                const comp = activityCompletions[stepSub.id] as { drawing_data_url?: string | null; photo_upload_path?: string | null; completion_method?: string; drawing_strokes?: unknown[]; created_at?: string } | undefined;
+                const hasDigital = Boolean(comp?.drawing_data_url && comp?.completion_method !== "photo");
+                const hasPhoto = Boolean(comp?.completion_method === "photo" && comp?.drawing_data_url);
+                return (
+                  <div className="rounded-xl border border-teal-500/20 bg-teal-950/10 overflow-hidden">
+                    <div className="px-3 py-2 bg-zinc-950/60 border-b border-teal-500/10 flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-teal-300 flex items-center gap-1.5">🎨 Worksheet: {ga.title || step?.title}</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">{comp ? (hasPhoto ? "Photo upload" : hasDigital ? "Digital coloring" : "Viewed") : "Not yet completed"}</span>
+                    </div>
+                    <div className="p-3 space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Assigned worksheet</p>
+                          <div className="rounded-lg overflow-hidden border border-zinc-800 bg-white">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={String(ga.base_image_url)} alt={String(ga.title || "Worksheet")} className="w-full h-auto object-contain" />
+                          </div>
+                          <a href={String(ga.base_image_url)} target="_blank" rel="noreferrer" className="inline-flex text-[11px] text-teal-400 hover:text-teal-300 gap-1">Open original <ExternalLink className="w-3 h-3" /></a>
+                        </div>
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Client work — {hasPhoto ? "printed & photographed" : hasDigital ? "saved digital coloring" : "awaiting"}</p>
+                          {comp?.drawing_data_url ? (
+                            <div className="rounded-lg overflow-hidden border border-zinc-800 bg-white">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={String(comp.drawing_data_url)} alt={hasPhoto ? "Client uploaded photo of printed worksheet" : "Client digital coloring"} className="w-full h-auto object-contain" />
+                            </div>
+                          ) : (
+                            <div className="rounded-lg border border-dashed border-zinc-700 bg-zinc-950/60 p-6 text-center text-xs text-zinc-500">No saved coloring/photo yet for this step. Client can draw on screen (crayons + eraser) or print & upload a photo.</div>
+                          )}
+                          {comp?.created_at && <p className="text-[10px] text-zinc-500 font-mono">Saved {new Date(String(comp.created_at)).toLocaleString()}</p>}
+                          {hasDigital && Array.isArray(comp?.drawing_strokes) && <p className="text-[10px] text-zinc-500">{(comp!.drawing_strokes as unknown[]).length} strokes • includes crayon colors & eraser</p>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Client Skip Reason if skipped */}
               {stepSub.skipped && (
@@ -849,26 +919,43 @@ function TherapistSubmissionReviewContent({
                 </div>
               )}
 
-              {/* Video Player or No Video Notice */}
+              {/* Photo/Video Player — Supabase program-videos bucket */}
               {videoSource ? (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs text-zinc-400 px-1">
-                    <span className="flex items-center gap-1.5 text-teal-400 font-medium">
-                      <Video className="w-3.5 h-3.5" /> Uploaded Exercise Video for Step {step?.position || idx + 1}
-                    </span>
-                    <span className="text-[11px] text-zinc-500 font-mono">
-                      SAM 3.1 & Vision AI Enabled
-                    </span>
-                  </div>
+                  {(() => {
+                    const mime = (stepSub.media_meta as unknown as { mime?: string; mediaKind?: string })?.mime || "";
+                    const kind = (stepSub.media_meta as unknown as { mediaKind?: string })?.mediaKind;
+                    const isPhoto = kind === "photo" || mime.startsWith("image/") || /\.(jpg|jpeg|png|webp|heic)$/i.test(videoSource);
+                    return (
+                      <div className="flex items-center justify-between text-xs text-zinc-400 px-1">
+                        <span className="flex items-center gap-1.5 text-teal-400 font-medium">
+                          <Video className="w-3.5 h-3.5" /> {isPhoto ? "Uploaded Photo" : "Uploaded Video"} for Step {step?.position || idx + 1} — Supabase
+                        </span>
+                        <span className="text-[11px] text-zinc-500 font-mono">
+                          {isPhoto ? "Supabase program-videos" : "SAM 3.1 & Vision AI Enabled"}
+                        </span>
+                      </div>
+                    );
+                  })()}
 
-                  {/* SAM Video Player with Live Tracking Overlays */}
-                  <SamOverlay
-                    videoSrc={videoSource}
-                    boxes={aiRec?.sam_results?.boxes}
-                    svgPaths={aiRec?.sam_results?.svg_paths}
-                    objectConcept={aiRec?.sam_results?.object_concept}
-                    modelProvenance="SAM 3.1: object segmentation"
-                  />
+                  {(() => {
+                    const mime = (stepSub.media_meta as unknown as { mime?: string; mediaKind?: string })?.mime || "";
+                    const kind = (stepSub.media_meta as unknown as { mediaKind?: string })?.mediaKind;
+                    const isPhoto = kind === "photo" || mime.startsWith("image/") || /\.(jpg|jpeg|png|webp|heic)$/i.test(videoSource);
+                    return isPhoto ? (
+                      <div className="rounded-lg overflow-hidden bg-black border border-zinc-800">
+                        <img src={videoSource} alt={`Step ${step?.position} submission`} className="w-full h-auto max-h-[420px] object-contain mx-auto" />
+                      </div>
+                    ) : (
+                      <SamOverlay
+                        videoSrc={videoSource}
+                        boxes={aiRec?.sam_results?.boxes}
+                        svgPaths={aiRec?.sam_results?.svg_paths}
+                        objectConcept={aiRec?.sam_results?.object_concept}
+                        modelProvenance="SAM 3.1: object segmentation"
+                      />
+                    );
+                  })()}
 
                   {stepSub.client_comment && (
                     <div className="text-xs text-zinc-400 bg-zinc-950/40 p-2.5 rounded-lg border border-zinc-800/60">
@@ -997,7 +1084,7 @@ function TherapistSubmissionReviewContent({
                 </div>
               ) : (
                 <div className="rounded-lg bg-zinc-950/60 border border-zinc-800 p-4 text-xs text-zinc-400">
-                  <p>No video recorded for this step.</p>
+                  <p>No photo or video submitted for this step.</p>
                 </div>
               )}
 

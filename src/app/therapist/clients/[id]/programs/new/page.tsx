@@ -18,19 +18,24 @@ import {
   Layers,
   HelpCircle,
   Calendar,
+  Palette,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { StepActivityControl } from "@/components/activities/StepActivityControl";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DraftProgramOutput } from "@/types/meta";
+import { useAuth } from "@/lib/supabase/auth-context";
 
 interface StepItem {
   id: string;
   position: number;
   title: string;
   instructions: string;
+  generatedActivityId?: string | null;
+  generatedActivity?: { id: string; title: string; base_image_url?: string | null } | null;
 }
 
 export default function NewHomeProgramPage({
@@ -53,6 +58,7 @@ function NewHomeProgramContent({
   const router = useRouter();
   const resolvedParams = use(params);
   const patientId = resolvedParams.id;
+  const { user } = useAuth();
 
   const [title, setTitle] = useState("");
   const [mainInstructions, setMainInstructions] = useState("");
@@ -221,7 +227,7 @@ function NewHomeProgramContent({
           title,
           mainInstructions,
           scheduledDates,
-          steps: steps.map((s) => ({ title: s.title, instructions: s.instructions })),
+          steps: steps.map((s) => ({ title: s.title, instructions: s.instructions, generated_activity_id: s.generatedActivityId || undefined, generatedActivityId: s.generatedActivityId || undefined })),
         }),
       });
 
@@ -522,6 +528,14 @@ function NewHomeProgramContent({
                   className="text-xs"
                 />
               </div>
+              <StepActivityControl
+                patientId={patientId}
+                step={step}
+                stepIndex={index}
+                steps={steps}
+                setSteps={setSteps}
+                creatorId={user?.id}
+              />
             </Card>
           ))}
         </div>

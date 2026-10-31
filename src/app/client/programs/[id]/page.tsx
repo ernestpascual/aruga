@@ -27,10 +27,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { VideoRecorder } from "@/components/ui/video-recorder";
+import { MediaUploader } from "@/components/ui/media-uploader";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { HomeProgram, ProgramStep, StepSubmission, Submission } from "@/types/database";
 import { SoapSummaryCard } from "@/components/ui/soap-summary-card";
+import { StepActivityWorksheet } from "@/components/activities/StepActivityWorksheet";
 
 export default function ClientProgramRunnerPage({
   params,
@@ -47,7 +48,9 @@ export default function ClientProgramRunnerPage({
 interface StepItemData {
   stepSubmissionId?: string;
   videoBlob?: Blob;
-  videoPath?: string;
+  videoPath?: string; // generic media URL (photo OR video) — kept for backward compat
+  mediaMime?: string;
+  mediaKind?: "photo" | "video";
   comment: string;
   skipped: boolean;
   skipReason: string;
@@ -83,6 +86,7 @@ function ClientProgramRunnerContent({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [uploadingStepId, setUploadingStepId] = useState<string | null>(null);
+  const [activityDoneMap, setActivityDoneMap] = useState<Record<string, boolean>>({});
 
   // Consents
   const [consentTherapist, setConsentTherapist] = useState(true);
@@ -167,13 +171,15 @@ function ClientProgramRunnerContent({
             setConsentMetaAi(currentSub.consent_meta_ai);
           }
 
-          // Hydrate step responses
+          // Hydrate step responses (video_path holds photo OR video URL; type via media_meta)
           const initialMap: Record<string, StepItemData> = {};
           if (Array.isArray(currentSub.step_submissions)) {
             currentSub.step_submissions.forEach((ss: StepSubmission) => {
               initialMap[ss.program_step_id] = {
                 stepSubmissionId: ss.id,
                 videoPath: ss.video_path || undefined,
+                mediaMime: ss.media_meta?.mime,
+                mediaKind: ss.media_meta?.mediaKind,
                 comment: ss.client_comment || "",
                 skipped: Boolean(ss.skipped),
                 skipReason: ss.skip_reason || "",
@@ -260,6 +266,8 @@ function ClientProgramRunnerContent({
             initialMap[ss.program_step_id] = {
               stepSubmissionId: ss.id,
               videoPath: ss.video_path || undefined,
+              mediaMime: ss.media_meta?.mime,
+              mediaKind: ss.media_meta?.mediaKind,
               comment: ss.client_comment || "",
               skipped: Boolean(ss.skipped),
               skipReason: ss.skip_reason || "",
@@ -287,14 +295,14 @@ function ClientProgramRunnerContent({
     skipReason: "",
   };
 
-  const handleVideoReady = async (
+  const handleMediaReady = async (
     blob: Blob,
-    meta: { mime: string; sizeBytes: number; durationSeconds: number; formatSupported: boolean }
+    meta: { mime: string; sizeBytes: number; durationSeconds?: number; formatSupported: boolean; mediaKind: "photo" | "video" }
   ) => {
     if (!activeStep) return;
     const currentStepId = activeStep.id;
 
-    // Set local preview immediately
+    // Set local preview immediately — video_path now generic media path (photo OR video)
     const localUrl = URL.createObjectURL(blob);
     setStepData((prev) => ({
       ...prev,
@@ -302,21 +310,24 @@ function ClientProgramRunnerContent({
         ...prev[currentStepId],
         videoBlob: blob,
         videoPath: localUrl,
+        mediaMime: meta.mime,
+        mediaKind: meta.mediaKind,
         skipped: false,
         skipReason: "",
       },
     }));
 
-    // If submission exists, upload directly to cloud storage
+    // If submission exists, upload directly to Supabase storage (program-videos bucket hosts both)
     if (submission) {
       setUploadingStepId(currentStepId);
       setErrorMsg(null);
       try {
+        const ext = meta.mediaKind === "photo" ? (meta.mime.includes("png") ? "png" : meta.mime.includes("webp") ? "webp" : "jpg") : "webm";
         const formData = new FormData();
-        formData.append("file", blob, `step_${currentStepId}.webm`);
+        formData.append("file", blob, `step_${currentStepId}.${ext}`);
         formData.append("submissionId", submission.id);
         formData.append("stepId", currentStepId);
-        formData.append("durationSeconds", String(meta.durationSeconds || 15));
+        if (meta.durationSeconds) formData.append("durationSeconds", String(meta.durationSeconds));
 
         const res = await fetch("/api/client/submissions/upload", {
           method: "POST",
@@ -325,18 +336,20 @@ function ClientProgramRunnerContent({
 
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || "Failed to upload video to secure storage.");
+          throw new Error(data.error || `Failed to upload ${meta.mediaKind} to Supabase.`);
         }
 
-        if (data.videoPath) {
+        if (data.videoPath || data.mediaPath) {
           setStepData((prev) => ({
             ...prev,
             [currentStepId]: {
               ...prev[currentStepId],
-              videoPath: data.videoPath,
+              videoPath: data.videoPath || data.mediaPath,
+              mediaMime: data.mime || meta.mime,
+              mediaKind: data.mediaKind || meta.mediaKind,
             },
           }));
-          setSaveSuccessMsg("Video saved directly to secure cloud storage.");
+          setSaveSuccessMsg(`${meta.mediaKind === "photo" ? "Photo" : "Video"} saved to Supabase cloud storage.`);
           setTimeout(() => setSaveSuccessMsg(null), 3500);
         }
       } catch (err: unknown) {
@@ -347,6 +360,8 @@ function ClientProgramRunnerContent({
       }
     }
   };
+  // Backward compat alias
+  const handleVideoReady = handleMediaReady;
 
   const handleToggleSkip = (skipped: boolean) => {
     if (!activeStep) return;
@@ -406,14 +421,14 @@ function ClientProgramRunnerContent({
     }
   };
 
-  const handleResetStepVideo = async (stepId: string) => {
+  const handleResetStepMedia = async (stepId: string) => {
     if (uploadingStepId === stepId) {
-      setErrorMsg("Video is currently uploading to cloud storage. Please wait for it to complete before resetting.");
+      setErrorMsg("Media is currently uploading to Supabase. Please wait before resetting.");
       return;
     }
-    const currentStepVideo = stepData[stepId]?.videoPath;
-    if (currentStepVideo && currentStepVideo.startsWith("blob:")) {
-      URL.revokeObjectURL(currentStepVideo);
+    const curMedia = stepData[stepId]?.videoPath;
+    if (curMedia && curMedia.startsWith("blob:")) {
+      URL.revokeObjectURL(curMedia);
     }
 
     setStepData((prev) => ({
@@ -422,6 +437,8 @@ function ClientProgramRunnerContent({
         ...prev[stepId],
         videoBlob: undefined,
         videoPath: undefined,
+        mediaMime: undefined,
+        mediaKind: undefined,
       },
     }));
 
@@ -439,30 +456,39 @@ function ClientProgramRunnerContent({
           }),
         });
       } catch (err: unknown) {
-        console.warn("Reset step video draft sync error:", err);
+        console.warn("Reset step media draft sync error:", err);
       }
     }
 
-    setSaveSuccessMsg("Video reset successfully. You can now record or upload a new video.");
+    setSaveSuccessMsg("Media reset. You can now take a photo or record a video.");
     setTimeout(() => setSaveSuccessMsg(null), 3500);
   };
+  const handleResetStepVideo = handleResetStepMedia;
 
   const handleNext = async () => {
-    // 1. Guard against in-flight cloud video uploads
+    // 1. Guard against in-flight Supabase media uploads
     if (uploadingStepId) {
-      setErrorMsg("Please wait for your step video to finish uploading to cloud storage before proceeding to the next step.");
+      setErrorMsg("Please wait for your photo/video to finish uploading to Supabase before proceeding.");
       return;
     }
 
-    // 2. Validate skip status or video presence
+    // 2. Validate skip status or media presence (photo/video OR coloring worksheet completion)
     if (activeStepData.skipped) {
       if (!activeStepData.skipReason.trim()) {
         setErrorMsg("Please provide a brief reason for skipping this step before proceeding.");
         return;
       }
     } else {
-      if (!activeStepData.videoPath && !activeStepData.videoBlob) {
-        setErrorMsg("Please record or upload a video for this step before proceeding, or select 'I could not complete this step'.");
+      const hasWorksheetDone = Boolean(activityDoneMap[activeStep.id]);
+      const hasMedia = Boolean(activeStepData.videoPath || activeStepData.videoBlob);
+      if (!hasMedia && !hasWorksheetDone) {
+        // If step has a generated coloring worksheet attached, drawing/photo-upload counts
+        const hasWorksheet = Boolean((activeStep as unknown as { generated_activity?: { base_image_url?: string | null } | null })?.generated_activity?.base_image_url);
+        if (hasWorksheet) {
+          setErrorMsg("Please color on the worksheet (Save progress) or upload a photo of your printed sheet, or record/upload photo/video, or mark skipped.");
+        } else {
+          setErrorMsg("Please take a photo or record/upload a video for this step, or select 'I could not complete this step'.");
+        }
         return;
       }
     }
@@ -517,22 +543,24 @@ function ClientProgramRunnerContent({
       return;
     }
     if (uploadingStepId) {
-      setErrorMsg("A video is still uploading to cloud storage. Please wait for it to finish before submitting.");
+      setErrorMsg("A photo/video is still uploading to Supabase. Please wait before submitting.");
       return;
     }
     setSubmitting(true);
     setErrorMsg(null);
 
-    // Verify all steps are completed
+    // Verify all steps are completed — each needs photo/video OR worksheet coloring/photo OR skip with reason
     const incompleteSteps = steps.filter((st) => {
       const data = stepData[st.id];
       if (!data) return true;
       if (data.skipped) return !data.skipReason.trim();
-      return !data.videoPath && !data.videoBlob;
+      const hasMedia = Boolean(data.videoPath || data.videoBlob);
+      const hasWorksheetDone = Boolean(activityDoneMap[st.id]);
+      return !hasMedia && !hasWorksheetDone;
     });
 
     if (incompleteSteps.length > 0) {
-      setErrorMsg("All steps must either have an activity video or an explicit skip explanation.");
+      setErrorMsg("All steps must have a photo/video, or a saved worksheet coloring/photo, or an explicit skip explanation.");
       setSubmitting(false);
       return;
     }
@@ -786,7 +814,7 @@ function ClientProgramRunnerContent({
                     <p className="text-zinc-300 leading-relaxed">{st.instructions}</p>
                   </div>
 
-                  {/* Submitted video or skip reason */}
+                  {/* Submitted photo/video or skip reason — hosted in Supabase */}
                   {data?.skipped || stepSub?.skipped ? (
                     <div className="text-xs text-amber-200/90 bg-amber-950/20 border border-amber-800/40 p-3 rounded-lg">
                       <span className="font-semibold text-amber-300">Your Skip Note: </span>
@@ -795,11 +823,16 @@ function ClientProgramRunnerContent({
                   ) : (
                     <div className="space-y-2">
                       <div className="aspect-video w-full max-w-md mx-auto rounded-lg overflow-hidden bg-black border border-zinc-800">
-                        <video
-                          src={data?.videoPath || stepSub?.video_path || "/demo/cup_grasp_transfer.mp4"}
-                          controls
-                          className="w-full h-full object-cover"
-                        />
+                        {(() => {
+                          const src = data?.videoPath || stepSub?.video_path || "/demo/cup_grasp_transfer.mp4";
+                          const mime = data?.mediaMime || stepSub?.media_meta?.mime || "";
+                          const isPhoto = data?.mediaKind === "photo" || stepSub?.media_meta?.mediaKind === "photo" || mime.startsWith("image/") || /\.(jpg|jpeg|png|webp)$/i.test(src);
+                          return isPhoto ? (
+                            <img src={src} alt="Submitted photo" className="w-full h-full object-contain" />
+                          ) : (
+                            <video src={src} controls className="w-full h-full object-cover" />
+                          );
+                        })()}
                       </div>
                       {data?.comment && (
                         <p className="text-xs text-zinc-400 italic text-center">
@@ -1029,14 +1062,14 @@ function ClientProgramRunnerContent({
         </div>
         <p className="text-xs text-zinc-400 leading-relaxed">
           {program?.main_instructions ||
-            "Perform each activity at a steady pace. Record a short video or provide a reason if you need to rest."}
+            "Perform each activity at a steady pace. Take a photo or record a short video, or note if you need to rest."}
         </p>
       </div>
 
       {/* Progress Indicators */}
       <div className="flex gap-1.5 w-full">
         {steps.map((st, i) => {
-          const isDone = Boolean(stepData[st.id]?.videoPath || stepData[st.id]?.skipped);
+          const isDone = Boolean(stepData[st.id]?.videoPath || stepData[st.id]?.skipped || activityDoneMap[st.id]);
           const isCurrent = i === currentStepIndex && !isSummaryView;
           return (
             <div
@@ -1102,7 +1135,21 @@ function ClientProgramRunnerContent({
               {activeStep.instructions}
             </div>
 
-            {/* Video Recorder or Skip Reason Textarea */}
+            {/* Linked coloring / image generation activity — download, color on screen, or print+photo */}
+            {(activeStep as unknown as { generated_activity?: { id: string; title: string; instructions: string; base_image_url: string | null; age_band?: string; spark_spec?: { difficulty?: string; estimatedMinutes?: number } } | null; generated_activity_id?: string | null }).generated_activity?.base_image_url && (
+              <StepActivityWorksheet
+                step={activeStep}
+                activity={(activeStep as unknown as { generated_activity: never }).generated_activity}
+                patientId={(program as unknown as { patient_id?: string; patient?: { id: string } })?.patient_id || (program as unknown as { patient?: { id: string } })?.patient?.id || (submission as unknown as { patient_id?: string })?.patient_id || null}
+                clientId={user?.id || null}
+                stepSubmissionId={activeStepData.stepSubmissionId || null}
+                programId={programId}
+                scheduledDate={selectedDate || submission?.scheduled_date || null}
+                onSaved={() => setActivityDoneMap((prev) => ({ ...prev, [activeStep.id]: true }))}
+              />
+            )}
+
+            {/* Media Uploader (Photo or Video) or Skip Reason */}
             {activeStepData.skipped ? (
               <div className="rounded-xl bg-amber-950/20 border border-amber-800/60 p-4 space-y-2">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-300">
@@ -1134,34 +1181,35 @@ function ClientProgramRunnerContent({
                 {uploadingStepId === activeStep.id && (
                   <div className="flex flex-row items-center gap-2 p-2.5 rounded-lg bg-teal-950/50 border border-teal-500/40 text-xs text-teal-300">
                     <div className="w-3.5 h-3.5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin shrink-0" />
-                    <span>Uploading step video to cloud storage before you can proceed...</span>
+                    <span>Uploading to Supabase (program-videos) — please wait…</span>
                   </div>
                 )}
 
                 {activeStepData.videoPath && (
                   <div className="flex flex-row items-center justify-between text-[11px] text-zinc-400 bg-zinc-950/60 px-3 py-2 rounded-md border border-zinc-800 gap-2">
                     <span className="flex flex-row items-center gap-1.5 text-teal-400 whitespace-nowrap">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Video stored in cloud storage
+                      <CheckCircle2 className="w-3.5 h-3.5" /> {activeStepData.mediaKind === "photo" ? "Photo" : activeStepData.mediaKind === "video" ? "Video" : "Media"} in Supabase
                     </span>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleResetStepVideo(activeStep.id)}
+                      onClick={() => handleResetStepMedia(activeStep.id)}
                       disabled={uploadingStepId === activeStep.id}
                       className="h-7 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 gap-1 px-2 whitespace-nowrap"
                     >
                       <RotateCcw className="w-3 h-3" />
-                      Reset Video
+                      Reset
                     </Button>
                   </div>
                 )}
 
-                <VideoRecorder
-                  key={`${activeStep.id}-${activeStepData.videoPath ? "has-video" : "no-video"}`}
-                  onVideoReady={handleVideoReady}
-                  existingVideoPath={activeStepData.videoPath}
-                  onReset={() => handleResetStepVideo(activeStep.id)}
+                <MediaUploader
+                  key={`${activeStep.id}-${activeStepData.videoPath ? "has-media" : "no-media"}`}
+                  onMediaReady={handleMediaReady}
+                  existingMediaPath={activeStepData.videoPath}
+                  existingMediaMeta={activeStepData.mediaKind || activeStepData.mediaMime ? { mime: activeStepData.mediaMime, mediaKind: activeStepData.mediaKind } : null}
+                  onReset={() => handleResetStepMedia(activeStep.id)}
                   isUploading={uploadingStepId === activeStep.id}
                 />
 
@@ -1267,7 +1315,7 @@ function ClientProgramRunnerContent({
                         {isSkipped ? (
                           <Badge variant="amber" statusText="Skipped" />
                         ) : (
-                          <Badge variant="emerald" statusText="Video Ready" icon={<CheckCircle2 className="w-3 h-3" />} />
+                          <Badge variant="emerald" statusText={data?.mediaKind === "photo" ? "Photo Ready" : data?.mediaKind === "video" ? "Video Ready" : "Media Ready"} icon={<CheckCircle2 className="w-3 h-3" />} />
                         )}
                       </div>
                       {isSkipped ? (

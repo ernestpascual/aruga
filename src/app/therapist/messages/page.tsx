@@ -7,7 +7,6 @@ import {
   MessageSquare,
   Send,
   BookOpen,
-  AlertTriangle,
   User,
   Stethoscope,
   Baby,
@@ -18,15 +17,16 @@ import {
   ChevronLeft,
   ExternalLink,
   PlusCircle,
-  Filter,
   CheckCircle2,
   Trash2,
+  ImagePlus,
+  X,
 } from "lucide-react";
+import { compressImageFile, isImageFile } from "@/lib/image-compress";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { MentionTextarea, ProgramMentionOption } from "@/components/ui/mention-textarea";
-import { siteConfig } from "@/config/site";
 import { Message, Patient } from "@/types/database";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { isDemoUser } from "@/lib/supabase/demo-helpers";
@@ -63,7 +63,10 @@ function TherapistMessagesContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<"all" | "pedia" | "adolescent" | "adult" | "geriatric" | "old_people">("all");
   const [mobileView, setMobileView] = useState<"list" | "chat">("chat");
-
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Helper to categorize patient demographic
@@ -140,35 +143,55 @@ function TherapistMessagesContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const handleFiles = async (files: FileList | File[]) => {
+    const f = Array.from(files)[0];
+    if (!f || !isImageFile(f)) return;
+    try {
+      const { file, previewUrl: url } = await compressImageFile(f);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPendingFile(file);
+      setPreviewUrl(url);
+    } catch {
+      setPendingFile(f);
+      setPreviewUrl(URL.createObjectURL(f));
+    }
+  };
+  const clearPending = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPendingFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (sending || !inputText.trim() || !selectedPatientId) return;
-
+    if (sending || (!inputText.trim() && !pendingFile) || !selectedPatientId) return;
     setSending(true);
     try {
-      const res = await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patientId: selectedPatientId,
-          senderId: user?.id,
-          senderRole: "therapist",
-          text: inputText,
-          referencedProgramId: selectedMentionProgram?.id || null,
-        }),
-      });
-
+      let res: Response;
+      if (pendingFile) {
+        const fd = new FormData();
+        fd.set("patientId", selectedPatientId);
+        if (user?.id) fd.set("senderId", user.id);
+        fd.set("senderRole", "therapist");
+        fd.set("text", inputText.trim() || "📷 Photo");
+        if (selectedMentionProgram?.id) fd.set("referencedProgramId", selectedMentionProgram.id);
+        fd.set("image", pendingFile);
+        res = await fetch("/api/messages", { method: "POST", body: fd });
+      } else {
+        res = await fetch("/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ patientId: selectedPatientId, senderId: user?.id, senderRole: "therapist", text: inputText, referencedProgramId: selectedMentionProgram?.id || null }),
+        });
+      }
       const data = await res.json();
       if (res.ok && data.message) {
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === data.message.id)) return prev;
-          return [...prev, data.message];
-        });
+        setMessages((prev) => (prev.some((m) => m.id === data.message.id) ? prev : [...prev, data.message]));
         setInputText("");
         setSelectedMentionProgram(null);
+        clearPending();
       }
     } catch {
-      // error
     } finally {
       setSending(false);
     }
@@ -247,14 +270,12 @@ function TherapistMessagesContent() {
           </div>
           <div>
             <h1 className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
-              <span>Clinical Messaging & Care Threads</span>
+              <span>Messages</span>
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700/50">
                 {patients.length} {patients.length === 1 ? "Client" : "Clients"} in Caseload
               </span>
             </h1>
-            <p className="text-xs text-zinc-400">
-              1 Therapist to Many Clients: Asynchronous communication thread with clinical program citations (@ mentions).
-            </p>
+            <p className="text-xs text-zinc-400">Messages with your clients</p>
           </div>
         </div>
 
@@ -577,14 +598,14 @@ function TherapistMessagesContent() {
             )}
           </div>
 
-          {/* Clinical Non-Emergency Notice Banner */}
-          <div className="rounded-xl bg-zinc-900/90 border border-zinc-800/90 px-3.5 py-2 text-xs text-zinc-400 flex items-center gap-2.5 shrink-0">
-            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="leading-snug">{siteConfig.messagingNotice}</span>
-          </div>
-
-          {/* Chat Messages Stream Area */}
-          <Card className="flex-1 overflow-y-auto border-zinc-800 bg-zinc-900/50 p-4 space-y-3.5 min-h-0">
+          {/* Chat Messages Stream Area - drop zone */}
+          <Card
+            className={`flex-1 overflow-y-auto border-zinc-800 bg-zinc-900/50 p-4 space-y-3.5 min-h-0 ${dragOver ? "ring-2 ring-teal-500/50" : ""}`}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => { e.preventDefault(); setDragOver(false); if (e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files); }}
+          >
+            {dragOver && <div className="text-center text-xs text-teal-300 py-1 border border-dashed border-teal-500/40 rounded-lg bg-teal-950/30">Drop photo to attach</div>}
             {loadingMessages ? (
               <div className="h-full flex items-center justify-center text-xs text-zinc-500">
                 Loading client conversation thread...
@@ -664,8 +685,14 @@ function TherapistMessagesContent() {
                           : "bg-zinc-800/90 border border-zinc-700/60 text-zinc-100 rounded-tl-sm shadow-sm"
                       }`}
                     >
-                      <p className="whitespace-pre-wrap">{msg.body}</p>
-
+                      {msg.body !== "📷 Photo" && <p className="whitespace-pre-wrap">{msg.body}</p>}
+                      {(msg as any).attachment_url && (
+                        <a href={(msg as any).attachment_url} target="_blank" rel="noopener noreferrer" className="block mt-1">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={(msg as any).attachment_url} alt="attachment" className="rounded-lg border border-zinc-700 max-h-64 w-auto object-contain bg-zinc-950" loading="lazy" />
+                        </a>
+                      )}
+                      {msg.body === "📷 Photo" && !(msg as any).attachment_url && <p>{msg.body}</p>}
                       {/* Referenced Program Mention Chip */}
                       {msg.referenced_program_id && (
                         <div className="mt-2.5 pt-2 border-t border-zinc-700/50 flex items-center justify-between gap-1.5 text-[11px] text-teal-300">
@@ -694,7 +721,16 @@ function TherapistMessagesContent() {
           </Card>
 
           {/* Input Composer */}
-          <form onSubmit={handleSend} className="shrink-0 space-y-2">
+          <form onSubmit={handleSend} className="shrink-0 space-y-2" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files); }}>
+            {previewUrl && (
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-zinc-900 border border-zinc-800">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={previewUrl} alt="preview" className="h-16 w-16 object-cover rounded border border-zinc-700" />
+                <span className="text-xs text-zinc-400 flex-1 truncate">{pendingFile?.name} • {(pendingFile!.size / 1024).toFixed(0)} KB (compressed)</span>
+                <button type="button" onClick={clearPending} className="p-1 rounded hover:bg-zinc-800 text-zinc-400"><X className="w-4 h-4" /></button>
+              </div>
+            )}
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(e) => e.target.files && handleFiles(e.target.files)} />
             <MentionTextarea
               value={inputText}
               onChange={setInputText}
@@ -705,18 +741,11 @@ function TherapistMessagesContent() {
               className="min-h-[75px]"
             />
 
-            <div className="flex items-center justify-between text-xs text-zinc-500">
-              <span className="hidden sm:inline">
-                Type <kbd className="px-1 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">@</kbd> to cite an active program
-              </span>
-              <Button
-                type="submit"
-                isLoading={sending}
-                disabled={!inputText.trim() || !selectedPatientId}
-                className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold ml-auto"
-              >
-                <Send className="w-3.5 h-3.5" />
-                Send Message
+            <div className="flex items-center justify-between text-xs text-zinc-500 gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="h-7 px-2 border-zinc-700 text-zinc-300 gap-1"><ImagePlus className="w-3.5 h-3.5" />Photo</Button>
+              <span className="hidden sm:inline">Drag & drop photo • <kbd className="px-1 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">@</kbd> program</span>
+              <Button type="submit" isLoading={sending} disabled={(!inputText.trim() && !pendingFile) || !selectedPatientId} className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold ml-auto">
+                <Send className="w-3.5 h-3.5" />Send
               </Button>
             </div>
           </form>

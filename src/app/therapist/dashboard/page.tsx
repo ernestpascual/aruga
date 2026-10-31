@@ -147,9 +147,6 @@ export default function TherapistDashboardPage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-100">
               Welcome, {profile?.display_name || "Doctor / Clinician"}
             </h1>
-            <p className="text-xs sm:text-sm text-zinc-400 max-w-2xl">
-              Monitor active patient rehabilitation progress across adult, adolescent, and pediatric populations with clinician-supervised video verification.
-            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
@@ -165,7 +162,7 @@ export default function TherapistDashboardPage() {
                 Manage Caseload
               </Button>
             </Link>
-            <Link href="/ask-ot">
+            <Link href="/aruga-guide">
               <Button variant="secondary" className="gap-2 border-zinc-700 hover:border-teal-500/40">
                 <Bot className="w-4 h-4 text-teal-400" />
                 Ask OT Assistant
@@ -278,62 +275,62 @@ export default function TherapistDashboardPage() {
         </div>
       )}
 
-      {/* Overview Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 transition-colors">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+      {/* Overview Stat Cards — even height + extra padding */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-fr">
+        <Card className="bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 transition-colors flex flex-col h-full">
+          <CardHeader className="flex flex-row items-center justify-between p-6 pb-4">
             <CardTitle className="text-xs font-medium text-zinc-400">Total Patients</CardTitle>
             <Users className="w-4 h-4 text-teal-400" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 pt-0 flex-1 flex flex-col justify-center">
             <div className="text-2xl font-bold text-zinc-100">{clients.length}</div>
-            <p className="text-[11px] text-zinc-500 mt-1">Across all care demographics</p>
+            <p className="text-[11px] text-zinc-500 mt-1.5">Across all care demographics</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 transition-colors">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 transition-colors flex flex-col h-full">
+          <CardHeader className="flex flex-row items-center justify-between p-6 pb-4">
             <CardTitle className="text-xs font-medium text-zinc-400">Pending Requests</CardTitle>
             <UserPlus className={`w-4 h-4 ${pendingRequests.length > 0 ? "text-amber-400" : "text-zinc-500"}`} />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 pt-0 flex-1 flex flex-col justify-center">
             <div className={`text-2xl font-bold ${pendingRequests.length > 0 ? "text-amber-400" : "text-zinc-100"}`}>
               {pendingRequests.length}
             </div>
-            <p className="text-[11px] text-zinc-500 mt-1">
+            <p className="text-[11px] text-zinc-500 mt-1.5">
               {pendingRequests.length > 0 ? "Awaiting clinician approval" : "No pending link requests"}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 transition-colors">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 transition-colors flex flex-col h-full">
+          <CardHeader className="flex flex-row items-center justify-between p-6 pb-4">
             <CardTitle className="text-xs font-medium text-zinc-400">Active Home Programs</CardTitle>
             <FileCheck2 className="w-4 h-4 text-teal-400" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 pt-0 flex-1 flex flex-col justify-center">
             <div className="text-2xl font-bold text-zinc-100">{totalPrograms}</div>
-            <p className="text-[11px] text-zinc-500 mt-1">Assigned exercises in progress</p>
+            <p className="text-[11px] text-zinc-500 mt-1.5">Assigned exercises in progress</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 transition-colors">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 transition-colors flex flex-col h-full">
+          <CardHeader className="flex flex-row items-center justify-between p-6 pb-4">
             <CardTitle className="text-xs font-medium text-zinc-400">Pending Video Reviews</CardTitle>
             <Clock className="w-4 h-4 text-amber-400" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 pt-0 flex-1 flex flex-col justify-center">
             <div className="text-2xl font-bold text-amber-400">{totalAwaiting}</div>
-            <p className="text-[11px] text-zinc-500 mt-1">Awaiting clinician sign-off</p>
+            <p className="text-[11px] text-zinc-500 mt-1.5">Awaiting clinician sign-off</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Lifespan Caseload Breakdown & Quick Hub */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Caseload Breakdown */}
-        <Card className="lg:col-span-2 bg-zinc-900/60 border-zinc-800">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
+      {/* Lifespan Caseload Breakdown & Quick Hub — stretched to equal height */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        {/* Caseload Breakdown — extra padding + even */}
+        <Card className="lg:col-span-2 bg-zinc-900/60 border-zinc-800 flex flex-col h-full">
+          <CardHeader className="flex flex-row items-center justify-between p-6 pb-4">
             <div>
               <CardTitle className="text-sm font-bold text-zinc-100">Caseload by Demographic</CardTitle>
               <p className="text-xs text-zinc-400">Structured rehabilitation across the entire human lifespan</p>
@@ -342,7 +339,7 @@ export default function TherapistDashboardPage() {
               View All <ArrowRight className="w-3 h-3" />
             </Link>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-6 pt-0 flex-1">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {/* Pediatric */}
               <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800 hover:border-zinc-700 transition-colors">
@@ -436,14 +433,14 @@ export default function TherapistDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Clinical Tools & Quick Access */}
-        <div className="space-y-4">
-          <Card className="bg-zinc-900/60 border-zinc-800">
-            <CardHeader className="pb-3">
+        {/* Clinical Tools & Quick Access — even column */}
+        <div className="flex flex-col gap-4 h-full">
+          <Card className="bg-zinc-900/60 border-zinc-800 flex-1 flex flex-col">
+            <CardHeader className="p-6 pb-4">
               <CardTitle className="text-sm font-bold text-zinc-100">Clinical AI Assistants</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Link href="/ask-ot" className="block p-3 rounded-xl bg-zinc-950/60 border border-zinc-800 hover:border-teal-500/50 transition-colors group">
+            <CardContent className="space-y-3 p-6 pt-0 flex-1">
+              <Link href="/aruga-guide" className="block p-3 rounded-xl bg-zinc-950/60 border border-zinc-800 hover:border-teal-500/50 transition-colors group">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-teal-950/80 text-teal-400 group-hover:scale-105 transition-transform">
                     <Bot className="w-5 h-5" />
@@ -493,7 +490,7 @@ export default function TherapistDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-zinc-900/60 border-zinc-800 p-4">
+          <Card className="bg-zinc-900/60 border-zinc-800 p-6 flex flex-col justify-center">
             <div className="flex items-start gap-3">
               <ShieldCheck className="w-5 h-5 text-teal-400 shrink-0 mt-0.5" />
               <div className="text-xs space-y-1">

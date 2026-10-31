@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { siteConfig } from "@/config/site";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { UserRole, ClientCategory } from "@/types/database";
@@ -205,7 +204,6 @@ export default function LoginPage() {
         </Link>
 
         <div className="flex items-center gap-3">
-          <ThemeToggle />
           <Link
             href="/"
             className="text-xs text-zinc-400 hover:text-zinc-200 flex items-center gap-1.5 transition-colors"

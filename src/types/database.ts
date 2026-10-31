@@ -17,7 +17,14 @@ export type InvitationStatus = "pending" | "accepted" | "declined" | "failed" | 
 
 export type AiAnalysisStatus = "pending" | "processing" | "completed" | "failed";
 
-export type AiAnalysisKind = "spark_observation" | "sam_segmentation" | "full_review";
+export type AiAnalysisKind = "spark_observation" | "sam_segmentation" | "full_review" | "activity_generation";
+
+export type AgeBand = "pedia" | "adolescent" | "adult" | "geriatric";
+export type ActivityCategory = "coloring" | "handwriting" | "tracing" | "maze" | "matching" | "cognitive" | "adl_sim" | "visual_motor" | "fine_motor" | "other";
+export type LineStyle = "none" | "double-line" | "triple-line" | "seyes" | "dotted";
+export type ActivityStatus = "generating" | "ready" | "failed";
+export type CompletionMethod = "canvas" | "photo" | "print_upload";
+export type TemplateOwnerScope = "system" | "therapist";
 
 export type ClientCategory = "adult" | "adolescent" | "pedia" | "geriatric" | "old_people";
 
@@ -140,7 +147,94 @@ export interface ProgramStep {
   position: number;
   title: string | null;
   instructions: string;
+  generated_activity_id?: string | null;
+  generated_activity?: GeneratedActivity | null;
   created_at: string;
+}
+
+export interface ActivityTemplate {
+  id: string;
+  therapist_id: string | null;
+  owner_scope: TemplateOwnerScope;
+  title: string;
+  description: string | null;
+  age_band: AgeBand;
+  category: ActivityCategory;
+  spark_prompt: string;
+  image_prompt: string;
+  default_params: {
+    difficulty?: string;
+    theme?: string;
+    lineStyle?: LineStyle;
+    orientation?: "portrait" | "landscape";
+    estimatedMinutes?: number;
+    [k: string]: unknown;
+  };
+  thumbnail_path: string | null;
+  is_featured: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GeneratedActivity {
+  id: string;
+  creator_id: string | null;
+  patient_id: string | null;
+  template_id: string | null;
+  age_band: AgeBand;
+  title: string;
+  instructions: string;
+  spark_prompt_used: string;
+  image_prompt_used: string;
+  reference_links: string[];
+  reference_image_paths: string[];
+  spark_spec: ActivitySparkSpec | null;
+  base_image_path: string | null;
+  base_image_url: string | null;
+  composed_pdf_path: string | null;
+  model_ids: Record<string, string>;
+  status: ActivityStatus;
+  error_message?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  template?: ActivityTemplate | null;
+}
+
+export interface ActivitySparkSpec {
+  title: string;
+  instructions: string;
+  visualBrief: string;
+  refinedImagePrompt: string;
+  layoutSpec: {
+    orientation: "portrait" | "landscape";
+    lineGuides: LineStyle;
+    zones: Array<{ label: string; type: string }>;
+  };
+  difficulty: string;
+  estimatedMinutes: number;
+  warnings: string[];
+}
+
+export interface ActivityCompletion {
+  id: string;
+  generated_activity_id: string;
+  step_submission_id: string | null;
+  patient_id: string;
+  client_id: string | null;
+  drawing_data_url: string | null;
+  drawing_storage_path: string | null;
+  drawing_strokes: Array<{
+    color: string;
+    width: number;
+    points: Array<{ x: number; y: number }>;
+  }>;
+  photo_upload_path: string | null;
+  completion_method: CompletionMethod;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  generated_activity?: GeneratedActivity | null;
 }
 
 export interface HomeProgram {
@@ -165,9 +259,10 @@ export interface StepSubmission {
   id: string;
   submission_id: string;
   program_step_id: string;
-  video_path: string | null;
+  video_path: string | null; // generic media path: holds photo OR video URL (Supabase program-videos bucket)
   media_meta: {
     mime?: string;
+    mediaKind?: "photo" | "video";
     sizeBytes?: number;
     durationSeconds?: number;
     width?: number;
@@ -268,6 +363,10 @@ export interface Message {
   body: string;
   referenced_program_id: string | null;
   created_at: string;
+  attachment_url?: string | null;
+  attachment_storage_path?: string | null;
+  attachment_type?: "image" | "video" | null;
+  attachment_meta?: { w?: number; h?: number; size?: number; mime?: string } | null;
   // Joined
   sender_profile?: Profile;
   referenced_program?: {

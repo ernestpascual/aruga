@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -10,67 +10,156 @@ import {
   MessageSquare,
   LogOut,
   Stethoscope,
-  Bot,
+  HeartHandshake,
   Scan,
-  UserCheck,
+  Palette,
+  Wrench,
+  ChevronDown,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
-import { Badge } from "@/components/ui/badge";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationsDropdown } from "@/components/ui/notifications-dropdown";
 import { useAuth } from "@/lib/supabase/auth-context";
+
+type NavChild = { href: string; label: string; icon: React.ElementType };
+type NavItem = { label: string; icon: React.ElementType; href?: string; exact?: boolean; children?: NavChild[] };
 
 export function TherapistNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { profile, signOut } = useAuth();
 
-  const navItems = [
-    { href: "/therapist/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/therapist/clients", label: "Clients", icon: Users },
-    { href: "/therapist/assessments", label: "Assessments", icon: ClipboardList },
-    { href: "/therapist/messages", label: "Messages", icon: MessageSquare },
-    { href: "/ask-ot", label: "Ask OT", icon: Bot },
-    { href: "/sam-test", label: "SAM Test", icon: Scan },
+  const navItems: NavItem[] = [
+    { label: "Dashboard", icon: LayoutDashboard, href: "/therapist/dashboard" },
+    {
+      label: "Clients",
+      icon: Users,
+      children: [
+        { href: "/therapist/clients", label: "Clients List", icon: Users },
+        { href: "/therapist/activities", label: "Activities", icon: Palette },
+        { href: "/therapist/assessments", label: "Assessment", icon: ClipboardList },
+      ],
+    },
+    { label: "Messages", icon: MessageSquare, href: "/therapist/messages" },
+    {
+      label: "Tools",
+      icon: Wrench,
+      children: [
+        { href: "/aruga-guide", label: "Guide", icon: HeartHandshake },
+        { href: "/sam-test", label: "SAM Test", icon: Scan },
+      ],
+    },
   ];
+
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [mobileOpenGroup, setMobileOpenGroup] = useState<string | null>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleEnter(label: string) {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setOpenDropdown(label);
+  }
+  function handleLeave() {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    closeTimeoutRef.current = setTimeout(() => setOpenDropdown(null), 120);
+  }
 
   const handleSignOut = async () => {
     await signOut();
     router.push("/login");
   };
 
+  function isActiveItem(item: NavItem): boolean {
+    if (item.href) {
+      if (item.exact) return pathname === item.href;
+      return pathname.startsWith(item.href);
+    }
+    if (item.children) return item.children.some((c) => pathname.startsWith(c.href));
+    return false;
+  }
+
+  function isChildActive(href: string): boolean {
+    return pathname === href || pathname.startsWith(href + "/");
+  }
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-6">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 gap-4">
+        <div className="flex items-center shrink-0">
           <Logo href="/therapist/dashboard" />
-
-          {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-zinc-800 text-teal-400 font-semibold"
-                      : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
         </div>
 
-        {/* Right side status, profile, and role */}
-        <div className="flex items-center gap-2.5 sm:gap-3">
+        {/* Desktop Navigation - centered, evenly spaced — matches client-nav */}
+        <nav className="hidden md:flex flex-1 justify-center items-center gap-6 lg:gap-8">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActiveItem(item);
 
+            if (item.children) {
+              const isOpen = openDropdown === item.label;
+              return (
+                <div
+                  key={item.label}
+                  className="relative"
+                  onMouseEnter={() => handleEnter(item.label)}
+                  onMouseLeave={handleLeave}
+                >
+                  <button
+                    type="button"
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      active ? "bg-zinc-800 text-teal-400 font-semibold" : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {item.label}
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  {isOpen && (
+                    <div className="absolute left-0 top-full pt-2 z-50">
+                      <div className="min-w-[180px] rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl py-1.5">
+                        {item.children.map((child) => {
+                          const ChildIcon = child.icon;
+                          const childActive = isChildActive(child.href);
+                          return (
+                            <Link
+                              key={child.href + child.label}
+                              href={child.href}
+                              onClick={() => setOpenDropdown(null)}
+                              className={`flex items-center gap-2 px-3.5 py-2 text-xs font-medium transition-colors ${
+                                childActive ? "bg-zinc-800 text-teal-400" : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/70"
+                              }`}
+                            >
+                              <ChildIcon className="w-3.5 h-3.5" />
+                              {child.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                key={item.label}
+                href={item.href!}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  active ? "bg-zinc-800 text-teal-400 font-semibold" : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Right side status, profile, and role */}
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
           <Link
             href="/therapist/profile"
             className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-colors ${
@@ -80,14 +169,10 @@ export function TherapistNav() {
             }`}
           >
             <Stethoscope className="w-3.5 h-3.5 text-teal-400" />
-            <span className="max-w-[120px] truncate hidden sm:inline">
-              {profile?.display_name || "Profile"}
-            </span>
+            <span className="max-w-[120px] truncate hidden sm:inline">{profile?.display_name || "Profile"}</span>
           </Link>
 
           <NotificationsDropdown role="therapist" />
-
-          <ThemeToggle />
 
           <button
             type="button"
@@ -100,19 +185,58 @@ export function TherapistNav() {
         </div>
       </div>
 
-      {/* Mobile Nav Bar */}
-      <div className="flex md:hidden border-t border-zinc-800/60 bg-zinc-900/50 px-3 py-2 justify-around overflow-x-auto">
+      {/* Mobile Nav — matches client-nav */}
+      <div className="flex md:hidden border-t border-zinc-800/60 bg-zinc-900/50 px-2 py-2 gap-1 overflow-x-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname.startsWith(item.href);
+          const active = isActiveItem(item);
+
+          if (item.children) {
+            const expanded = mobileOpenGroup === item.label;
+            return (
+              <div key={item.label} className="flex flex-col shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setMobileOpenGroup(expanded ? null : item.label)}
+                  className={`flex items-center gap-1 text-xs font-medium py-1.5 px-2.5 rounded-md transition-colors shrink-0 ${
+                    active ? "text-teal-400 bg-zinc-800" : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {item.label}
+                  <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                </button>
+                {expanded && (
+                  <div className="mt-1 ml-1 flex flex-col gap-0.5 border-l border-zinc-800 pl-2">
+                    {item.children.map((child) => {
+                      const ChildIcon = child.icon;
+                      const childActive = isChildActive(child.href);
+                      return (
+                        <Link
+                          key={child.href + child.label}
+                          href={child.href}
+                          onClick={() => setMobileOpenGroup(null)}
+                          className={`flex items-center gap-1.5 text-xs font-medium py-1 px-2 rounded-md transition-colors ${
+                            childActive ? "text-teal-400 bg-zinc-800" : "text-zinc-400"
+                          }`}
+                        >
+                          <ChildIcon className="w-3 h-3" />
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
           return (
             <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-1 text-xs font-medium py-1 px-2.5 rounded-md transition-colors shrink-0 ${
-                isActive
-                  ? "text-teal-400 bg-zinc-800"
-                  : "text-zinc-400 hover:text-zinc-200"
+              key={item.label}
+              href={item.href!}
+              className={`flex items-center gap-1 text-xs font-medium py-1 px-2.5 rounded-md transition-colors shrink-0 whitespace-nowrap ${
+                active ? "text-teal-400 bg-zinc-800" : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -122,10 +246,8 @@ export function TherapistNav() {
         })}
         <Link
           href="/therapist/profile"
-          className={`flex items-center gap-1 text-xs font-medium py-1 px-2.5 rounded-md transition-colors shrink-0 ${
-            pathname === "/therapist/profile"
-              ? "text-teal-400 bg-zinc-800"
-              : "text-zinc-400 hover:text-zinc-200"
+          className={`flex items-center gap-1 text-xs font-medium py-1 px-2.5 rounded-md transition-colors shrink-0 whitespace-nowrap ${
+            pathname === "/therapist/profile" ? "text-teal-400 bg-zinc-800" : "text-zinc-400 hover:text-zinc-200"
           }`}
         >
           <Stethoscope className="w-3.5 h-3.5" />

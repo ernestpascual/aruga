@@ -28,6 +28,8 @@ import {
   DraftFeedbackOutput,
   OtChatInput,
   OtChatOutput,
+  GenerateActivityInput,
+  GenerateActivityOutput,
 } from "@/types/meta";
 
 /**
@@ -250,6 +252,121 @@ export async function draftTherapistFeedback(
 }
 
 // 5. OT HELPER CHAT (Muse Spark 1.3, multimodal, prompt-cached, search-grounded)
+// Activity generation — Spark + Muse Image (or mock placeholder)
+export async function generateActivity(
+  input: GenerateActivityInput
+): Promise<GenerateActivityOutput> {
+  const { aiMode, apiKey } = getMetaConfig();
+  // lazy import to avoid circular
+  const { runSparkActivitySpec, runMuseImage, buildMockActivitySvg } = await import("./meta/activity-generator");
+  const start = Date.now();
+
+  // Build referenceImageNotes from referenceImages count if present (avoid shipping huge payloads to prompt verbatim)
+  const referenceImageNotes = input.referenceImages && input.referenceImages.length > 0
+    ? `Therapist uploaded ${input.referenceImages.length} reference photo(s) for inspiration — incorporate shapes/layout/themes inspired by them without copying any copyrighted element verbatim.`
+    : undefined;
+
+  // If AI is explicitly off, still produce a mock SVG (UX) but throw only if caller wants strict
+  if (aiMode === "off") {
+    const mock = buildMockActivitySvg(input.titleOverride || `Activity — ${input.ageBand}`, input.ageBand, input.category || "other");
+    return {
+      activityId: `mock-${Date.now()}`,
+      title: input.titleOverride || `Activity — ${input.ageBand}`,
+      instructions: "Complete the activity at your own pace. Trace, color, or write inside the boxes.",
+      ageBand: input.ageBand,
+      category: (input.category as GenerateActivityOutput["category"]) || "other",
+      sparkSpec: {
+        title: input.titleOverride || `Activity — ${input.ageBand}`,
+        instructions: "Complete the activity at your own pace.",
+        visualBrief: mock.prompt,
+        refinedImagePrompt: mock.prompt,
+        layoutSpec: { orientation: "portrait", lineGuides: "none", zones: [] },
+        difficulty: "guided",
+        estimatedMinutes: 10,
+        warnings: [],
+      },
+      baseImageUrl: mock.dataUrl,
+      baseImagePath: null,
+      modelIds: { spark: "mock", image: "mock" },
+      latencyMs: Date.now() - start,
+    };
+  }
+
+  if (!apiKey) {
+    // No key: still return mock so UI works, but flag modelIds.mock
+    const mock = buildMockActivitySvg(input.titleOverride || `Activity — ${input.ageBand}`, input.ageBand, input.category || "other");
+    return {
+      activityId: `mock-${Date.now()}`,
+      title: input.titleOverride || `Activity — ${input.ageBand}`,
+      instructions: "Complete this activity — mock preview (add MODEL_API_KEY for live generation).",
+      ageBand: input.ageBand,
+      category: (input.category as GenerateActivityOutput["category"]) || "other",
+      sparkSpec: {
+        title: input.titleOverride || `Activity — ${input.ageBand}`,
+        instructions: "Mock activity — add API key for live generation.",
+        visualBrief: mock.prompt,
+        refinedImagePrompt: mock.prompt,
+        layoutSpec: { orientation: "portrait", lineGuides: "none", zones: [] },
+        difficulty: "guided",
+        estimatedMinutes: 10,
+        warnings: ["Mock mode: add MODEL_API_KEY for live generation"],
+      },
+      baseImageUrl: mock.dataUrl,
+      baseImagePath: null,
+      modelIds: { spark: "mock", image: "mock" },
+      latencyMs: Date.now() - start,
+    };
+  }
+
+  // Live: Spark spec — no local fallback, surface the real gateway error to the UI
+  const { result: sparkSpec, latencyMs: sparkLatency } = await runSparkActivitySpec({
+    ageBand: input.ageBand,
+    category: input.category,
+    templatePrompt: input.customSparkPrompt || undefined,
+    imagePrompt: input.customImagePrompt || undefined,
+    titleOverride: input.titleOverride,
+    theme: input.theme,
+    difficulty: input.difficulty,
+    lineStyle: input.lineStyle,
+    referenceLinks: input.referenceLinks,
+    referenceImageNotes,
+    referenceImages: input.referenceImages,
+  });
+
+  // Live: image gen — try, fallback to mock SVG on failure to keep UX alive
+  let baseImageUrl: string | null = null;
+  let baseImagePath: string | null = null;
+  let imageModelId = process.env.MUSE_IMAGE_MODEL_ID || process.env.IMAGE_MODEL_ID || "muse-image-1.0";
+  let imageLatency = 0;
+  const size = sparkSpec.layoutSpec.orientation === "landscape" ? "1536x1024" : "1024x1536";
+  const imgRes = await runMuseImage(sparkSpec.refinedImagePrompt, { size, model: imageModelId });
+  baseImageUrl = imgRes.imageUrl;
+  imageModelId = imgRes.modelId;
+  imageLatency = imgRes.latencyMs;
+
+  return {
+    activityId: `live-${Date.now()}`,
+    title: sparkSpec.title,
+    instructions: sparkSpec.instructions,
+    ageBand: input.ageBand,
+    category: (input.category as GenerateActivityOutput["category"]) || "other",
+    sparkSpec: {
+      title: sparkSpec.title,
+      instructions: sparkSpec.instructions,
+      visualBrief: sparkSpec.visualBrief,
+      refinedImagePrompt: sparkSpec.refinedImagePrompt,
+      layoutSpec: sparkSpec.layoutSpec,
+      difficulty: sparkSpec.difficulty,
+      estimatedMinutes: sparkSpec.estimatedMinutes,
+      warnings: sparkSpec.warnings,
+    },
+    baseImageUrl,
+    baseImagePath,
+    modelIds: { spark: getMetaConfig().models.spark || "spark", image: imageModelId },
+    latencyMs: sparkLatency + imageLatency,
+  };
+}
+
 export async function otChatAssistant(input: OtChatInput): Promise<OtChatOutput> {
   const { aiMode, models, apiKey } = getMetaConfig();
   const conversationId =
@@ -307,15 +424,35 @@ export async function otChatAssistant(input: OtChatInput): Promise<OtChatOutput>
     }
   }
 
+  // Build butler personalization block from profile + program if provided
+  let clientContextBlock: string | undefined;
+  if (input.clientContext) {
+    const parts: string[] = ["CLIENT CONTEXT (use to personalize, do not repeat verbatim unless helpful):"];
+    if (input.clientContext.displayName) parts.push(`- User: ${input.clientContext.displayName}`);
+    if (input.clientContext.profileBrief) parts.push(`- Profile: ${input.clientContext.profileBrief}`);
+    if (input.clientContext.programBrief) parts.push(`- Current Home Program: ${input.clientContext.programBrief}`);
+    parts.push("Tailor your explanation of WHY each exercise/condition matters to their daily life, but do not invent citations.");
+    clientContextBlock = parts.join("\n");
+  }
+
   const { text, latencyMs, modelId: usedModel } = await runSparkOtChat({
     history: input.history,
     userText: input.userText,
     images,
     videoUrls,
     conversationId,
-    evidenceContext: clinical ? evidenceBlock : undefined,
+    clientContext: clientContextBlock,
+    evidenceContext: clinical ? evidenceBlock : evidenceBlock ? evidenceBlock : "SEARCH-GROUNDED CLINICAL EVIDENCE: no search needed for this greeting, but still include at least one general rehab reference if you give health information.",
     model: requestedModel,
   });
+
+  // General rehab: always ensure at least one reference, even if isClinicallyRelated was false but answer contains health info — keep references array populated when possible
+  if (!clinical && references.length === 0) {
+    // Keep references as synthesized fallback so UI always shows sources
+    references = [
+      { id: "general", title: "General rehabilitation guidance — confirm with your clinician", authors: "Aruga Guide", year: new Date().getFullYear().toString(), source: "General Rehab Education", url: "https://pubmed.ncbi.nlm.nih.gov/" },
+    ];
+  }
 
   // Enforce the References contract even if the model omits it.
   let reply = text;

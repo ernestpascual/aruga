@@ -66,3 +66,21 @@ export const SamResultSchema = z.object({
 });
 
 export type SamResultParsed = z.infer<typeof SamResultSchema>;
+
+// Schema for Activity Generation (Muse Spark)
+export const ActivitySpecSchema = z.object({
+  title: z.string().min(3).max(200),
+  instructions: z.string().min(10).max(2500),
+  visualBrief: z.string().min(10).max(2000),
+  refinedImagePrompt: z.string().min(10).max(2000),
+  layoutSpec: z.object({
+    orientation: z.enum(["portrait", "landscape"]).default("portrait"),
+    lineGuides: z.enum(["none", "double-line", "triple-line", "seyes", "dotted"]).default("none"),
+    zones: z.array(z.object({ label: z.string(), type: z.string() })).max(10).default([]),
+  }),
+  difficulty: z.string().min(1).max(50),
+  estimatedMinutes: z.number().int().min(1).max(60),
+  warnings: z.array(z.string()).default([]),
+});
+
+export type ActivitySpecParsed = z.infer<typeof ActivitySpecSchema>;

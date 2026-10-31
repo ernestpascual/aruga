@@ -6,10 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform } from "motion/react";
 import {
   Hand,
-  Sparkles,
-  Shield,
   ArrowRight,
-  Layers,
   CheckCircle2,
   Lock,
   MessageSquare,
@@ -17,20 +14,15 @@ import {
   ChevronDown,
   Baby,
   User,
-  HeartHandshake,
-  ShieldCheck,
-  FileText,
-  Stethoscope,
   HeartPulse,
   GraduationCap,
+  FileText,
+  ShieldCheck,
   Clock,
   Video,
-  FileCheck2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Grainient } from "@/components/ui/grainient";
-import { useTheme } from "@/components/theme-provider";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { siteConfig } from "@/config/site";
 
@@ -65,1025 +57,360 @@ export default function LandingPage() {
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.94]);
   const arrowOpacity = useTransform(scrollYProgress, [0, 0.25], [1, 0]);
 
-  const { theme } = useTheme();
-  const isLight = theme === "light";
-
-  // Menu bar transforms: transparent for hero section, smoothly shifts on the next section
   const headerBg = useTransform(
     scrollYProgress,
     [0.55, 0.85],
-    [
-      isLight ? "rgba(248, 250, 252, 0)" : "rgba(9, 9, 11, 0)",
-      isLight ? "rgba(255, 255, 255, 0.94)" : "rgba(9, 9, 11, 0.92)",
-    ]
+    ["rgba(0,0,0,0)", "rgba(0,0,0,1)"]
   );
   const headerBorder = useTransform(
     scrollYProgress,
     [0.55, 0.85],
-    [
-      isLight ? "rgba(226, 232, 240, 0)" : "rgba(39, 39, 42, 0)",
-      isLight ? "rgba(226, 232, 240, 0.85)" : "rgba(39, 39, 42, 0.8)",
-    ]
-  );
-  const headerBlur = useTransform(
-    scrollYProgress,
-    [0.55, 0.85],
-    ["blur(0px)", "blur(12px)"]
-  );
-  const headerShadow = useTransform(
-    scrollYProgress,
-    [0.55, 0.85],
-    [
-      "0px 0px 0px 0px rgba(0, 0, 0, 0)",
-      isLight
-        ? "0px 4px 20px -2px rgba(15, 23, 42, 0.08)"
-        : "0px 4px 20px -2px rgba(0, 0, 0, 0.5)",
-    ]
+    ["rgba(255,255,255,0)", "rgba(255,255,255,0.12)"]
   );
 
   if (redirecting || (!authLoading && user)) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-zinc-400 space-y-4">
-        <div className="w-10 h-10 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white space-y-4">
+        <div className="w-10 h-10 rounded-full border-2 border-white border-t-transparent animate-spin" />
         <div className="text-center space-y-1">
-          <p className="text-sm font-semibold text-zinc-200">Welcome to Aruga</p>
-          <p className="text-xs text-zinc-500">Redirecting to your dashboard...</p>
+          <p className="text-sm font-semibold">Welcome to Aruga</p>
+          <p className="text-xs text-white/50">Redirecting to your dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-teal-500/30 selection:text-teal-200 scroll-smooth">
-      {/* ------------------------------------------------------------------ */}
-      {/* NAVIGATION HEADER                                                  */}
-      {/* ------------------------------------------------------------------ */}
+    <div className="min-h-screen bg-[#F6F3EF] text-black selection:bg-black selection:text-white scroll-smooth">
+      {/* NAV */}
       <motion.header
-        style={{
-          backgroundColor: headerBg,
-          borderBottomColor: headerBorder,
-          backdropFilter: headerBlur,
-          WebkitBackdropFilter: headerBlur,
-          boxShadow: headerShadow,
-        }}
-        className="fixed top-0 inset-x-0 z-50 w-full border-b pt-3 sm:pt-4 pb-2 sm:pb-3 transition-colors duration-200"
+        style={{ backgroundColor: headerBg, borderBottomColor: headerBorder }}
+        className="fixed top-0 inset-x-0 z-50 w-full border-b pt-3 sm:pt-4 pb-2 sm:pb-3"
       >
-        <div className="container mx-auto flex h-12 sm:h-14 items-center justify-between px-4 sm:px-6 max-w-7xl">
-          <Link href="/" className="group flex items-center">
-            <span
-              className="font-aruga text-lg sm:text-xl font-normal text-zinc-100 tracking-wide hover:text-teal-300 transition-colors duration-200"
-              style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}
-            >
-              Aruga
-            </span>
-          </Link>
-
-          {/* Simplified Nav Links */}
-          <nav className="hidden md:flex items-center gap-6 text-xs text-zinc-300 font-medium">
-            <a
-              href="#overview"
-              className="relative py-1 hover:text-zinc-100 transition-colors duration-200 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-teal-400 after:transition-all after:duration-300"
-            >
-              Overview
-            </a>
-            <a
-              href="#disciplines"
-              className="relative py-1 hover:text-zinc-100 transition-colors duration-200 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-teal-400 after:transition-all after:duration-300"
-            >
-              Disciplines
-            </a>
-            <a
-              href="#lifespan"
-              className="relative py-1 hover:text-zinc-100 transition-colors duration-200 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-teal-400 after:transition-all after:duration-300"
-            >
-              Lifespan Care
-            </a>
-            <a
-              href="#soap-notes"
-              className="relative py-1 hover:text-zinc-100 transition-colors duration-200 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-teal-400 after:transition-all after:duration-300"
-            >
-              Clinical Notes (SOAP)
-            </a>
-            <a
-              href="#safety"
-              className="relative py-1 hover:text-zinc-100 transition-colors duration-200 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-teal-400 after:transition-all after:duration-300"
-            >
-              HIPAA & Safety
-            </a>
+        <div className="container mx-auto flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] h-12 sm:h-14 px-4 sm:px-6 max-w-7xl">
+          <div className="flex justify-start shrink-0">
+            <Link href="/" className="group flex items-center">
+              <span
+                className="font-aruga text-lg sm:text-xl font-normal text-white tracking-wide hover:text-white/70 transition-colors duration-200"
+                style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}
+              >
+                Aruga
+              </span>
+            </Link>
+          </div>
+          <nav className="hidden md:flex items-center justify-center gap-8 text-[13px] tracking-[0.03em] text-white font-medium">
+            <a href="#overview" className="hover:text-white/70 transition-colors">Overview</a>
+            <a href="#disciplines" className="hover:text-white/70 transition-colors">Disciplines</a>
+            <a href="#lifespan" className="hover:text-white/70 transition-colors">Lifespan</a>
+            <a href="#soap-notes" className="hover:text-white/70 transition-colors">SOAP</a>
+            <a href="#safety" className="hover:text-white/70 transition-colors">Safety</a>
           </nav>
-
-          {/* Action CTAs */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex justify-end items-center gap-2.5 sm:gap-3 shrink-0 ml-auto md:ml-0">
             {user ? (
               <Link href={dashboardHref}>
-                <Button
-                  size="sm"
-                  className="text-xs bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold gap-1.5 shadow-sm group"
-                >
-                  <span>Dashboard</span>
-                  <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-1" />
+                <Button size="sm" className="text-xs bg-white hover:bg-zinc-100 text-black font-semibold rounded-none px-5">
+                  Dashboard <ArrowRight className="w-3.5 h-3.5 ml-1" />
                 </Button>
               </Link>
             ) : (
               <Link href="/login">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs border-zinc-800 text-zinc-300 hover:text-zinc-100 bg-zinc-900/60 hover:bg-zinc-800 backdrop-blur-sm"
-                >
-                  Sign In / Register
-                </Button>
+                <span className="bg-black text-white rounded-full px-4 py-1.5 flex items-center gap-1.5 text-[11px]">Sign in <span className="bg-white text-black rounded-full w-4 h-4 flex items-center justify-center">→</span></span>
               </Link>
             )}
           </div>
         </div>
       </motion.header>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* SECTION 1: HERO SECTION                                            */}
-      {/* ------------------------------------------------------------------ */}
-      <section
-        ref={heroRef}
-        id="overview"
-        className="relative scroll-mt-0 min-h-screen flex flex-col justify-center items-center overflow-hidden border-b border-zinc-800/80 bg-zinc-950 px-4 sm:px-6 pt-24 sm:pt-28 pb-12"
-      >
-        {/* Grainient Animated WebGL2 Background (React Bits) */}
-        <div className="absolute inset-0 w-full h-full z-0 overflow-hidden">
-          <Grainient
-            colors={["#020617", "#0f172a", "#1e3a8a", "#2563eb", "#0284c7", "#38bdf8", "#93c5fd"]}
-            type="linear"
-            angle={60}
-            bands={1}
-            speed={0.8}
-            flow={0.85}
-            scale={1.15}
-            softness={0.9}
-            silk={0.25}
-            grainAmount={0.16}
-            grainSize={1.3}
-            contrast={1.15}
-            saturation={1.3}
-            interactive={true}
-            stir={2.5}
-            clickSwirl={true}
-            className="w-full h-full"
-          />
-        </div>
+      {/* HERO — peg e6373c full-bleed, no card frame */}
+      <section ref={heroRef} id="overview" className="w-full min-h-screen flex flex-col bg-white">
+        <div className="w-full flex-1 flex flex-col overflow-hidden">
+          {/* Hero visual — full width + height */}
+          <div className="relative flex-1 min-h-[520px] sm:min-h-screen overflow-hidden">
+            {/* Blue grainient — same animation, black replaced with white */}
+            <div className="absolute inset-0">
+              <Grainient
+                colors={["#ffffff", "#f0f7ff", "#1e3a8a", "#2563eb", "#0284c7", "#38bdf8", "#93c5fd"]}
+                type="linear"
+                angle={60}
+                bands={1}
+                speed={0.8}
+                flow={0.85}
+                scale={1.15}
+                softness={0.9}
+                silk={0.25}
+                grainAmount={0.16}
+                grainSize={1.3}
+                contrast={1.15}
+                saturation={1.15}
+                interactive={true}
+                stir={2.5}
+                clickSwirl={true}
+                className="w-full h-full"
+              />
+            </div>
+            {/* Dark overlay for text legibility like peg's eye photo */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/5 to-black/45" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-transparent" />
 
-        {/* Subtle top and bottom atmospheric blend for contrast */}
-        <div className="absolute inset-0 z-0 bg-gradient-to-b from-zinc-950/40 via-transparent to-zinc-950/90 pointer-events-none" />
 
-        {/* Multi-layered smooth transition to next section */}
-        <div className="absolute bottom-0 inset-x-0 h-36 sm:h-48 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-transparent pointer-events-none z-10" />
 
-        {/* Luminous horizon accent beam */}
-        <div className="absolute bottom-0 inset-x-0 flex items-center justify-center pointer-events-none z-20">
-          <div className="w-full max-w-5xl h-px bg-gradient-to-r from-transparent via-sky-500/60 via-blue-500/50 to-transparent" />
-          <div className="absolute w-80 h-3 bg-gradient-to-r from-blue-500/20 via-sky-500/30 to-transparent blur-lg rounded-full" />
-        </div>
+            {/* Headline — middle left */}
+            <div className="absolute inset-0 flex flex-col justify-center z-10 px-5 sm:px-8 lg:px-12 gap-6">
+              <h1 className="text-[32px] sm:text-[44px] lg:text-[52px] font-semibold leading-[0.9] tracking-[-0.02em] text-white max-w-[560px]">
+                Therapy doesn&apos;t<br />stop at the<br />clinic door.
+              </h1>
+              <div className="flex flex-col gap-3 text-white">
+                <div className="flex gap-2.5 items-start max-w-[280px]">
+                  <span className="w-5 h-5 rounded-full bg-white/15 border border-white/20 flex items-center justify-center shrink-0 mt-0.5 text-[10px]">◈</span>
+                  <div><div className="text-[11px] font-semibold leading-none">Real-Time Progress</div><div className="text-[10px] text-white/70 leading-tight">Track reps and form between visits.</div></div>
+                </div>
+                <div className="flex gap-2.5 items-start max-w-[280px]">
+                  <span className="w-5 h-5 rounded-full bg-white/15 border border-white/20 flex items-center justify-center shrink-0 mt-0.5 text-[10px]">✎</span>
+                  <div><div className="text-[11px] font-semibold leading-none">Personalized Plans</div><div className="text-[10px] text-white/70 leading-tight">OT, PT, and Speech tailored to you.</div></div>
+                </div>
+                <div className="flex gap-2.5 items-start max-w-[280px]">
+                  <span className="w-5 h-5 rounded-full bg-white/15 border border-white/20 flex items-center justify-center shrink-0 mt-0.5 text-[10px]">♥</span>
+                  <div><div className="text-[11px] font-semibold leading-none">Holistic Follow-Through</div><div className="text-[10px] text-white/70 leading-tight">Photo or clip, skip if tired — always safe.</div></div>
+                </div>
+              </div>
+            </div>
 
-        {/* Hero Content with Smooth Scroll Parallax Translation */}
-        <motion.div
-          style={{ y: heroY, opacity: heroOpacity, scale: heroScale }}
-          className="flex flex-col items-center text-center space-y-7 max-w-4xl relative z-20 select-none my-auto py-12"
-        >
-          {/* Headline Statement */}
-          <div className="space-y-3">
-            <motion.h1
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
-              className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-zinc-100 leading-[1.08] drop-shadow-sm"
-            >
-              Therapy doesn't stop at the clinic door.
-            </motion.h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-              className="text-xl sm:text-2xl md:text-3xl font-semibold bg-gradient-to-r from-teal-300 via-sky-400 to-blue-400 bg-clip-text text-transparent"
-            >
-              Direct home programs with clinician-verified AI.
-            </motion.p>
+
+
+
+            <motion.div style={{ opacity: arrowOpacity }} className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 hidden sm:flex">
+              <a href="#disciplines" className="w-7 h-7 rounded-full bg-white/15 border border-white/20 flex items-center justify-center text-white/70 hover:text-white"><ChevronDown className="w-3.5 h-3.5" /></a>
+            </motion.div>
           </div>
 
-          {/* Concise Core Statement */}
-          <motion.p
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
-            className="text-base sm:text-lg text-zinc-300 max-w-2xl leading-relaxed"
-          >
-            Prescribe custom home programs, record practice clips, and verify kinematic progress with computer vision—supporting Pediatric early intervention through Geriatric dynamic balance and fall prevention, 100% clinician-reviewed with full clinical progress documentation (SOAP).
-          </motion.p>
+          {/* Below hero — full width, no card */}
+          <div className="w-full bg-[#F6F3EF] px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+            <div className="flex items-center gap-2 text-[10px] tracking-[0.12em] uppercase text-black/40"><span>✱</span> Ready to see what your body’s been trying to tell you?</div>
+            <h2 className="mt-3 text-[22px] sm:text-[30px] font-bold leading-[1.1] tracking-[-0.02em] text-black max-w-xl">A simple, supervised home-program — for people and practitioners.</h2>
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
+              {/* Step 1 — New Program form */}
+              <div className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
+                <div className="h-[200px] bg-zinc-950 p-3 relative overflow-hidden">
+                  <div className="absolute top-3 left-3 bg-white text-black text-[10px] px-2 py-1 rounded-full font-medium">01</div>
+                  <div className="mt-7 bg-white rounded-xl p-3 space-y-2.5 border border-zinc-100 shadow-sm">
+                    <div className="text-[10px] font-semibold text-black">New Program</div>
+                    <div className="text-[10px] text-zinc-500 border border-zinc-200 rounded-lg px-2.5 py-2 bg-zinc-50">cup grasp 10x, block stacking • OT</div>
+                    <div className="flex gap-1.5">
+                      <span className="text-[9px] bg-teal-600 text-white px-2 py-1 rounded-full">Generate draft</span>
+                      <span className="text-[9px] bg-zinc-100 text-zinc-600 px-2 py-1 rounded-full border">Muse Spark 1.3</span>
+                    </div>
+                    <div className="space-y-1 pt-1 border-t border-zinc-100">
+                      <div className="flex gap-2 text-[10px] text-zinc-700"><span className="w-4 h-4 rounded-full bg-teal-600 text-black flex items-center justify-center text-[8px]">1</span> Grasp cup, hold 3 sec — 10 reps</div>
+                      <div className="flex gap-2 text-[10px] text-zinc-700"><span className="w-4 h-4 rounded-full bg-zinc-200 flex items-center justify-center text-[8px]">2</span> Stack 4 blocks, slow and steady</div>
+                    </div>
+                    <div className="bg-black text-white text-[10px] text-center py-1.5 rounded-full font-medium">Assign to client</div>
+                  </div>
+                </div>
+                <div className="p-4"><div className="text-xs font-semibold text-black">Create in seconds</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Type a short goal. Get a clear draft to approve.</div></div>
+              </div>
+              {/* Step 2 — My Programs MediaUploader */}
+              <div className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
+                <div className="h-[200px] bg-zinc-900 p-3 relative overflow-hidden flex flex-col">
+                  <div className="absolute top-3 left-3 bg-white text-black text-[10px] px-2 py-1 rounded-full font-medium">02</div>
+                  <div className="mt-7 bg-white rounded-xl overflow-hidden border border-zinc-200 shadow-sm flex-1 flex flex-col">
+                    <div className="flex gap-2 px-3 pt-2.5 pb-2 border-b border-zinc-100 text-[10px] font-medium">
+                      <span className="bg-black text-white px-2.5 py-1 rounded-full">Video</span><span className="bg-zinc-100 text-zinc-500 px-2.5 py-1 rounded-full">Photo</span>
+                    </div>
+                    <div className="flex-1 bg-black m-2 rounded-lg relative flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-white/20 border border-white/30 flex items-center justify-center"><div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" /></div>
+                      <div className="absolute bottom-1.5 left-1.5 bg-red-600 text-black text-[8px] px-1.5 py-0.5 rounded-full">REC 08s</div>
+                      <div className="absolute bottom-1.5 right-1.5 bg-white text-black text-[8px] px-2 py-1 rounded-full font-medium">Stop</div>
+                    </div>
+                    <div className="px-3 pb-2.5 flex items-center justify-between text-[9px] text-zinc-500"><span>My Programs Record</span><span className="text-emerald-600">Skip if tired</span></div>
+                  </div>
+                </div>
+                <div className="p-4"><div className="text-xs font-semibold text-black">Client records at home</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Clients open it on their phone and send a photo or short clip.</div></div>
+              </div>
+              {/* Step 3 — Submissions review */}
+              <div className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
+                <div className="h-[200px] bg-zinc-950 p-3 relative overflow-hidden">
+                  <div className="absolute top-3 left-3 bg-white text-black text-[10px] px-2 py-1 rounded-full font-medium">03</div>
+                  <div className="mt-7 bg-white rounded-xl overflow-hidden border border-zinc-200 shadow-sm">
+                    <div className="h-24 bg-zinc-900 relative flex items-center justify-center">
+                      <div className="absolute inset-2 border-2 border-teal-400/60 rounded-lg" />
+                      <div className="w-10 h-10 bg-teal-500/20 border border-teal-400 rounded-full flex items-center justify-center"><Hand className="w-4 h-4 text-teal-400" /></div>
+                      <span className="absolute top-1.5 right-1.5 bg-teal-600 text-black text-[7px] px-1.5 py-0.5 rounded-full">SAM 3.1</span>
+                      <span className="absolute bottom-1.5 left-1.5 bg-white text-black text-[8px] px-2 py-1 rounded-full">Submissions</span>
+                    </div>
+                    <div className="px-3 py-2.5 space-y-1.5">
+                      <div className="grid grid-cols-4 gap-1">
+                        <span className="bg-sky-50 text-sky-700 border border-sky-200 text-[8px] text-center py-1 rounded">S</span>
+                        <span className="bg-teal-50 text-teal-700 border border-teal-200 text-[8px] text-center py-1 rounded">O</span>
+                        <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[8px] text-center py-1 rounded">A</span>
+                        <span className="bg-violet-50 text-violet-700 border border-violet-200 text-[8px] text-center py-1 rounded">P</span>
+                      </div>
+                      <div className="bg-black text-white text-[9px] text-center py-1.5 rounded-full font-medium">Publish</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4"><div className="text-xs font-semibold text-black">You review and publish</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Watch the clip and share feedback. Clients see only what you publish.</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-          {/* CTAs */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
-            className="pt-2 flex flex-wrap items-center justify-center gap-4"
-          >
-            <Link href={user ? dashboardHref : "/login"}>
-              <Button className="h-12 px-8 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-base shadow-lg shadow-teal-950/60 gap-2 group">
-                <span>{user ? "Go to Dashboard" : "Start Now"}</span>
-                <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
-              </Button>
+      {/* SECTION 2 — Peg's section 2 style: numbered header + big headline + 3 cols */}
+      <section id="disciplines" className="bg-white border-b border-black/10">
+
+        {/* Big headline like "Protein Sequencing by Expansion" */}
+        <div className="container mx-auto px-4 sm:px-6 max-w-7xl py-10 sm:py-14">
+          <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black">
+            <span className="block text-3xl sm:text-5xl lg:text-6xl">Built for OT, PT</span>
+            <span className="block text-3xl sm:text-5xl lg:text-6xl text-black/30">and Speech —</span>
+            <span className="block text-3xl sm:text-5xl lg:text-6xl">one workflow.</span>
+          </h2>
+          <p className="mt-6 max-w-2xl text-xs sm:text-sm text-black/50 leading-relaxed">
+            Same simple steps for every clinic. You stay in control.
+          </p>
+
+          <div className="mt-10 border-y border-black/10 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-black/10">
+            <div className="py-6 px-6 flex gap-4 items-start text-left">
+              <span className="text-xs font-mono text-black/20 shrink-0">01</span>
+              <div className="text-left"><div className="text-xs font-semibold text-black">You set the plan</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Write a short goal. Check the draft.</div></div>
+            </div>
+            <div className="py-6 px-6 flex gap-4 items-start text-left">
+              <span className="text-xs font-mono text-black/20 shrink-0">02</span>
+              <div className="text-left"><div className="text-xs font-semibold text-black">They practice at home</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">They send a photo or short clip.</div></div>
+            </div>
+            <div className="py-6 px-6 flex gap-4 items-start text-left">
+              <span className="text-xs font-mono text-black/20 shrink-0">03</span>
+              <div className="text-left"><div className="text-xs font-semibold text-black">You review it</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Send clear next steps.</div></div>
+            </div>
+          </div>
+
+          <div className="mt-0 border-b border-black/10 grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-black/10">
+            {[
+              { icon: Hand, title: "Occupational Therapy", desc: "Turn fine motor goals into simple home steps. Families follow and share a quick photo." },
+              { icon: Activity, title: "Physical Therapy", desc: "Keep strength and balance going at home. Clients rest when needed." },
+              { icon: MessageSquare, title: "Speech-Language Pathology", desc: "Send short speech practice for home. You listen and reply — no auto scores." },
+            ].map((d, i) => (
+              <div key={i} className="p-8 flex flex-col items-start text-left space-y-3">
+                <d.icon className="w-5 h-5 text-black/30" />
+                <h3 className="text-sm font-semibold text-black">{d.title}</h3>
+                <p className="text-xs text-black/60 leading-relaxed">{d.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 h-px w-full bg-black/10" />
+        </div>
+      </section>
+      <div className="h-px w-full bg-black/10" />
+
+      {/* LIFESPAN — editorial */}
+      <section id="lifespan" className="bg-white border-b border-black/10">
+        <div className="container mx-auto px-4 sm:px-6 max-w-7xl py-10 sm:py-14">
+          <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">Adapted for every<br/><span className="text-black/25">milestone & generation.</span></h2>
+          <p className="mt-4 max-w-2xl text-xs sm:text-sm text-black/50 leading-relaxed">Aruga keeps therapy going at home — simple steps, quick photo or clip, and clear feedback from your clinician.</p>
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-0 border border-black/10 divide-y md:divide-y-0 md:divide-x divide-black/10">
+            {[
+              { label: "Pediatric  1–12", title: "Play-Based Developmental", desc: "Aruga turns play into guided home practice. Parents follow short steps and share a quick photo between visits.", points: ["Play at home, not just in clinic","Parents can help easily","Steady progress you can see"], Icon: Baby },
+              { label: "Adolescent  13–17", title: "Youth Coordination & Posture", desc: "Aruga gives teens clear tasks they can do on their own. They log it themselves and rest when needed.", points: ["Clear tasks for independence","They track it themselves","Rest is respected"], Icon: GraduationCap },
+              { label: "Adult  18–64", title: "Neuro & Orthopedic Recovery", desc: "Aruga brings rehab routines home after stroke or injury. Short clips help you adjust daily tasks.", points: ["Daily tasks made simple","You adjust based on video","Pacing that respects fatigue"], Icon: User },
+              { label: "Geriatrics  65+", title: "Dynamic Balance & Fall Prevention", desc: "Aruga supports safe movement at home. Simple steps and family follow-through help prevent falls.", points: ["Safer movement at home","Family-friendly steps","Easy to read and use"], Icon: HeartPulse },
+            ].map((c, i) => (
+              <div key={i} className="p-6 sm:p-8 space-y-4 bg-white">
+                <div className="flex items-center justify-between">
+                  <c.Icon className="w-5 h-5 text-black/25" />
+                  <span className="text-[10px] tracking-[0.14em] uppercase border border-black/10 px-2.5 py-1 text-black/40">{c.label}</span>
+                </div>
+                <h3 className="text-sm font-semibold text-black">{c.title}</h3>
+                <p className="text-xs text-black/40 leading-relaxed">{c.desc}</p>
+                <ul className="pt-3 border-t border-black/10 space-y-1.5 text-xs text-black/55">
+                  {c.points.map(p => <li key={p} className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />{p}</li>)}
+                </ul>
+              </div>
+            ))}
+          <div className="mt-8 h-px w-full bg-black/10" />
+          </div>
+        </div>
+      </section>
+
+      {/* Breaker */}
+      <div className="h-px w-full bg-black/10" />
+
+      {/* SOAP */}
+      <section id="soap-notes" className="bg-white border-b border-black/10">
+        <div className="container mx-auto px-4 sm:px-6 max-w-7xl py-10 sm:py-14">
+          <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">Clinical notes.<br/><span className="text-black/25">Telehealth & assessments.</span></h2>
+          <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-0 border border-black/10 divide-y lg:divide-y-0 lg:divide-x divide-black/10">
+            <div className="p-6 sm:p-8 space-y-4">
+              <FileText className="w-5 h-5 text-black/30" />
+              <h3 className="text-sm font-semibold text-black">Standardized Progress Notes (SOAP)</h3>
+              <p className="text-xs text-black/40 leading-relaxed">Separate documentation into Subjective, Objective, Assessment, Plan with auto-filled kinematic observations.</p>
+              <div className="grid grid-cols-2 gap-2 pt-4 border-t border-black/10 text-[11px] font-mono">
+                <span className="border border-black/10 py-2 text-center text-black/50">S: Subjective</span>
+                <span className="border border-black/10 py-2 text-center text-black/50">O: Objective</span>
+                <span className="border border-black/10 py-2 text-center text-black/50">A: Assessment</span>
+                <span className="border border-black/10 py-2 text-center text-black/50">P: Plan</span>
+              </div>
+            </div>
+            <div className="p-6 sm:p-8 space-y-4">
+              <Video className="w-5 h-5 text-black/30" />
+              <h3 className="text-sm font-semibold text-black">Telehealth & Standardized Tests</h3>
+              <p className="text-xs text-black/40 leading-relaxed">Attach Google Meet / Zoom recordings and link validated sheets (PDMS-2, BBS, Fugl-Meyer, TUG).</p>
+              <ul className="pt-4 border-t border-black/10 space-y-2 text-xs text-black/50">
+                <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25" /> One-click session video playback</li>
+                <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25" /> Attach verified standardized reports</li>
+              </ul>
+            </div>
+            <div className="p-6 sm:p-8 space-y-4">
+              <Lock className="w-5 h-5 text-black/30" />
+              <h3 className="text-sm font-semibold text-black">Record Lock & Feedback Edits</h3>
+              <p className="text-xs text-black/40 leading-relaxed">Once published, submission locks for integrity. Clinicians can revise feedback anytime.</p>
+              <ul className="pt-4 border-t border-black/10 space-y-2 text-xs text-black/50">
+                <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25" /> Client locked after review</li>
+                <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25" /> Clinician updates anytime</li>
+              </ul>
+            </div>
+          <div className="mt-8 h-px w-full bg-black/10" />
+          </div>
+        </div>
+      </section>
+
+      <div className="h-px w-full bg-black/10" />
+
+      {/* SAFETY — breaker */}
+      <section id="safety" className="bg-black border-y border-white/10">
+        <div className="container mx-auto px-4 sm:px-6 max-w-7xl py-10 sm:py-12">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+            <div className="shrink-0">
+              <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-tight">Safe and private<br/><span className="text-white/40">by design.</span></h2>
+              <p className="mt-2 text-[11px] tracking-[0.1em] uppercase text-white/30">HIPAA-compliant infrastructure</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 flex-1 lg:max-w-3xl">
+              {[
+                { Icon: Clock, t: "Auto logoff", d: "Logs out when idle to keep records safe." },
+                { Icon: ShieldCheck, t: "Audit log", d: "Every view and publish is tracked." },
+                { Icon: Lock, t: "De-identified", d: "Names are removed before any AI help." },
+                { Icon: FileText, t: "Private storage", d: "Videos stay in your private, secure space." },
+              ].map((f) => (
+                <div key={f.t} className="space-y-2 border-t border-white/10 pt-4">
+                  <div className="flex items-center gap-2"><f.Icon className="w-4 h-4 text-white/60" /><h3 className="text-xs font-semibold text-white">{f.t}</h3></div>
+                  <p className="text-[11px] text-white/50 leading-relaxed">{f.d}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-white/10 pt-8">
+            <p className="text-sm text-white/60">Ready to feel Aruga?</p>
+            <Link href="/login">
+              <span className="inline-flex items-center gap-2 bg-white text-black text-sm font-semibold px-8 py-3 rounded-full hover:bg-zinc-100 transition-colors">Sign up <ArrowRight className="w-4 h-4" /></span>
             </Link>
-          </motion.div>
-        </motion.div>
-
-        {/* Floating Arrow Down Button */}
-        <motion.div
-          style={{ opacity: arrowOpacity }}
-          className="absolute bottom-8 inset-x-0 flex justify-center z-20 pointer-events-auto"
-        >
-          <a
-            href="#disciplines"
-            aria-label="Scroll to next section"
-            className="p-3 rounded-full bg-zinc-950/70 border border-zinc-800/80 hover:border-sky-400/60 text-zinc-400 hover:text-sky-300 backdrop-blur-md shadow-lg shadow-black/40 hover:shadow-sky-500/20 transition-all duration-300 group"
-          >
-            <motion.div
-              animate={{ y: [0, 6, 0] }}
-              transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
-            >
-              <ChevronDown className="w-5 h-5 group-hover:text-sky-300 transition-colors" />
-            </motion.div>
-          </a>
-        </motion.div>
-      </section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* SECTION 2: DISCIPLINES & WORKFLOW                                  */}
-      {/* ------------------------------------------------------------------ */}
-      <section
-        id="disciplines"
-        className="relative scroll-mt-24 py-20 md:py-28 border-b border-zinc-800/80 bg-zinc-950 overflow-hidden"
-      >
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-32 bg-gradient-to-b from-sky-500/10 to-transparent blur-3xl pointer-events-none" />
-        <div className="container mx-auto px-4 sm:px-6 max-w-7xl space-y-16">
-          {/* 4 Feature Highlights (Moved from Hero) */}
-          <motion.div
-            initial={{ opacity: 0, y: 25 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto"
-          >
-            <motion.div
-              whileHover={{ y: -4, scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-teal-500/50 text-left transition-all cursor-default shadow-sm backdrop-blur-md"
-            >
-              <div className="flex items-center gap-2 text-zinc-200 font-semibold text-xs sm:text-sm">
-                <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
-                <span>Human Verified</span>
-              </div>
-              <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">Submission lockout & clinician review</p>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ y: -4, scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-teal-500/50 text-left transition-all cursor-default shadow-sm backdrop-blur-md"
-            >
-              <div className="flex items-center gap-2 text-zinc-200 font-semibold text-xs sm:text-sm">
-                <Layers className="w-4 h-4 text-teal-400 shrink-0" />
-                <span>SAM 3.1 & Vision AI</span>
-              </div>
-              <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">Kinematic tabletop segmentation</p>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ y: -4, scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-teal-500/50 text-left transition-all cursor-default shadow-sm backdrop-blur-md"
-            >
-              <div className="flex items-center gap-2 text-zinc-200 font-semibold text-xs sm:text-sm">
-                <Stethoscope className="w-4 h-4 text-teal-400 shrink-0" />
-                <span>Clinical Notes (SOAP)</span>
-              </div>
-              <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">Structured documentation, assessments & recordings</p>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ y: -4, scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-teal-500/50 text-left transition-all cursor-default shadow-sm backdrop-blur-md"
-            >
-              <div className="flex items-center gap-2 text-zinc-200 font-semibold text-xs sm:text-sm">
-                <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0" />
-                <span>HIPAA Compliant</span>
-              </div>
-              <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">45 CFR § 164.312 safeguards & logs</p>
-            </motion.div>
-          </motion.div>
-
-          {/* Section Header */}
-          <div className="text-center max-w-2xl mx-auto space-y-3">
-            <Badge variant="teal" statusText="Disciplines" />
-            <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-zinc-100">
-              Built for OT, SLP, and PT.
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-400">
-              One unified home-care platform for speech, occupational, and physical therapy.
-            </p>
-          </div>
-
-          {/* Three Discipline Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* OT Card */}
-            <motion.div
-              whileHover={{
-                y: -6,
-                borderColor: "rgba(20, 184, 166, 0.6)",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(20, 184, 166, 0.15)",
-              }}
-              whileTap={{ scale: 0.985 }}
-              transition={{ type: "spring", stiffness: 350, damping: 25 }}
-              className="group rounded-xl border border-zinc-800 bg-zinc-900/80 p-6 space-y-4 cursor-pointer transition-colors"
-            >
-              <div className="w-10 h-10 rounded-xl bg-teal-950/80 border border-teal-500/40 text-teal-400 flex items-center justify-center group-hover:scale-110 group-hover:rotate-2 group-hover:border-teal-400/80 transition-all duration-300">
-                <Hand className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-zinc-100 group-hover:text-teal-200 transition-colors">
-                  Occupational Therapy
-                </h3>
-                <span className="text-[11px] text-teal-400 font-mono font-medium uppercase">
-                  Fine Motor & Daily Living
-                </span>
-              </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Tabletop grasping, pinch-and-release, and object transfer. SAM 3.1 tracks everyday utensils, cups, and blocks.
-              </p>
-              <div className="pt-2 text-[11px] text-zinc-500 border-t border-zinc-800 flex items-center gap-1.5 group-hover:text-zinc-400 transition-colors">
-                <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
-                <span>Visual target tracking</span>
-              </div>
-            </motion.div>
-
-            {/* SLP Card */}
-            <motion.div
-              whileHover={{
-                y: -6,
-                borderColor: "rgba(20, 184, 166, 0.6)",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(20, 184, 166, 0.15)",
-              }}
-              whileTap={{ scale: 0.985 }}
-              transition={{ type: "spring", stiffness: 350, damping: 25 }}
-              className="group rounded-xl border border-zinc-800 bg-zinc-900/80 p-6 space-y-4 cursor-pointer transition-colors"
-            >
-              <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-200 flex items-center justify-center group-hover:scale-110 group-hover:rotate-2 group-hover:text-teal-300 group-hover:border-teal-400/60 transition-all duration-300">
-                <MessageSquare className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-zinc-100 group-hover:text-teal-200 transition-colors">
-                  Speech-Language Pathology
-                </h3>
-                <span className="text-[11px] text-zinc-400 font-mono font-medium uppercase">
-                  Voice & Articulation
-                </span>
-              </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Vocal resonance, phonation, and breath control. High-fidelity audio playback lets clinicians listen without automated scoring.
-              </p>
-              <div className="pt-2 text-[11px] text-zinc-500 border-t border-zinc-800 flex items-center gap-1.5 group-hover:text-zinc-400 transition-colors">
-                <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
-                <span>Therapist audio review</span>
-              </div>
-            </motion.div>
-
-            {/* PT Card */}
-            <motion.div
-              whileHover={{
-                y: -6,
-                borderColor: "rgba(20, 184, 166, 0.6)",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(20, 184, 166, 0.15)",
-              }}
-              whileTap={{ scale: 0.985 }}
-              transition={{ type: "spring", stiffness: 350, damping: 25 }}
-              className="group rounded-xl border border-zinc-800 bg-zinc-900/80 p-6 space-y-4 cursor-pointer transition-colors"
-            >
-              <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-200 flex items-center justify-center group-hover:scale-110 group-hover:rotate-2 group-hover:text-teal-300 group-hover:border-teal-400/60 transition-all duration-300">
-                <Activity className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-zinc-100 group-hover:text-teal-200 transition-colors">
-                  Physical Therapy
-                </h3>
-                <span className="text-[11px] text-zinc-400 font-mono font-medium uppercase">
-                  Mobility & Posture
-                </span>
-              </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Joint elevation, forearm supination, and seated posture. Patients report fatigue directly to skip steps safely.
-              </p>
-              <div className="pt-2 text-[11px] text-zinc-500 border-t border-zinc-800 flex items-center gap-1.5 group-hover:text-zinc-400 transition-colors">
-                <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
-                <span>Fatigue-aware pacing</span>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Sequential 3-Step Workflow */}
-          <div className="space-y-8 pt-4">
-            <div className="text-center max-w-xl mx-auto space-y-1">
-              <h3 className="text-lg font-bold text-zinc-200">How It Works</h3>
-              <p className="text-xs text-zinc-400">
-                Clinician-supervised at every step.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-              {/* Step 1 */}
-              <motion.div
-                whileHover={{ y: -4, borderColor: "rgba(20, 184, 166, 0.5)" }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                className="group p-5 rounded-xl border border-zinc-800 bg-zinc-900/60 space-y-3 transition-colors"
-              >
-                <div className="w-8 h-8 rounded-full bg-teal-950 border border-teal-500/50 text-teal-400 font-bold text-xs flex items-center justify-center group-hover:scale-110 group-hover:border-teal-400 group-hover:shadow-[0_0_12px_rgba(20,184,166,0.3)] transition-all">
-                  1
-                </div>
-                <h4 className="text-sm font-semibold text-zinc-100 group-hover:text-teal-200 transition-colors">
-                  Prescribe
-                </h4>
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  Draft quick shorthand notes. Muse Spark 1.3 turns them into clear steps for clinician approval.
-                </p>
-              </motion.div>
-
-              {/* Step 2 */}
-              <motion.div
-                whileHover={{ y: -4, borderColor: "rgba(20, 184, 166, 0.5)" }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                className="group p-5 rounded-xl border border-zinc-800 bg-zinc-900/60 space-y-3 transition-colors"
-              >
-                <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs flex items-center justify-center group-hover:scale-110 group-hover:border-teal-400 group-hover:text-teal-300 group-hover:shadow-[0_0_12px_rgba(20,184,166,0.3)] transition-all">
-                  2
-                </div>
-                <h4 className="text-sm font-semibold text-zinc-100 group-hover:text-teal-200 transition-colors">
-                  Practice & Record
-                </h4>
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  Patients complete home programs and record up to 30-second clips direct to private storage.
-                </p>
-              </motion.div>
-
-              {/* Step 3 */}
-              <motion.div
-                whileHover={{ y: -4, borderColor: "rgba(20, 184, 166, 0.5)" }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                className="group p-5 rounded-xl border border-zinc-800 bg-zinc-900/60 space-y-3 transition-colors"
-              >
-                <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs flex items-center justify-center group-hover:scale-110 group-hover:border-teal-400 group-hover:text-teal-300 group-hover:shadow-[0_0_12px_rgba(20,184,166,0.3)] transition-all">
-                  3
-                </div>
-                <h4 className="text-sm font-semibold text-zinc-100 group-hover:text-teal-200 transition-colors">
-                  Review & Verify
-                </h4>
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  Inspect SAM 3.1 tracking overlays, verify key observations, and publish personalized feedback.
-                </p>
-              </motion.div>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* SECTION 2.5: LIFESPAN CARE: 4 CLINICAL DEMOGRAPHICS               */}
-      {/* ------------------------------------------------------------------ */}
-      <section
-        id="lifespan"
-        className="scroll-mt-24 py-20 md:py-28 border-b border-zinc-800/80 bg-zinc-950/70"
-      >
-        <div className="container mx-auto px-4 sm:px-6 max-w-7xl space-y-16">
-          <div className="text-center max-w-3xl mx-auto space-y-3">
-            <Badge variant="teal" statusText="Rehabilitation Across the Lifespan" />
-            <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-zinc-100">
-              Adapted for Every Milestone & Generation.
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-2xl mx-auto">
-              From early childhood bilateral play to adolescent posture, adult neuro recovery, and geriatric fall prevention—Aruga standardizes home rehabilitation across all four lifespan stages.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
-            {/* 1. Pediatric Card */}
-            <motion.div
-              whileHover={{ y: -5 }}
-              transition={{ type: "spring", stiffness: 350, damping: 25 }}
-              className="rounded-2xl border border-sky-500/30 bg-zinc-900/80 p-6 sm:p-8 space-y-6 relative overflow-hidden shadow-lg group hover:border-sky-500/60 transition-colors"
-            >
-              <div className="absolute top-0 right-0 w-36 h-36 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-xl bg-sky-950/80 border border-sky-500/40 text-sky-400 flex items-center justify-center">
-                  <Baby className="w-6 h-6" />
-                </div>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-sky-950/80 border border-sky-500/40 text-sky-300">
-                  Pediatric (Ages 1–12)
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold text-zinc-100 group-hover:text-sky-300 transition-colors">
-                  Play-Based Developmental Therapy
-                </h3>
-                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                  Early intervention fine motor therapy, pincer grasp opposition, and speech articulation home routines.
-                </p>
-              </div>
-
-              <div className="space-y-3 pt-2 border-t border-zinc-800">
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
-                  <span><strong>Tabletop Play Activities:</strong> Pegboards, play dough beads, block towers, and twist-off jar games.</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
-                  <span><strong>Caregiver Co-Participation:</strong> Parents easily capture practice clips with stress-free recording guidance.</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
-                  <span><strong>Peabody (PDMS-2) Alignment:</strong> Direct clinical attachments for standardized fine motor developmental scoring.</span>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <Link href="/login">
-                  <Button variant="outline" size="sm" className="w-full gap-2 text-xs border-sky-500/40 text-sky-300 hover:bg-sky-950/40">
-                    <Baby className="w-3.5 h-3.5" />
-                    <span>Explore Pediatric Home Programs</span>
-                  </Button>
-                </Link>
-              </div>
-            </motion.div>
-
-            {/* 2. Adolescent Card */}
-            <motion.div
-              whileHover={{ y: -5 }}
-              transition={{ type: "spring", stiffness: 350, damping: 25 }}
-              className="rounded-2xl border border-indigo-500/30 bg-zinc-900/80 p-6 sm:p-8 space-y-6 relative overflow-hidden shadow-lg group hover:border-indigo-500/60 transition-colors"
-            >
-              <div className="absolute top-0 right-0 w-36 h-36 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-xl bg-indigo-950/80 border border-indigo-500/40 text-indigo-400 flex items-center justify-center">
-                  <GraduationCap className="w-6 h-6" />
-                </div>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-950/80 border border-indigo-500/40 text-indigo-300">
-                  Adolescent (Ages 13–17)
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold text-zinc-100 group-hover:text-indigo-300 transition-colors">
-                  Youth Coordination, Posture & Sports
-                </h3>
-                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                  Bilateral fine motor dexterity, athletic injury rehabilitation, posture re-education, and structured compliance.
-                </p>
-              </div>
-
-              <div className="space-y-3 pt-2 border-t border-zinc-800">
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                  <span><strong>Kinematic Mechanics:</strong> Vision tracking for forearm supination, joint elevation, and spine neutral alignment.</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                  <span><strong>Independent Logging:</strong> Youth-friendly mobile interface allows autonomous logging without parental friction.</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                  <span><strong>Non-Punitive Rest:</strong> Built-in skip logging protects recovering tendons from overuse fatigue.</span>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <Link href="/login">
-                  <Button variant="outline" size="sm" className="w-full gap-2 text-xs border-indigo-500/40 text-indigo-300 hover:bg-indigo-950/40">
-                    <GraduationCap className="w-3.5 h-3.5" />
-                    <span>Explore Adolescent Home Programs</span>
-                  </Button>
-                </Link>
-              </div>
-            </motion.div>
-
-            {/* 3. Adult Card */}
-            <motion.div
-              whileHover={{ y: -5 }}
-              transition={{ type: "spring", stiffness: 350, damping: 25 }}
-              className="rounded-2xl border border-teal-500/30 bg-zinc-900/80 p-6 sm:p-8 space-y-6 relative overflow-hidden shadow-lg group hover:border-teal-500/60 transition-colors"
-            >
-              <div className="absolute top-0 right-0 w-36 h-36 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-xl bg-teal-950/80 border border-teal-500/40 text-teal-400 flex items-center justify-center">
-                  <User className="w-6 h-6" />
-                </div>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-teal-950/80 border border-teal-500/40 text-teal-300">
-                  Adult (Ages 18–64)
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold text-zinc-100 group-hover:text-teal-300 transition-colors">
-                  Neurological & Orthopedic Recovery
-                </h3>
-                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                  Post-stroke hemiparesis recovery, traumatic brain injury rehabilitation, and activities of daily living (ADL) independence.
-                </p>
-              </div>
-
-              <div className="space-y-3 pt-2 border-t border-zinc-800">
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
-                  <span><strong>Activities of Daily Living (ADL):</strong> Cup transfers, cylindrical grasp, wooden block stacking, and washcloth rotations.</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
-                  <span><strong>Standardized Neuromuscular Scales:</strong> Attached Fugl-Meyer UE & Box and Blocks score sheets directly in clinical reviews.</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
-                  <span><strong>Fatigue-Aware Pacing:</strong> Prevents harmful shoulder hiking compensation by honoring client fatigue logs.</span>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <Link href="/login">
-                  <Button variant="outline" size="sm" className="w-full gap-2 text-xs border-teal-500/40 text-teal-300 hover:bg-teal-950/40">
-                    <User className="w-3.5 h-3.5" />
-                    <span>Explore Adult Home Programs</span>
-                  </Button>
-                </Link>
-              </div>
-            </motion.div>
-
-            {/* 4. Geriatrics Card */}
-            <motion.div
-              whileHover={{ y: -5 }}
-              transition={{ type: "spring", stiffness: 350, damping: 25 }}
-              className="rounded-2xl border border-amber-500/30 bg-zinc-900/80 p-6 sm:p-8 space-y-6 relative overflow-hidden shadow-lg group hover:border-amber-500/60 transition-colors"
-            >
-              <div className="absolute top-0 right-0 w-36 h-36 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-400 flex items-center justify-center">
-                  <HeartPulse className="w-6 h-6" />
-                </div>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                  Geriatrics (Ages 65+)
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold text-zinc-100 group-hover:text-amber-300 transition-colors">
-                  Dynamic Balance & Fall Prevention
-                </h3>
-                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                  Lower extremity strength, functional reach, sit-to-stand power, and home safety routines to preserve aging in place.
-                </p>
-              </div>
-
-              <div className="space-y-3 pt-2 border-t border-zinc-800">
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <span><strong>Fall Risk Mitigation:</strong> Tandem stance exercises, counter-supported balance, and safe kitchen transfers.</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <span><strong>Standardized Mobility Metrics:</strong> Integrated Timed Up and Go (TUG) & Berg Balance Scale (BBS) tracking.</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <span><strong>High-Contrast Clinical UI:</strong> Optimized typography and clear instructions tailored for aging vision.</span>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <Link href="/login">
-                  <Button variant="outline" size="sm" className="w-full gap-2 text-xs border-amber-500/40 text-amber-300 hover:bg-amber-950/40">
-                    <HeartPulse className="w-3.5 h-3.5" />
-                    <span>View Geriatric Balance Programs</span>
-                  </Button>
-                </Link>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* SECTION 2.7: CLINICAL SOAP NOTES & FEEDBACK PARITY                */}
-      {/* ------------------------------------------------------------------ */}
-      <section
-        id="soap-notes"
-        className="scroll-mt-24 py-20 md:py-28 border-b border-zinc-800/80 bg-zinc-950"
-      >
-        <div className="container mx-auto px-4 sm:px-6 max-w-7xl space-y-16">
-          <div className="text-center max-w-3xl mx-auto space-y-3">
-            <Badge variant="teal" statusText="Clinical Documentation Parity" />
-            <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-zinc-100">
-              Structured Clinical Notes (SOAP) with Telehealth & Assessments.
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-2xl mx-auto">
-              Home therapy reviews match the gold standard of live clinical documentation. Seamlessly incorporate standardized assessment documents, video recordings, and plain-English summaries.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* 4 SOAP Boxes Preview Card */}
-            <motion.div
-              whileHover={{ y: -4, borderColor: "rgba(20, 184, 166, 0.5)" }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 space-y-4"
-            >
-              <div className="flex items-center gap-2 text-teal-400">
-                <div className="w-8 h-8 rounded-lg bg-teal-950/80 border border-teal-500/40 flex items-center justify-center">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <h3 className="text-sm font-bold text-zinc-100">Standardized Progress Notes (SOAP)</h3>
-              </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Separate clinical documentation into Subjective, Objective, Assessment, and Plan fields with auto-filled kinematic observations from vision models.
-              </p>
-              <div className="grid grid-cols-2 gap-2 text-[11px] font-mono pt-2 border-t border-zinc-800">
-                <span className="p-2 rounded bg-sky-950/30 border border-sky-500/20 text-sky-300">S: Subjective</span>
-                <span className="p-2 rounded bg-teal-950/30 border border-teal-500/20 text-teal-300">O: Objective</span>
-                <span className="p-2 rounded bg-amber-950/30 border border-amber-500/20 text-amber-300">A: Assessment</span>
-                <span className="p-2 rounded bg-violet-950/30 border border-violet-500/20 text-violet-300">P: Plan</span>
-              </div>
-            </motion.div>
-
-            {/* Assessment Links & Telehealth Recordings */}
-            <motion.div
-              whileHover={{ y: -4, borderColor: "rgba(20, 184, 166, 0.5)" }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 space-y-4"
-            >
-              <div className="flex items-center gap-2 text-sky-400">
-                <div className="w-8 h-8 rounded-lg bg-sky-950/80 border border-sky-500/40 flex items-center justify-center">
-                  <Video className="w-4 h-4" />
-                </div>
-                <h3 className="text-sm font-bold text-zinc-100">Telehealth & Standardized Tests</h3>
-              </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Attach Google Meet / Zoom recordings for asynchronous patient playback, and link validated assessment sheets (PDMS-2, BBS, Fugl-Meyer, TUG).
-              </p>
-              <div className="space-y-2 pt-2 border-t border-zinc-800 text-xs text-zinc-300">
-                <div className="flex items-center gap-2 text-teal-300">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
-                  <span>One-click session video playback</span>
-                </div>
-                <div className="flex items-center gap-2 text-teal-300">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
-                  <span>Attach verified standardized reports</span>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Submission Lock & Clinician Editing */}
-            <motion.div
-              whileHover={{ y: -4, borderColor: "rgba(20, 184, 166, 0.5)" }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 space-y-4"
-            >
-              <div className="flex items-center gap-2 text-amber-400">
-                <div className="w-8 h-8 rounded-lg bg-amber-950/80 border border-amber-500/40 flex items-center justify-center">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <h3 className="text-sm font-bold text-zinc-100">Record Lock & Feedback Edits</h3>
-              </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Once feedback is published, the client submission locks to guarantee medical record integrity. Clinicians can click <strong>&quot;Check and Edit Feedback&quot;</strong> to revise notes at any time.
-              </p>
-              <div className="space-y-2 pt-2 border-t border-zinc-800 text-xs text-zinc-300">
-                <div className="flex items-center gap-2 text-amber-300">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Client locked out after review</span>
-                </div>
-                <div className="flex items-center gap-2 text-teal-300">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
-                  <span>Clinician feedback updates anytime</span>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* SECTION 3: CLINICAL SAFETY & HIPAA SAFEGUARDS                      */}
-      {/* ------------------------------------------------------------------ */}
-      <section id="safety" className="scroll-mt-24 py-20 md:py-28 border-b border-zinc-800/80 bg-zinc-950">
-        <div className="container mx-auto px-4 sm:px-6 max-w-7xl space-y-16">
-          {/* Header */}
-          <div className="text-center max-w-2xl mx-auto space-y-3">
-            <Badge variant="teal" statusText="Security & Compliance" />
-            <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-zinc-100">
-              HIPAA Compliant. Clinician-Supervised.
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              Engineered from the ground up to satisfy the HIPAA Security Rule (45 CFR § 164.312) and Privacy Rule while providing state-of-the-art visual assistance.
-            </p>
-          </div>
-
-          {/* 4 Architecture Pillars */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <motion.div
-              whileHover={{ y: -4, borderColor: "rgba(20, 184, 166, 0.5)" }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="group rounded-xl border border-zinc-800 bg-zinc-900/70 p-6 space-y-2.5 transition-colors cursor-default"
-            >
-              <div className="flex items-center gap-2.5 text-zinc-200">
-                <Clock className="w-5 h-5 text-teal-400 group-hover:scale-110 transition-transform duration-200" />
-                <h3 className="text-sm font-bold group-hover:text-teal-200 transition-colors">
-                  15-Minute Auto-Logoff Protection
-                </h3>
-              </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                45 CFR § 164.312(a)(2)(iii) compliant: Inactive clinical sessions trigger a 60-second warning countdown and automatically terminate to protect unattended patient records.
-              </p>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ y: -4, borderColor: "rgba(20, 184, 166, 0.5)" }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="group rounded-xl border border-zinc-800 bg-zinc-900/70 p-6 space-y-2.5 transition-colors cursor-default"
-            >
-              <div className="flex items-center gap-2.5 text-zinc-200">
-                <ShieldCheck className="w-5 h-5 text-teal-400 group-hover:scale-110 transition-transform duration-200" />
-                <h3 className="text-sm font-bold group-hover:text-teal-200 transition-colors">
-                  Tamper-Evident Audit Logging
-                </h3>
-              </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                45 CFR § 164.312(b) compliant: Centralized audit records log all ePHI viewing, video access, and feedback publication events with timestamps and actor credentials.
-              </p>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ y: -4, borderColor: "rgba(20, 184, 166, 0.5)" }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="group rounded-xl border border-zinc-800 bg-zinc-900/70 p-6 space-y-2.5 transition-colors cursor-default"
-            >
-              <div className="flex items-center gap-2.5 text-zinc-200">
-                <Lock className="w-5 h-5 text-teal-400 group-hover:scale-110 transition-transform duration-200" />
-                <h3 className="text-sm font-bold group-hover:text-teal-200 transition-colors">
-                  Safe Harbor AI De-identification
-                </h3>
-              </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                45 CFR § 164.514(b) compliant: Patient names and direct ePHI identifiers are automatically redacted before clinical data is summarized by AI models.
-              </p>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ y: -4, borderColor: "rgba(20, 184, 166, 0.5)" }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="group rounded-xl border border-zinc-800 bg-zinc-900/70 p-6 space-y-2.5 transition-colors cursor-default"
-            >
-              <div className="flex items-center gap-2.5 text-zinc-200">
-                <Layers className="w-5 h-5 text-teal-400 group-hover:scale-110 transition-transform duration-200" />
-                <h3 className="text-sm font-bold group-hover:text-teal-200 transition-colors">
-                  Private Storage & Row-Level Security
-                </h3>
-              </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Patient exercise videos stream through authenticated private buckets. Strict Row-Level Security ensures therapists only see their assigned caseload.
-              </p>
-            </motion.div>
-          </div>
-
-          {/* Call to Action Banner */}
-          <motion.div
-            whileHover={{ borderColor: "rgba(20, 184, 166, 0.7)" }}
-            transition={{ duration: 0.3 }}
-            className="rounded-2xl border border-teal-500/40 bg-zinc-900/90 p-8 sm:p-10 relative overflow-hidden text-center space-y-4 shadow-xl"
-          >
-            <div className="max-w-xl mx-auto space-y-1.5">
-              <h3 className="text-xl sm:text-2xl font-bold text-zinc-100">
-                Experience Aruga Across the Lifespan
-              </h3>
-              <p className="text-xs sm:text-sm text-zinc-400">
-                Clinician-directed home therapy for pediatric, adolescent, adult, and geriatric rehabilitation—fully hardened with HIPAA compliance.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
-              <Link href={user ? dashboardHref : "/login"}>
-                <Button className="h-11 px-7 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-sm shadow-md gap-2 group">
-                  <span>{user ? "Go to Dashboard" : "Start Now"}</span>
-                  <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* FOOTER                                                             */}
-      {/* ------------------------------------------------------------------ */}
-      <footer className="border-t border-zinc-800 bg-zinc-950 py-12 px-4 sm:px-6">
-        <div className="container mx-auto max-w-7xl space-y-10">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {/* Brand column */}
-            <div className="space-y-3 md:col-span-2">
-              <Link href="/" className="inline-block group">
-                <span
-                  className="font-aruga text-lg sm:text-xl font-normal text-zinc-100 tracking-wide hover:text-teal-300 transition-colors duration-200"
-                  style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}
-                >
-                  Aruga
-                </span>
-              </Link>
-              <p className="text-xs text-zinc-400 max-w-sm leading-relaxed">
-                Clinician-directed home therapy for OT, SLP, and PT across pediatric, adolescent, adult, and geriatric rehabilitation with verified visual AI assistance and HIPAA compliance.
-              </p>
-              <div className="text-[11px] text-zinc-500">
-                Pediatric to Geriatrics clinical rehabilitation platform.
-              </div>
-            </div>
-
-            {/* Quick Portals */}
-            <div className="space-y-2 text-xs">
-              <div className="font-semibold text-zinc-200 uppercase tracking-wider text-[11px]">
-                Care Portals
-              </div>
-              <ul className="space-y-2 text-zinc-400">
-                <li>
-                  <Link
-                    href="/login"
-                    className="inline-flex items-center gap-1 hover:text-teal-400 hover:translate-x-1 transition-all duration-200"
-                  >
-                    Therapist Portal
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/login"
-                    className="inline-flex items-center gap-1 hover:text-teal-400 hover:translate-x-1 transition-all duration-200"
-                  >
-                    Client Portal
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/accept-invitation"
-                    className="inline-flex items-center gap-1 hover:text-teal-400 hover:translate-x-1 transition-all duration-200"
-                  >
-                    Accept Invitation
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Documentation & Safety */}
-            <div className="space-y-2 text-xs">
-              <div className="font-semibold text-zinc-200 uppercase tracking-wider text-[11px]">
-                Documentation
-              </div>
-              <ul className="space-y-2 text-zinc-400">
-                <li>
-                  <a
-                    href="/login"
-                    className="inline-flex items-center gap-1 hover:text-teal-400 hover:translate-x-1 transition-all duration-200"
-                  >
-                    Meta AI Integration
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/login"
-                    className="inline-flex items-center gap-1 hover:text-teal-400 hover:translate-x-1 transition-all duration-200"
-                  >
-                    Clinical Platform Overview
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/login"
-                    className="inline-flex items-center gap-1 hover:text-teal-400 hover:translate-x-1 transition-all duration-200"
-                  >
-                    Performance & Latency
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Copyright */}
-          <div className="pt-6 border-t border-zinc-800/80 flex items-center justify-center text-xs text-zinc-500">
-            <p className="shrink-0 font-mono text-[11px]">
-              © 2026 {siteConfig.name} • All rights reserved.
-            </p>
-          </div>
+      <footer className="bg-white py-10 px-4 sm:px-6 border-t border-black/10">
+        <div className="container mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="font-aruga text-lg font-normal tracking-wide" style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}>Aruga</div>
+          <div className="text-[11px] font-mono text-black/25">© 2026 Aruga • All rights reserved.</div>
         </div>
       </footer>
     </div>

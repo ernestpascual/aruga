@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const start = Date.now();
   try {
     const body = await req.json();
-    const { history, userText, message, attachments, conversationId, model } = body ?? {};
+    const { history, userText, message, attachments, conversationId, model, clientContext } = body ?? {};
 
     const text: string = (userText ?? message ?? "").toString();
     const turns: Array<{ role: "user" | "assistant"; content: string }> =
@@ -105,6 +105,16 @@ export async function POST(req: NextRequest) {
       .slice(-20)
       .map((t) => ({ role: t.role, content: t.content.slice(0, 4000) }));
 
+    // Sanitize clientContext if provided (keep small, plain text)
+    let sanitizedClientContext: { profileBrief?: string; programBrief?: string; displayName?: string } | undefined;
+    if (clientContext && typeof clientContext === "object") {
+      sanitizedClientContext = {
+        profileBrief: typeof clientContext.profileBrief === "string" ? clientContext.profileBrief.slice(0, 1200) : undefined,
+        programBrief: typeof clientContext.programBrief === "string" ? clientContext.programBrief.slice(0, 1800) : undefined,
+        displayName: typeof clientContext.displayName === "string" ? clientContext.displayName.slice(0, 80) : undefined,
+      };
+    }
+
     const result = await otChatAssistant({
       history: cleanHistory,
       userText: text,
@@ -112,6 +122,7 @@ export async function POST(req: NextRequest) {
       conversationId:
         typeof conversationId === "string" ? conversationId : undefined,
       model: isOtChatModel(model) ? model : DEFAULT_OT_CHAT_MODEL,
+      clientContext: sanitizedClientContext,
     });
 
     return NextResponse.json(result);

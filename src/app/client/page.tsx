@@ -147,7 +147,7 @@ function ClientHomeContent() {
       )}
 
       {/* Welcome & Assigned Therapist Card */}
-      <Card className="border-zinc-800 bg-zinc-900/90 p-5">
+      <Card className="border-zinc-800 bg-zinc-900/90 p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
@@ -208,9 +208,7 @@ function ClientHomeContent() {
             <Play className="w-4 h-4 text-teal-400" />
             {isPediatric ? "Today's Home Program" : "Current Home Program"}
           </h2>
-          {(isDemo || activeAssignedProgram) && (
-            <Badge variant="teal" statusText="Assigned for Practice" />
-          )}
+
         </div>
 
         {isDemo ? (
@@ -402,7 +400,7 @@ function ClientHomeContent() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 gap-1.5 text-xs text-amber-300 border-amber-500/40 hover:bg-amber-950/40 hover:border-amber-500"
+                            className="h-9 px-4 text-xs gap-2 text-xs text-amber-300 border-amber-500/40 hover:bg-amber-950/40 hover:border-amber-500"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                             Edit Submission
@@ -415,7 +413,7 @@ function ClientHomeContent() {
                       >
                         <Button
                           size="sm"
-                          className="h-8 gap-1.5 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-xs"
+                          className="h-9 px-4 text-xs gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-xs"
                         >
                           <span>{isReviewed ? "View Feedback" : "View Details"}</span>
                           <ChevronRight className="w-3.5 h-3.5" />

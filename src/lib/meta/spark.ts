@@ -251,7 +251,7 @@ export async function runSparkDraftFeedback(params: {
   return { result: parsed, latencyMs };
 }
 
-// 4. OT Helper Chat with Muse Spark (multimodal, prompt-cached per conversation)
+// 4. Rehab Guide Chat (butler) with Muse Spark (multimodal, prompt-cached per conversation)
 export async function runSparkOtChat(params: {
   history: Array<{ role: "user" | "assistant"; content: string }>;
   userText: string;
@@ -259,6 +259,7 @@ export async function runSparkOtChat(params: {
   videoUrls?: string[];
   conversationId?: string;
   evidenceContext?: string;
+  clientContext?: string;
   model?: string;
 }): Promise<{ text: string; latencyMs: number; modelId: string }> {
   const config = getMetaConfig();
@@ -290,6 +291,14 @@ export async function runSparkOtChat(params: {
       const content = (turn.content || "").slice(0, 2000);
       if (!content.trim()) continue;
       messages.push({ role: turn.role, content });
+    }
+
+    // Personalized context (profile + current home program) — injected right after history so it grounds explanations of why exercises matter.
+    if (params.clientContext?.trim()) {
+      messages.push({
+        role: "user",
+        content: params.clientContext.slice(0, 2200),
+      });
     }
 
     // Search-grounded evidence goes in its own message AFTER history so the

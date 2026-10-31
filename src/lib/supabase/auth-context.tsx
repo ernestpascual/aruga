@@ -286,15 +286,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient();
     if (!supabase) return { error: "Authentication service not initialized" };
 
-    const cleanUpdates = {
+    // Ensure required columns are present — upsert path inserts a new row if none exists yet,
+    // and Postgres rejects NULL for `role`/`display_name` (schema NOT NULL).
+    const fallbackRole = (profile?.role || (user.user_metadata as Record<string, unknown>)?.role || "client") as UserRole;
+    const fallbackDisplayName =
+      profile?.display_name ||
+      (user.user_metadata as Record<string, unknown>)?.display_name as string ||
+      (user.user_metadata as Record<string, unknown>)?.name as string ||
+      user.email?.split("@")[0] ||
+      "User";
+
+    const cleanUpdates: Partial<Profile> & { id: string; updated_at: string } = {
       ...updates,
       id: user.id,
+      role: (updates.role as UserRole) ?? fallbackRole,
+      display_name: updates.display_name ?? fallbackDisplayName,
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase
+    // Prefer update (profile row should already exist via auth trigger). Fall back to upsert
+    // only if the update matched zero rows — preserves self-heal without risking null `role`.
+    const { data: updatedRow, error: updateError } = await supabase
       .from("profiles")
-      .upsert(cleanUpdates);
+      .update(cleanUpdates)
+      .eq("id", user.id)
+      .select("id")
+      .maybeSingle();
+
+    let error = updateError;
+    if (!updateError && !updatedRow) {
+      const upsertRes = await supabase.from("profiles").upsert(cleanUpdates);
+      error = upsertRes.error;
+    }
 
     if (error) {
       return { error: error.message };

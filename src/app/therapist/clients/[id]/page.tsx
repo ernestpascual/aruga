@@ -808,8 +808,6 @@ function TherapistClientDetailContent({
               <span className="text-xs text-zinc-400">
                 • {client?.gender || "Not specified"}
               </span>
-
-              <Badge variant="emerald" statusText="Active Caseload" />
             </div>
 
             <div className="text-xs text-zinc-400 space-y-0.5">
@@ -1253,8 +1251,8 @@ function TherapistClientDetailContent({
                                   isMarkedDone
                                     ? "bg-teal-500 hover:bg-teal-400 text-zinc-950 font-bold text-xs gap-1.5 shadow-md shadow-teal-500/20 whitespace-nowrap"
                                     : isReviewed
-                                    ? "bg-teal-950/60 hover:bg-teal-900/60 text-teal-300 font-semibold text-xs gap-1.5 border border-teal-500/40 hover:border-teal-400 whitespace-nowrap"
-                                    : "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs gap-1.5 border border-zinc-700 whitespace-nowrap"
+                                    ? "bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs gap-1.5 border border-teal-500 shadow-sm whitespace-nowrap"
+                                    : "bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-xs gap-1.5 border border-zinc-200 shadow-sm whitespace-nowrap"
                                 }
                               >
                                 {isMarkedDone ? (

@@ -45,3 +45,5 @@ supabase/.schema.sql
 *.tsbuildinfo
 next-env.d.ts
 opencode.jsonc
+docs/COST_GUIDE.md
+docs/BASETEN_CREDITS.md

@@ -315,13 +315,7 @@ export default function ClientProfilePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="default"
-            icon={<Shield className="w-3.5 h-3.5" />}
-            statusText="HIPAA-Aligned Profile"
-          />
-        </div>
+
       </div>
 
       {/* Status Alert */}
@@ -556,11 +550,9 @@ export default function ClientProfilePage() {
             <HeartHandshake className="w-4 h-4 text-teal-400" />
             Care Team Clinician Connection
           </CardTitle>
-          {linkData?.linked ? (
-            <Badge variant="emerald" statusText="Active Care" icon={<CheckCircle2 className="w-3 h-3" />} />
-          ) : linkData?.invitation_status === "pending" ? (
+          {linkData?.invitation_status === "pending" ? (
             <Badge variant="amber" statusText="Pending Confirmation" icon={<Clock className="w-3 h-3" />} />
-          ) : (
+          ) : linkData?.linked ? null : (
             <Badge variant="default" statusText="Not Linked" />
           )}
         </CardHeader>

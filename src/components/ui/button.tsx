@@ -23,8 +23,8 @@ export const buttonVariants = cva(
           "text-teal-400 underline-offset-4 hover:underline p-0 h-auto",
       },
       size: {
-        default: "h-10 py-2 px-4",
-        sm: "h-8 px-3 text-xs rounded-md",
+        default: "h-9 px-4 text-xs gap-2",
+        sm: "h-9 px-4 text-xs gap-2 rounded-md",
         lg: "h-12 px-6 text-base rounded-lg",
         icon: "h-9 w-9",
       },

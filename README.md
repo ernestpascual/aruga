@@ -127,6 +127,41 @@ For a full intensive 60-minute video rehabilitation workload, total direct AI co
 - **Parsers & Validation**: `@meta-sam/parser`, Zod, React Hook Form
 - **Icons**: Lucide Icons
 - **Testing**: Vitest (**`80/80 tests passing`** across 5 suites), Playwright
+- **Coding Assistant**: [Muse Spark Open 1026](https://www.llama.com/docs/model-cards-and-prompt-formats/muse-spark/) used to assist in coding tasks — scaffolding components, writing migrations, and generating tests under human review
+
+---
+
+## How We Used Muse Models & SAM
+
+Aruga is built on Meta AI via `https://api.meta.ai/v1` (see [`docs/META_INTEGRATION.md`](docs/META_INTEGRATION.md)). All AI outputs are treated as tentative drafts under licensed human supervision — never shown to patients until a clinician reviews/publishes.
+
+### Muse Spark (Reasoning & Clinical Text)
+
+We use **Muse Spark** family for structured, safety-bounded clinical reasoning (`server-only` in `src/lib/meta/spark.ts`, `prompts.ts`, `schemas.ts`, `client.ts`):
+
+- **Muse Spark 1.3 Contributor (`muse-spark-1.3-contributor`)** — primary model for:
+  - **Program Drafting (`draftHomeProgram`)**: converts informal therapist shorthand into sequential steps with reps/duration; flags ambiguities in `warnings` array, never hallucinates diagnoses.
+  - **Video Observation (`analyzeStepVideo`)**: emits observable actions (e.g., “cylindrical grasp, lifting 3in”) with timestamps and a single object concept for SAM.
+  - **Multi-Box SOAP Drafting (`draftTherapistFeedback`)**: synthesizes only confirmed observations into Subjective / Objective / Assessment / Plan boxes.
+  - **Plain-English Family Summary (`/api/ai/soap-summary`)**: 6th-grade 2–3 sentence takeaway for patients/caregivers; checks `soap_notes.client_summary` / `submission_reviews.client_summary` first → returns in `<15ms` with zero credits if cached, otherwise synthesizes once and write-backs to Postgres (HIPAA Safe Harbor de-identified via `src/lib/hipaa/de-identify.ts` before egress).
+
+- **Muse Spark 1.2 Contributor (`muse-spark-1.2-contributor`)** — default for **Ask OT Assistant** (`/ask-ot`, `src/app/api/ot-chat/*`, `src/lib/meta/models.ts`): multi-turn clinical Q&A with conversation persistence, model selector supporting Spark 1.2 / 1.3 / Wonder.
+
+- **Muse Wonder 1.0 (`muse-wonder-1.0`)** — available as alternative in `OT_CHAT_MODELS` for comparative reasoning quality / latency in Ask OT chat (registered in `src/lib/meta/models.ts`).
+
+Operational modes: `AI_MODE=mock|live|off` (mock uses validated adult/pediatric/geriatric fixtures; live validates host `api.meta.ai`; off disables AI with clear clinician notice). Config via `MODEL_API_KEY` + `META_API_BASE_URL`.
+
+### SAM 3.1 (Segmentation & Tracking)
+
+We use **SAM 3.1** streaming video segmentation (`src/lib/meta/sam.ts`, `@meta-sam/parser`) for kinematic tracking:
+
+- **7 Validated Engines (700 keywords, `src/lib/meta/sam-engines/index.ts`)**: Pediatric / Adolescent / Adult / Geriatrics (55+) + Everyday Home / School / Kitchen Items — 100 keywords each, single-noun enforced (`INVALID_SAM_PROMPT`), case-insensitive dedup (bill once per concept), frame-memory cache, overlap suppression.
+- **Streaming Protocol**: `POST https://api.meta.ai/v1/responses` with `stream:true` → `parseVideoStream()` → `recordsOfKind(..., "box"/"mask")` → `decodeMaskToSVGPath()` synchronized to playback in `SamOverlay.tsx`. Measured end-to-end via `/sam-test` workspace (latency ms, session history).
+- **Cost Model**: Optimized temporal keyframe propagation (1 keyframe / 15 frames) = **$0.090/min** ($5.40 / 60 mins) vs brute-force $0.00015/frame; caching + dedup further reduce redundant calls.
+
+### Muse Spark Open 1026 (Coding Assistant)
+
+Beyond runtime AI, **Muse Spark Open 1026** (Meta, Oct 2026) was used as a coding assistant to accelerate development under human oversight: scaffolding Next.js App Router routes, authoring Supabase migrations (e.g., `20261031000008–00012`), hardening `video-recorder.tsx` and `session-timeout-provider.tsx`, and expanding Vitest suites to 93 tests. All generated code was reviewed, type-checked (`tsc --noEmit`), and build-verified (`next build`) before commit.
 
 ---
 

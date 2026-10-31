@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  async redirects() {
+    return [{ source: "/ask-ot", destination: "/aruga-guide", permanent: true }];
+  },
   async headers() {
     return [
       {

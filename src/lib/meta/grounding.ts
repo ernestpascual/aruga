@@ -17,18 +17,20 @@ export interface ClinicalEvidence {
 
 const CLINICAL_KEYWORDS = [
   "therapy", "therapist", "occupational", "rehab", "rehabilitation",
+  "physical", "speech", "pt ", "ot ", "slp", "st ", "swallow", "swallowing", "dysphagia", "aphasia", "articulation",
   "exercise", "grasp", "grasping", "fine motor", "motor", "sensory",
   "posture", "positioning", "adaptive", "splint", "orthosis",
   "stroke", "hemiparesis", "parkinson", "dementia", "autism", "adhd",
   "pediatric", "child", "toddler", "hand", "wrist", "shoulder", "elbow",
   "finger", "thumb", "pincer", "bilateral", "coordination", "balance",
   "gait", "mobility", "adls", "dressing", "feeding", "eating", "bathing",
-  "toileting", " Transfers", "pain", "fatigue", "spasticity", "contracture",
+  "toileting", "transfers", "pain", "fatigue", "spasticity", "contracture",
   "arthritis", "carpal", "tendon", "fracture", "injury", "surgery",
   "orthopedic", "neurological", "cognitive", "memory", "attention",
   "play", "toy", "peg", "block", "cup", "utensil", "workstation",
   "ergonomic", "wheelchair", "walker", "daily living", "home program",
-  "dose", "repetition", "strengthening", "stretching",
+  "dose", "repetition", "strengthening", "stretching", "mobility", "tremor", "balance",
+  "why", "condition", "diagnosis", "program", "step",
 ];
 
 const SMALLTALK_PATTERN = /^(hi|hello|hey|thanks|thank you|bye|good (morning|afternoon|evening)|how are you|who are you|what can you do)[!?.\s]*$/i;
@@ -45,7 +47,7 @@ export function isClinicallyRelated(text: string, hasMedia = false): boolean {
 
 function buildSearchQuery(userText: string): string {
   const cleaned = userText.replace(/\s+/g, " ").trim().slice(0, 200);
-  return `${cleaned} occupational therapy evidence`;
+  return `${cleaned} rehabilitation physical occupational speech therapy evidence`;
 }
 
 async function fetchWithTimeout(url: string, ms = 6000): Promise<Response> {

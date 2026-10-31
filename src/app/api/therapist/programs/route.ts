@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       if (programId) {
         const { data: dbProg, error } = await admin
           .from("home_programs")
-          .select("*, steps:program_steps(*), patient:patients(*)")
+          .select("*, steps:program_steps(*, generated_activity:generated_activities(*)), patient:patients(*)")
           .eq("id", programId)
           .maybeSingle();
 
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      let query = admin.from("home_programs").select("*, steps:program_steps(*)");
+      let query = admin.from("home_programs").select("*, steps:program_steps(*, generated_activity:generated_activities(*))");
       if (resolvedPatientId) {
         query = query.eq("patient_id", resolvedPatientId);
       } else if (therapistId && therapistId !== DEMO_THERAPIST_ID && !isDemo) {
@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
           const recentWindow = new Date(Date.now() - 4000).toISOString();
           const { data: existingCopy } = await admin
             .from("home_programs")
-            .select("*, steps:program_steps(*)")
+            .select("*, steps:program_steps(*, generated_activity:generated_activities(*))")
             .eq("patient_id", srcProg.patient_id)
             .eq("title", targetTitle)
             .gte("created_at", recentWindow)
@@ -315,7 +315,7 @@ export async function POST(req: NextRequest) {
       const recentWindow = new Date(Date.now() - 5000).toISOString();
       const { data: existingProg } = await admin
         .from("home_programs")
-        .select("*, steps:program_steps(*)")
+        .select("*, steps:program_steps(*, generated_activity:generated_activities(*))")
         .eq("patient_id", patientId)
         .eq("title", trimmedTitle)
         .gte("created_at", recentWindow)
@@ -339,11 +339,12 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (!pErr && newProg) {
-        const stepRecords = steps.map((s: { title?: string; instructions: string }, idx: number) => ({
+        const stepRecords = steps.map((s: { title?: string; instructions: string; generated_activity_id?: string; generatedActivityId?: string }, idx: number) => ({
           program_id: newProg.id,
           position: idx + 1,
           title: s.title || `Step ${idx + 1}`,
           instructions: s.instructions,
+          generated_activity_id: s.generated_activity_id || s.generatedActivityId || null,
         }));
         const { data: createdSteps } = await admin.from("program_steps").insert(stepRecords).select();
         return NextResponse.json(
@@ -459,11 +460,12 @@ export async function PATCH(req: NextRequest) {
       let savedSteps: ProgramStep[] = [];
       if (Array.isArray(steps) && steps.length > 0) {
         await admin.from("program_steps").delete().eq("program_id", targetId);
-        const stepRecords = steps.map((s: { title?: string; instructions: string }, idx: number) => ({
+        const stepRecords = steps.map((s: { title?: string; instructions: string; generated_activity_id?: string; generatedActivityId?: string }, idx: number) => ({
           program_id: targetId,
           position: idx + 1,
           title: s.title || `Step ${idx + 1}`,
           instructions: s.instructions,
+          generated_activity_id: s.generated_activity_id || s.generatedActivityId || null,
         }));
         const { data: createdSteps } = await admin.from("program_steps").insert(stepRecords).select();
         savedSteps = createdSteps || (stepRecords as ProgramStep[]);

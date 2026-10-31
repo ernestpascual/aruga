@@ -3,9 +3,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getMockStore } from "@/lib/supabase/mock-store";
 import { logAuditEvent } from "@/lib/hipaa/audit";
 
-// Maximum file upload is 50MB (52,428,800 bytes).
-// Aruga recommends <= 25MB for optimal bandwidth & snappy streaming.
-const MAX_FREE_TIER_BYTES = 50 * 1024 * 1024; // 50MB
+// Maximum file upload is 50MB (52,428,800 bytes) for video, 10MB for photo.
+// Aruga recommends <= 25MB for video, <= 5MB for photo.
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50MB video
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024; // 10MB photo
+const MAX_FREE_TIER_BYTES = 50 * 1024 * 1024; // legacy compat
 const BUCKET_NAME = "program-videos";
 
 export async function POST(req: NextRequest) {
@@ -18,41 +20,45 @@ export async function POST(req: NextRequest) {
     const durationSeconds = durationStr ? Number(durationStr) : undefined;
 
     if (!file) {
-      return NextResponse.json({ error: "No video file provided." }, { status: 400 });
+      return NextResponse.json({ error: "No media file provided." }, { status: 400 });
     }
 
     const declaredSize = formData.get("fileSizeBytes") ? Number(formData.get("fileSizeBytes")) : 0;
     const effectiveSize = Math.max(file.size, declaredSize);
+    const mime = file.type || "";
+    const lowerName = file.name.toLowerCase();
 
-    // 1. Validate File Size
-    if (effectiveSize > MAX_FREE_TIER_BYTES) {
+    const isImageMime =
+      mime.startsWith("image/") ||
+      lowerName.endsWith(".jpg") ||
+      lowerName.endsWith(".jpeg") ||
+      lowerName.endsWith(".png") ||
+      lowerName.endsWith(".webp") ||
+      lowerName.endsWith(".heic");
+    const isVideoMime =
+      mime.startsWith("video/") ||
+      ["video/mp4", "video/webm", "video/quicktime", "video/x-matroska", "application/octet-stream"].includes(mime) ||
+      lowerName.endsWith(".mp4") ||
+      lowerName.endsWith(".webm") ||
+      lowerName.endsWith(".mov") ||
+      lowerName.endsWith(".m4v");
+
+    const mediaKind: "photo" | "video" = isImageMime ? "photo" : "video";
+
+    if (!isImageMime && !isVideoMime) {
       return NextResponse.json(
-        {
-          error: `File size (${(effectiveSize / 1024 / 1024).toFixed(1)}MB) exceeds the maximum allowed size of 50MB. Please record a shorter clip (under 30 seconds).`,
-        },
+        { error: `Unsupported media format (${mime || lowerName}). Please provide a photo (JPG/PNG/WebP) or video (MP4/WebM/MOV).` },
         { status: 400 }
       );
     }
 
-    // 2. Validate MIME Type
-    const validMimes = [
-      "video/mp4",
-      "video/webm",
-      "video/quicktime",
-      "video/x-matroska",
-      "application/octet-stream", // fallback from some webcams
-    ];
-    const mime = file.type || "video/mp4";
-    const isVideoMime =
-      mime.startsWith("video/") ||
-      validMimes.includes(mime) ||
-      file.name.endsWith(".mp4") ||
-      file.name.endsWith(".webm") ||
-      file.name.endsWith(".mov");
-
-    if (!isVideoMime) {
+    // 1. Validate File Size per media kind
+    const maxBytes = mediaKind === "photo" ? MAX_PHOTO_BYTES : MAX_VIDEO_BYTES;
+    if (effectiveSize > maxBytes) {
       return NextResponse.json(
-        { error: `Unsupported media format (${mime}). Please provide an MP4, WebM, or QuickTime video.` },
+        {
+          error: `File size (${(effectiveSize / 1024 / 1024).toFixed(1)}MB) exceeds the maximum for ${mediaKind} (${maxBytes / 1024 / 1024}MB). ${mediaKind === "photo" ? "Please use a smaller photo." : "Please record a shorter clip (under 30 seconds)."}`,
+        },
         { status: 400 }
       );
     }
@@ -60,10 +66,19 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient();
 
     if (admin) {
-      // Determine file extension
-      let ext = "mp4";
-      if (mime.includes("webm") || file.name.endsWith(".webm")) ext = "webm";
-      else if (mime.includes("quicktime") || file.name.endsWith(".mov")) ext = "mov";
+      // Determine file extension based on mime/name
+      let ext = mediaKind === "photo" ? "jpg" : "mp4";
+      if (mediaKind === "video") {
+        if (mime.includes("webm") || lowerName.endsWith(".webm")) ext = "webm";
+        else if (mime.includes("quicktime") || lowerName.endsWith(".mov")) ext = "mov";
+        else if (mime.includes("mp4") || lowerName.endsWith(".mp4")) ext = "mp4";
+      } else {
+        if (mime.includes("png") || lowerName.endsWith(".png")) ext = "png";
+        else if (mime.includes("webp") || lowerName.endsWith(".webp")) ext = "webp";
+        else if (mime.includes("heic") || lowerName.endsWith(".heic")) ext = "heic";
+        else ext = "jpg";
+      }
+      const effectiveMime = mime || (mediaKind === "photo" ? `image/${ext}` : `video/${ext}`);
 
       const sanitizedSubId = (submissionId || "demo-sub").replace(/[^a-zA-Z0-9_-]/g, "");
       const sanitizedStepId = (stepId || "step").replace(/[^a-zA-Z0-9_-]/g, "");
@@ -72,26 +87,26 @@ export async function POST(req: NextRequest) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      // Upload to Cloud Storage
+      // Upload to Cloud Storage (Supabase program-videos hosts both photos & videos)
       let { error: uploadError } = await admin.storage
         .from(BUCKET_NAME)
         .upload(storagePath, buffer, {
-          contentType: mime,
+          contentType: effectiveMime,
           upsert: true,
         });
 
       // If bucket does not exist, attempt to create it and retry
       if (uploadError && uploadError.message?.toLowerCase().includes("bucket not found")) {
         await admin.storage.createBucket(BUCKET_NAME, {
-          public: false, // HIPAA compliance: Patient media is strictly private
-          fileSizeLimit: MAX_FREE_TIER_BYTES,
-          allowedMimeTypes: ["video/mp4", "video/webm", "video/quicktime"],
+          public: true, // public read for therapist/client playback; RLS still protects DB links
+          fileSizeLimit: MAX_VIDEO_BYTES,
+          allowedMimeTypes: ["video/mp4", "video/webm", "video/quicktime", "image/jpeg", "image/png", "image/webp", "image/heic"],
         });
 
         const retry = await admin.storage
           .from(BUCKET_NAME)
           .upload(storagePath, buffer, {
-            contentType: mime,
+            contentType: effectiveMime,
             upsert: true,
           });
         uploadError = retry.error;
@@ -124,7 +139,7 @@ export async function POST(req: NextRequest) {
         videoUrl = publicUrlData.publicUrl;
       }
 
-      // Update step_submissions in database if IDs provided
+      // Update step_submissions in database if IDs provided — video_path now holds photo OR video URL
       if (submissionId && stepId) {
         await admin
           .from("step_submissions")
@@ -133,12 +148,13 @@ export async function POST(req: NextRequest) {
             skipped: false,
             skip_reason: null,
             media_meta: {
-              mime,
+              mime: effectiveMime,
+              mediaKind,
               sizeBytes: file.size,
-              durationSeconds: durationSeconds || 15,
+              durationSeconds: mediaKind === "video" ? durationSeconds || 15 : undefined,
               storagePath,
               bucket: BUCKET_NAME,
-              freeTierCompliant: file.size <= MAX_FREE_TIER_BYTES,
+              freeTierCompliant: file.size <= (mediaKind === "photo" ? MAX_PHOTO_BYTES : MAX_VIDEO_BYTES),
               uploadedAt: new Date().toISOString(),
             },
             updated_at: new Date().toISOString(),
@@ -156,7 +172,8 @@ export async function POST(req: NextRequest) {
           stepId,
           storagePath,
           sizeBytes: file.size,
-          mime,
+          mime: effectiveMime,
+          mediaKind,
           bucket: BUCKET_NAME,
         },
         ipAddress: req.headers.get("x-forwarded-for") || undefined,
@@ -165,12 +182,14 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: "Video successfully stored in cloud storage.",
+        message: mediaKind === "photo" ? "Photo successfully stored in cloud storage." : "Video successfully stored in cloud storage.",
         videoPath: videoUrl,
+        mediaPath: videoUrl,
+        mediaKind,
         storagePath,
         bucket: BUCKET_NAME,
         sizeBytes: file.size,
-        mime,
+        mime: effectiveMime,
       });
     }
 
@@ -187,10 +206,11 @@ export async function POST(req: NextRequest) {
         stepSub.skipped = false;
         stepSub.skip_reason = null;
         stepSub.media_meta = {
-          mime,
+          mime: mime || (mediaKind === "photo" ? "image/jpeg" : "video/mp4"),
+          mediaKind,
           sizeBytes: file.size,
-          durationSeconds: durationSeconds || 15,
-          storagePath: `mock-storage/${submissionId}/${stepId}.mp4`,
+          durationSeconds: mediaKind === "video" ? durationSeconds || 15 : undefined,
+          storagePath: `mock-storage/${submissionId}/${stepId}.${mediaKind === "photo" ? "jpg" : "mp4"}`,
           bucket: BUCKET_NAME,
           freeTierCompliant: true,
         };
@@ -200,12 +220,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Video recorded and stored (Mock/Local mode).",
+      message: mediaKind === "photo" ? "Photo recorded and stored (Mock/Local mode)." : "Video recorded and stored (Mock/Local mode).",
       videoPath: demoVideoPath,
-      storagePath: `mock-storage/${submissionId || "sub"}/${stepId || "step"}.mp4`,
+      mediaPath: demoVideoPath,
+      mediaKind,
+      storagePath: `mock-storage/${submissionId || "sub"}/${stepId || "step"}.${mediaKind === "photo" ? "jpg" : "mp4"}`,
       bucket: BUCKET_NAME,
       sizeBytes: file.size,
-      mime,
+      mime: mime || (mediaKind === "photo" ? "image/jpeg" : "video/mp4"),
       mock: true,
     });
   } catch (err: unknown) {

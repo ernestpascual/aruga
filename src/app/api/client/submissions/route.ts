@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
       let query = admin.from("submissions").select(`
         *,
-        program:home_programs(*, steps:program_steps(*)),
+        program:home_programs(*, steps:program_steps(*, generated_activity:generated_activities(*))),
         step_submissions(*),
         review:submission_reviews(*, step_reviews(*))
       `);
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
             .from("submissions")
             .select(`
               *,
-              program:home_programs(*, steps:program_steps(*)),
+              program:home_programs(*, steps:program_steps(*, generated_activity:generated_activities(*))),
               step_submissions(*),
               review:submission_reviews(*, step_reviews(*))
             `)
@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
                 .from("submissions")
                 .select(`
                   *,
-                  program:home_programs(*, steps:program_steps(*)),
+                  program:home_programs(*, steps:program_steps(*, generated_activity:generated_activities(*))),
                   step_submissions(*),
                   review:submission_reviews(*, step_reviews(*))
                 `)
@@ -253,7 +253,7 @@ export async function POST(req: NextRequest) {
               .from("submissions")
               .select(`
                 *,
-                program:home_programs(*, steps:program_steps(*)),
+                program:home_programs(*, steps:program_steps(*, generated_activity:generated_activities(*))),
                 step_submissions(*)
               `)
               .eq("id", newSub.id)

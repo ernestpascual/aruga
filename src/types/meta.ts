@@ -160,8 +160,14 @@ export interface OtChatInput {
   userText: string;
   attachments?: OtChatAttachment[];
   conversationId?: string;
-  /** Model ID for /ask-ot. Must be one of OT_CHAT_MODELS; defaults server-side. */
+  /** Model ID for /aruga-guide. Must be one of OT_CHAT_MODELS; defaults server-side. */
   model?: string;
+  /** Butler context: lightweight profile + active home program summary for personalized explanations */
+  clientContext?: {
+    profileBrief?: string;
+    programBrief?: string;
+    displayName?: string;
+  };
 }
 
 export interface OtChatReference {
@@ -181,4 +187,45 @@ export interface OtChatOutput {
   modelId: string;
   latencyMs: number;
   conversationId: string;
+}
+
+// Activity generation (Muse Spark + Muse Image)
+export type ActivityAgeBand = "pedia" | "adolescent" | "adult" | "geriatric";
+export type ActivityCategoryMeta = "coloring" | "handwriting" | "tracing" | "maze" | "matching" | "cognitive" | "adl_sim" | "visual_motor" | "fine_motor" | "other";
+
+export interface GenerateActivityInput {
+  templateId?: string;
+  ageBand: ActivityAgeBand;
+  category?: ActivityCategoryMeta;
+  titleOverride?: string;
+  theme?: string;
+  difficulty?: string;
+  lineStyle?: string;
+  customSparkPrompt?: string;
+  customImagePrompt?: string;
+  referenceLinks?: string[];
+  referenceImages?: string[]; // data URLs or http URLs
+  patientId?: string;
+}
+
+export interface GenerateActivityOutput {
+  activityId: string;
+  title: string;
+  instructions: string;
+  ageBand: ActivityAgeBand;
+  category: ActivityCategoryMeta;
+  sparkSpec: {
+    title: string;
+    instructions: string;
+    visualBrief: string;
+    refinedImagePrompt: string;
+    layoutSpec: { orientation: "portrait" | "landscape"; lineGuides: string; zones: Array<{ label: string; type: string }> };
+    difficulty: string;
+    estimatedMinutes: number;
+    warnings: string[];
+  };
+  baseImageUrl: string | null;
+  baseImagePath: string | null;
+  modelIds: Record<string, string>;
+  latencyMs: number;
 }

@@ -11,8 +11,6 @@ import {
   Scan,
   MessageSquare,
   ArrowRight,
-  Baby,
-  GraduationCap,
   HeartPulse,
   User,
   Star,
@@ -257,7 +255,7 @@ export default function ClientDashboardPage() {
     <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
       {/* Clinician Connection Status Banners */}
       {linkData?.invitation_status === "pending" && linkData?.invitation_initiated_by === "therapist" && (
-        <div className="p-5 rounded-2xl border border-teal-500/40 bg-teal-950/30 backdrop-blur-sm shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="p-6 rounded-2xl border border-teal-500/40 bg-teal-950/30 backdrop-blur-sm shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center shrink-0">
               <HeartHandshake className="w-5 h-5 text-teal-400" />
@@ -278,7 +276,7 @@ export default function ClientDashboardPage() {
             <Button
               onClick={() => handleRespondInvitation("accept")}
               disabled={respondingLink}
-              className="bg-teal-500 hover:bg-teal-400 text-zinc-950 font-semibold gap-1.5 shadow-sm text-xs h-9"
+              className="h-9 px-4 text-xs gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold shadow-sm"
             >
               <CheckCircle2 className="w-4 h-4" />
               Accept & Connect
@@ -287,7 +285,7 @@ export default function ClientDashboardPage() {
               variant="outline"
               onClick={() => handleRespondInvitation("decline")}
               disabled={respondingLink}
-              className="border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs h-9"
+              className="h-9 px-4 text-xs gap-2 border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200"
             >
               Decline
             </Button>
@@ -296,7 +294,7 @@ export default function ClientDashboardPage() {
       )}
 
       {linkData?.invitation_status === "pending" && linkData?.invitation_initiated_by === "client" && (
-        <div className="p-5 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/30 via-zinc-900 to-zinc-950 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-6 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/30 via-zinc-900 to-zinc-950 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0">
               <Clock className="w-5 h-5 text-amber-400" />
@@ -323,7 +321,7 @@ export default function ClientDashboardPage() {
               size="sm"
               onClick={handleCancelRequest}
               disabled={cancellingLink}
-              className="border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs h-8"
+              className="h-9 px-4 text-xs gap-2 border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200"
             >
               {cancellingLink ? "Canceling..." : "Cancel Request"}
             </Button>
@@ -348,7 +346,7 @@ export default function ClientDashboardPage() {
         </div>
       )}
       {/* Top Welcome Card customized by Demographic */}
-      <div className={`p-6 sm:p-8 rounded-2xl border shadow-xl relative overflow-hidden ${
+      <div className={`p-6 rounded-2xl border shadow-xl relative overflow-hidden ${
         isPedia
           ? "bg-gradient-to-r from-zinc-900 via-amber-950/20 to-teal-950/40 border-amber-500/30"
           : isAdolescent
@@ -359,36 +357,13 @@ export default function ClientDashboardPage() {
       }`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge
-                variant="teal"
-                icon={
-                  isPedia ? (
-                    <Baby className="w-3.5 h-3.5" />
-                  ) : isAdolescent ? (
-                    <GraduationCap className="w-3.5 h-3.5" />
-                  ) : isGeriatric ? (
-                    <HeartPulse className="w-3.5 h-3.5 text-amber-400" />
-                  ) : (
-                    <User className="w-3.5 h-3.5" />
-                  )
-                }
-                statusText={
-                  isPedia
-                    ? "Pediatric Rehabilitation Portal"
-                    : isAdolescent
-                    ? "Adolescent Skill Building"
-                    : isGeriatric
-                    ? "Geriatrics (55+) Independence Portal"
-                    : "Adult Rehabilitation Portal"
-                }
-              />
-              {isPedia && profile?.caregiver_name && (
+            {isPedia && profile?.caregiver_name && (
+              <div className="flex items-center gap-2">
                 <span className="text-xs text-amber-300/90 font-medium">
                   Parent / Caregiver: {profile.caregiver_name}
                 </span>
-              )}
-            </div>
+              </div>
+            )}
 
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-100">
               {profile?.display_name
@@ -406,28 +381,20 @@ export default function ClientDashboardPage() {
                 : "Welcome to your Care Portal"}
             </h1>
 
-            <p className="text-xs sm:text-sm text-zinc-400 max-w-2xl">
-              {isPedia
-                ? "Complete today's play activities, record your fun milestones, and earn your daily therapy badge!"
-                : isAdolescent
-                ? "Track your daily fine-motor drills, school coordination tasks, and share progress videos with your therapist."
-                : isGeriatric
-                ? "Your specialized home program for joint mobility, fall risk reduction, and everyday living independence."
-                : "Your personalized clinician-prescribed occupational therapy program designed for functional daily independence."}
-            </p>
+
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             {activeProgram && (
               <Link href="/client">
-                <Button className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold shadow-md">
+                <Button className="h-9 px-5 text-xs gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold shadow-md">
                   <Play className="w-4 h-4 fill-zinc-950" />
                   {isPedia ? "Start Play Home Program" : "Start Today's Exercises"}
                 </Button>
               </Link>
             )}
             <Link href="/client/messages">
-              <Button variant="secondary" className="gap-2 border-zinc-700 hover:border-teal-500/40">
+              <Button variant="secondary" className="h-9 px-5 text-xs gap-2 border-zinc-700 hover:border-teal-500/40">
                 <MessageSquare className="w-4 h-4 text-teal-400" />
                 Message Therapist
               </Button>
@@ -436,15 +403,15 @@ export default function ClientDashboardPage() {
         </div>
       </div>
 
-      {/* Gamification / Progress Highlights */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Gamification / Progress Highlights — even + extra padding */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-fr">
         {/* Practice Streak */}
-        <Card className="bg-zinc-900/60 border-zinc-800">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="bg-zinc-900/60 border-zinc-800 flex flex-col h-full">
+          <CardHeader className="flex flex-row items-center justify-between p-6 pb-4">
             <CardTitle className="text-xs font-medium text-zinc-400">Practice Streak</CardTitle>
             <Flame className="w-4 h-4 text-amber-400" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 pt-0 flex-1 flex flex-col justify-center">
             <div className="text-2xl font-bold text-amber-400 flex items-center gap-2">
               {isDemo ? "4 Days" : `${clientStats.streak} Days`}{" "}
               <span className="text-xs font-normal text-zinc-500">
@@ -466,14 +433,14 @@ export default function ClientDashboardPage() {
         </Card>
 
         {/* Exercises Completed */}
-        <Card className="bg-zinc-900/60 border-zinc-800">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="bg-zinc-900/60 border-zinc-800 flex flex-col h-full">
+          <CardHeader className="flex flex-row items-center justify-between p-6 pb-4">
             <CardTitle className="text-xs font-medium text-zinc-400">
               {isPedia ? "Play Tasks Mastered" : "Exercises Completed"}
             </CardTitle>
             <CheckCircle2 className="w-4 h-4 text-teal-400" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 pt-0 flex-1 flex flex-col justify-center">
             <div className="text-2xl font-bold text-zinc-100">
               {isDemo ? "12 Steps" : `${clientStats.stepsCompleted} Steps`}
             </div>
@@ -488,12 +455,12 @@ export default function ClientDashboardPage() {
         </Card>
 
         {/* Reviews Received */}
-        <Card className="bg-zinc-900/60 border-zinc-800">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="bg-zinc-900/60 border-zinc-800 flex flex-col h-full">
+          <CardHeader className="flex flex-row items-center justify-between p-6 pb-4">
             <CardTitle className="text-xs font-medium text-zinc-400">Therapist Feedback</CardTitle>
             <HeartHandshake className="w-4 h-4 text-teal-400" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 pt-0 flex-1 flex flex-col justify-center">
             <div className="text-2xl font-bold text-teal-300">
               {isDemo
                 ? "Reviewed"
@@ -512,14 +479,14 @@ export default function ClientDashboardPage() {
         </Card>
 
         {/* Milestone or Stars */}
-        <Card className="bg-zinc-900/60 border-zinc-800">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="bg-zinc-900/60 border-zinc-800 flex flex-col h-full">
+          <CardHeader className="flex flex-row items-center justify-between p-6 pb-4">
             <CardTitle className="text-xs font-medium text-zinc-400">
               {isPedia ? "Milestone Stars" : "Program Progress"}
             </CardTitle>
             {isPedia ? <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" /> : <Award className="w-4 h-4 text-teal-400" />}
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 pt-0 flex-1 flex flex-col justify-center">
             <div className="text-2xl font-bold text-zinc-100">
               {isDemo
                 ? isPedia
@@ -540,11 +507,11 @@ export default function ClientDashboardPage() {
         </Card>
       </div>
 
-      {/* Main Hub: Current Home Program Card & Quick Links */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Active Program Card */}
-        <Card className="lg:col-span-2 bg-zinc-900/60 border-zinc-800">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
+      {/* Main Hub: Current Home Program Card & Quick Links — even + stretched */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        {/* Active Program Card — extra padding + even */}
+        <Card className="lg:col-span-2 bg-zinc-900/60 border-zinc-800 flex flex-col h-full">
+          <CardHeader className="flex flex-row items-center justify-between p-6 pb-4">
             <div>
               <CardTitle className="text-sm font-bold text-zinc-100">
                 {isPedia ? "Today's Assigned Play Activity" : "Your Active Rehabilitation Home Program"}
@@ -557,20 +524,17 @@ export default function ClientDashboardPage() {
               </Link>
             )}
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-6 pt-0 flex-1">
             {activeProgram ? (
-              <div className="p-4 rounded-xl bg-zinc-950/70 border border-zinc-800 space-y-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-base font-bold text-zinc-100">
-                      {activeProgram.title}
-                    </h3>
-                    <p className="text-xs text-zinc-400 mt-1">
-                      {activeProgram.main_instructions ||
-                        "Follow each prescribed exercise step and submit short video clips for your clinician to review."}
-                    </p>
-                  </div>
-                  <Badge variant="teal" statusText="Active Home Program" />
+              <div className="p-6 rounded-xl bg-zinc-950/70 border border-zinc-800 space-y-3">
+                <div>
+                  <h3 className="text-base font-bold text-zinc-100">
+                    {activeProgram.title}
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    {activeProgram.main_instructions ||
+                      "Follow each prescribed exercise step and submit short video clips for your clinician to review."}
+                  </p>
                 </div>
 
                 {/* Steps overview */}
@@ -617,7 +581,7 @@ export default function ClientDashboardPage() {
                     {isPedia ? "Recommended: 15 min with parent" : "Recommended: 15 min daily session"}
                   </span>
                   <Link href="/client">
-                    <Button size="sm" className="bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-xs gap-1.5">
+                    <Button size="sm" className="h-9 px-4 text-xs gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold">
                       <Play className="w-3.5 h-3.5 fill-zinc-950" />
                       Open Exercises
                     </Button>
@@ -625,7 +589,7 @@ export default function ClientDashboardPage() {
                 </div>
               </div>
             ) : (
-              <div className="p-8 text-center rounded-xl bg-zinc-950/70 border border-dashed border-zinc-800 space-y-3">
+              <div className="p-6 text-center rounded-xl bg-zinc-950/70 border border-dashed border-zinc-800 space-y-3">
                 <div className="w-12 h-12 rounded-full bg-zinc-900 border border-zinc-800 text-teal-400 mx-auto flex items-center justify-center">
                   <Sparkles className="w-6 h-6" />
                 </div>
@@ -637,7 +601,7 @@ export default function ClientDashboardPage() {
                 </div>
                 <div className="pt-2">
                   <Link href="/client/messages">
-                    <Button variant="secondary" size="sm" className="gap-2 border-zinc-700 hover:border-teal-500/40 text-xs">
+                    <Button variant="secondary" size="sm" className="h-9 px-4 text-xs gap-2 border-zinc-700 hover:border-teal-500/40">
                       <MessageSquare className="w-3.5 h-3.5 text-teal-400" />
                       Message Your Therapist
                     </Button>
@@ -647,7 +611,7 @@ export default function ClientDashboardPage() {
             )}
 
             {/* Quick Helper Tips */}
-            <div className="p-4 rounded-xl bg-teal-950/20 border border-teal-500/20 space-y-1">
+            <div className="p-6 rounded-xl bg-teal-950/20 border border-teal-500/20 space-y-1">
               <div className="text-xs font-semibold text-teal-300 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Therapist Note for Today:</span>
@@ -665,17 +629,16 @@ export default function ClientDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Quick Tools & Assistants */}
-        <div className="space-y-4">
+        {/* Quick Tools & Assistants — even column */}
+        <div className="flex flex-col gap-4 h-full">
           {/* Clinician Connection Card */}
           {linkData?.linked ? (
-            <Card className="bg-teal-950/20 border-teal-500/30">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
+            <Card className="bg-teal-950/20 border-teal-500/30 flex flex-col h-full">
+              <CardContent className="p-6 space-y-3">
+                <div className="flex items-center">
                   <span className="text-[11px] font-semibold text-teal-400 uppercase tracking-wider">
                     Care Team Clinician
                   </span>
-                  <Badge variant="emerald" statusText="Active Care" icon={<CheckCircle2 className="w-3 h-3" />} />
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-300 font-bold shrink-0">
@@ -691,7 +654,7 @@ export default function ClientDashboardPage() {
                   </div>
                 </div>
                 <Link href="/client/messages" className="block pt-1">
-                  <Button variant="outline" size="sm" className="w-full border-teal-500/30 hover:bg-teal-950/40 text-teal-300 text-xs h-8 gap-1.5">
+                  <Button variant="outline" size="sm" className="w-full h-9 px-4 text-xs gap-2 border-teal-500/30 hover:bg-teal-950/40 text-teal-300">
                     <MessageSquare className="w-3.5 h-3.5" />
                     Message Clinician
                   </Button>
@@ -699,8 +662,8 @@ export default function ClientDashboardPage() {
               </CardContent>
             </Card>
           ) : linkData?.invitation_status === "pending" ? (
-            <Card className="bg-gradient-to-b from-amber-950/30 to-zinc-900 border-amber-500/40">
-              <CardContent className="p-4 space-y-3.5">
+            <Card className="bg-gradient-to-b from-amber-950/30 to-zinc-900 border-amber-500/40 flex flex-col h-full">
+              <CardContent className="p-6 space-y-3.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider">
                     Pending Connection
@@ -733,7 +696,7 @@ export default function ClientDashboardPage() {
                     size="sm"
                     onClick={handleCancelRequest}
                     disabled={cancellingLink}
-                    className="w-full border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs h-8"
+                    className="w-full h-9 px-4 text-xs gap-2 border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200"
                   >
                     {cancellingLink ? "Canceling..." : "Cancel Connection Request"}
                   </Button>
@@ -743,7 +706,7 @@ export default function ClientDashboardPage() {
                       size="sm"
                       onClick={() => handleRespondInvitation("accept")}
                       disabled={respondingLink}
-                      className="flex-1 bg-teal-500 hover:bg-teal-400 text-zinc-950 font-semibold text-xs h-8"
+                      className="flex-1 h-9 px-4 text-xs gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold"
                     >
                       Accept
                     </Button>
@@ -752,7 +715,7 @@ export default function ClientDashboardPage() {
                       variant="outline"
                       onClick={() => handleRespondInvitation("decline")}
                       disabled={respondingLink}
-                      className="border-zinc-700 text-zinc-400 hover:text-zinc-200 text-xs h-8"
+                      className="h-9 px-4 text-xs gap-2 border-zinc-700 text-zinc-400 hover:text-zinc-200"
                     >
                       Decline
                     </Button>
@@ -761,14 +724,14 @@ export default function ClientDashboardPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardHeader className="pb-3">
+            <Card className="bg-zinc-900/60 border-zinc-800 flex flex-col">
+              <CardHeader className="p-6 pb-4">
                 <CardTitle className="text-sm font-bold text-zinc-100 flex items-center gap-2">
                   <UserPlus className="w-4 h-4 text-teal-400" />
                   Connect with your Clinician
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 p-6 pt-0">
                 <p className="text-xs text-zinc-400">
                   Have an occupational therapist? Enter their clinic email address to send a link request.
                 </p>
@@ -784,7 +747,7 @@ export default function ClientDashboardPage() {
                   <Button
                     type="submit"
                     disabled={requestingLink || !inputTherapistEmail.trim()}
-                    className="w-full bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold text-xs h-9"
+                    className="w-full h-9 px-4 text-xs gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold"
                   >
                     {requestingLink ? "Sending..." : "Send Link Request"}
                   </Button>
@@ -810,22 +773,22 @@ export default function ClientDashboardPage() {
             </Card>
           )}
 
-          <Card className="bg-zinc-900/60 border-zinc-800">
-            <CardHeader className="pb-3">
+          <Card className="bg-zinc-900/60 border-zinc-800 flex flex-col">
+            <CardHeader className="p-6 pb-4">
               <CardTitle className="text-sm font-bold text-zinc-100">Care Resources</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Link href="/ask-ot" className="block p-3 rounded-xl bg-zinc-950/60 border border-zinc-800 hover:border-teal-500/50 transition-colors group">
+            <CardContent className="space-y-3 p-6 pt-0">
+              <Link href="/aruga-guide" className="block p-3 rounded-xl bg-zinc-950/60 border border-zinc-800 hover:border-teal-500/50 transition-colors group">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-teal-950/80 text-teal-400 group-hover:scale-105 transition-transform">
-                    <Bot className="w-5 h-5" />
+                    <HeartHandshake className="w-5 h-5" />
                   </div>
                   <div>
                     <div className="text-xs font-semibold text-zinc-100 group-hover:text-teal-300 transition-colors">
-                      Ask OT AI Helper
+                      Aruga Guide — Your online buddy
                     </div>
                     <div className="text-[11px] text-zinc-400">
-                      Got questions about grip, postures, or daily tasks? Ask anytime.
+                      Understand your condition & home program with your personal guide (PT/OT/Speech).
                     </div>
                   </div>
                 </div>
@@ -865,7 +828,7 @@ export default function ClientDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-zinc-900/60 border-zinc-800 p-4">
+          <Card className="bg-zinc-900/60 border-zinc-800 p-6 flex flex-col justify-center">
             <div className="flex items-start gap-3">
               <ShieldCheck className="w-5 h-5 text-teal-400 shrink-0 mt-0.5" />
               <div className="text-xs space-y-1">
