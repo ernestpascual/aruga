@@ -216,7 +216,7 @@ export async function POST(req: NextRequest) {
       inMemorySessions.pop();
     }
 
-    // Store in Supabase if admin is available
+    // Store in database if admin is available
     try {
       const { createAdminClient } = await import("@/lib/supabase/admin");
       const admin = createAdminClient();

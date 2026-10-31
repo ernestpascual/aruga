@@ -131,7 +131,7 @@ export default function TherapistProfilePage() {
     if (res.error) {
       setMessage({ type: "error", text: `Failed to save profile: ${res.error}` });
     } else {
-      setMessage({ type: "success", text: "Therapist profile updated successfully in Supabase!" });
+      setMessage({ type: "success", text: "Therapist profile updated successfully!" });
       setTimeout(() => setMessage(null), 4000);
     }
   };

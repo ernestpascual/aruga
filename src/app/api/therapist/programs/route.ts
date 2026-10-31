@@ -64,13 +64,23 @@ export async function GET(req: NextRequest) {
           return NextResponse.json({ programs: [] });
         }
 
-        // Sort steps per program
+        const progIds = dbPrograms.map((p) => p.id);
+        const { data: dbSubmissions } = await admin
+          .from("submissions")
+          .select("*, step_submissions(*), review:submission_reviews(*)")
+          .in("program_id", progIds)
+          .order("created_at", { ascending: false });
+
+        // Sort steps per program and attach submissions
         dbPrograms.forEach((p) => {
           if (Array.isArray(p.steps)) {
             p.steps.sort((a: ProgramStep, b: ProgramStep) => a.position - b.position);
           }
+          const matchingSubs = dbSubmissions ? dbSubmissions.filter((s: { program_id: string }) => s.program_id === p.id) : [];
+          p.submissions = matchingSubs;
+          p.latest_submission = matchingSubs[0] || null;
         });
-        return NextResponse.json({ programs: dbPrograms });
+        return NextResponse.json({ programs: dbPrograms, program: dbPrograms[0] });
       }
     }
 
@@ -84,10 +94,21 @@ export async function GET(req: NextRequest) {
     if (programId) {
       const prog = store.programs.find((p) => p.id === programId);
       if (prog) {
+        const matchingSubs = store.submissions
+          .filter((s) => s.program_id === prog.id)
+          .map((s) => ({
+            ...s,
+            step_submissions: store.stepSubmissions.filter((ss) => ss.submission_id === s.id),
+            review: store.reviews.find((r) => r.submission_id === s.id) || null,
+          }))
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
         const enriched = {
           ...prog,
           steps: store.steps.filter((s) => s.program_id === prog.id).sort((a, b) => a.position - b.position),
           patient: store.patients.find((pt) => pt.id === prog.patient_id),
+          submissions: matchingSubs,
+          latest_submission: matchingSubs[0] || null,
         };
         return NextResponse.json({ program: enriched, programs: [enriched] });
       }
@@ -98,10 +119,23 @@ export async function GET(req: NextRequest) {
       programs = programs.filter((p) => p.patient_id === patientId);
     }
 
-    const enriched = programs.map((p) => ({
-      ...p,
-      steps: store.steps.filter((s) => s.program_id === p.id).sort((a, b) => a.position - b.position),
-    }));
+    const enriched = programs.map((p) => {
+      const matchingSubs = store.submissions
+        .filter((s) => s.program_id === p.id)
+        .map((s) => ({
+          ...s,
+          step_submissions: store.stepSubmissions.filter((ss) => ss.submission_id === s.id),
+          review: store.reviews.find((r) => r.submission_id === s.id) || null,
+        }))
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      return {
+        ...p,
+        steps: store.steps.filter((s) => s.program_id === p.id).sort((a, b) => a.position - b.position),
+        submissions: matchingSubs,
+        latest_submission: matchingSubs[0] || null,
+      };
+    });
 
     return NextResponse.json({ programs: enriched });
   } catch (err: unknown) {
@@ -113,10 +147,21 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { action, patientId, programId, title, mainInstructions, steps } = body;
+    const { action, patientId, programId, title, mainInstructions, steps, scheduledDates, scheduled_dates } = body;
     const store = getMockStore();
     const therapistId = DEMO_THERAPIST_ID;
     const admin = createAdminClient();
+
+    const rawDates = scheduledDates || scheduled_dates || [];
+    const cleanedDates: string[] = Array.isArray(rawDates)
+      ? Array.from(
+          new Set(
+            rawDates
+              .map((d: unknown) => (typeof d === "string" ? d.trim() : ""))
+              .filter((d: string) => Boolean(d))
+          )
+        ).slice(0, 10)
+      : [];
 
     // 1. DUPLICATE PROGRAM
     if (action === "duplicate" && programId) {
@@ -287,6 +332,7 @@ export async function POST(req: NextRequest) {
           creator_id: therapistId,
           title: trimmedTitle,
           main_instructions: mainInstructions.trim(),
+          scheduled_dates: cleanedDates,
           status: "draft",
         })
         .select()
@@ -332,6 +378,7 @@ export async function POST(req: NextRequest) {
       title: trimmedTitle,
       main_instructions: mainInstructions,
       status: "draft",
+      scheduled_dates: cleanedDates,
       assigned_at: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -369,7 +416,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "programId or id is required for update" }, { status: 400 });
     }
 
-    const { title, mainInstructions, status, steps } = body;
+    const { title, mainInstructions, status, steps, scheduledDates, scheduled_dates } = body;
     const admin = createAdminClient();
 
     const updates: Record<string, unknown> = {
@@ -382,6 +429,19 @@ export async function PATCH(req: NextRequest) {
       if (status === "assigned") {
         updates.assigned_at = new Date().toISOString();
       }
+    }
+    if (scheduledDates !== undefined || scheduled_dates !== undefined) {
+      const rawDates = scheduledDates ?? scheduled_dates ?? [];
+      const cleanedDates: string[] = Array.isArray(rawDates)
+        ? Array.from(
+            new Set(
+              rawDates
+                .map((d: unknown) => (typeof d === "string" ? d.trim() : ""))
+                .filter((d: string) => Boolean(d))
+            )
+          ).slice(0, 10)
+        : [];
+      updates.scheduled_dates = cleanedDates;
     }
 
     if (admin) {
@@ -431,6 +491,9 @@ export async function PATCH(req: NextRequest) {
 
     if (title !== undefined) existing.title = title.trim();
     if (mainInstructions !== undefined) existing.main_instructions = mainInstructions.trim();
+    if (updates.scheduled_dates !== undefined) {
+      existing.scheduled_dates = updates.scheduled_dates as string[];
+    }
     if (status) {
       existing.status = status;
       if (status === "assigned") existing.assigned_at = new Date().toISOString();

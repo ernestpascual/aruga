@@ -3,6 +3,7 @@ import { getMockStore, DEMO_THERAPIST_ID } from "@/lib/supabase/mock-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { SoapNote } from "@/types/database";
+import { logAuditEvent } from "@/lib/hipaa/audit";
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,6 +12,7 @@ export async function GET(req: NextRequest) {
     const clientUserId = searchParams.get("clientUserId");
     const noteId = searchParams.get("id");
     const isDemo = searchParams.get("isDemo") === "true";
+    const all = searchParams.get("all") === "true";
 
     const admin = createAdminClient();
 
@@ -27,15 +29,17 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      if (patientId || noteId) {
+      if (all || patientId || noteId) {
         let query = admin
           .from("soap_notes")
-          .select("*, therapist_profile:profiles(*)");
+          .select("*, therapist_profile:profiles(*), patient:patients(*)");
 
         if (noteId) {
           query = query.eq("id", noteId);
         } else if (patientId) {
           query = query.eq("patient_id", patientId).order("session_date", { ascending: false });
+        } else if (all) {
+          query = query.order("session_date", { ascending: false });
         }
 
         const { data: dbNotes, error } = await query;
@@ -53,15 +57,19 @@ export async function GET(req: NextRequest) {
 
     if (noteId) {
       notes = notes.filter((n) => n.id === noteId);
+    } else if (all) {
+      notes = store.soapNotes;
     } else {
       notes = notes.filter((n) => n.patient_id === effectivePatientId);
     }
 
     const hydrated = notes.map((n) => {
       const therapist = store.profiles.find((p) => p.id === n.therapist_id);
+      const patient = store.patients.find((pt) => pt.id === n.patient_id);
       return {
         ...n,
         therapist_profile: therapist,
+        patient,
       };
     }).sort((a, b) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime());
 
@@ -79,9 +87,13 @@ export async function POST(req: NextRequest) {
       patientId,
       sessionDate,
       sessionTitle,
+      sessionRecordingUrl,
+      session_recording_url,
       subjective,
       objective,
       assessment,
+      assessmentLinks,
+      assessment_links,
       plan,
       clientSummary,
     } = body;
@@ -107,6 +119,8 @@ export async function POST(req: NextRequest) {
     const newNoteId = body.id || `soap-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const dateToSave = sessionDate || new Date().toISOString();
     const titleToSave = sessionTitle?.trim() || "Live Therapy Session Note";
+    const recordingUrlToSave = (sessionRecordingUrl ?? session_recording_url ?? null)?.trim() || null;
+    const assessmentLinksToSave = Array.isArray(assessmentLinks) ? assessmentLinks : (Array.isArray(assessment_links) ? assessment_links : []);
 
     const admin = createAdminClient();
     if (admin) {
@@ -118,9 +132,11 @@ export async function POST(req: NextRequest) {
             therapist_id: therapistId,
             session_date: dateToSave,
             session_title: titleToSave,
+            session_recording_url: recordingUrlToSave,
             subjective: subjective || "",
             objective: objective || "",
             assessment: assessment || "",
+            assessment_links: assessmentLinksToSave,
             plan: plan || "",
             client_summary: clientSummary || "",
           })
@@ -131,6 +147,19 @@ export async function POST(req: NextRequest) {
           // Sync with mock store as well
           const store = getMockStore();
           store.soapNotes.unshift(inserted);
+
+          await logAuditEvent({
+            userId: therapistId,
+            userRole: "therapist",
+            action: "EPHI_CREATE",
+            resourceType: "soap_notes",
+            resourceId: inserted.id,
+            patientId,
+            details: { sessionTitle: titleToSave, sessionDate: dateToSave },
+            ipAddress: req.headers.get("x-forwarded-for") || undefined,
+            userAgent: req.headers.get("user-agent") || undefined,
+          });
+
           return NextResponse.json({ soapNote: inserted }, { status: 201 });
         }
       } catch (dbErr) {
@@ -146,9 +175,11 @@ export async function POST(req: NextRequest) {
       therapist_id: therapistId,
       session_date: dateToSave,
       session_title: titleToSave,
+      session_recording_url: recordingUrlToSave,
       subjective: subjective || "",
       objective: objective || "",
       assessment: assessment || "",
+      assessment_links: assessmentLinksToSave,
       plan: plan || "",
       client_summary: clientSummary || "",
       created_at: new Date().toISOString(),
@@ -157,6 +188,18 @@ export async function POST(req: NextRequest) {
 
     store.soapNotes.unshift(newNote);
     const therapist = store.profiles.find((p) => p.id === therapistId);
+
+    await logAuditEvent({
+      userId: therapistId,
+      userRole: "therapist",
+      action: "EPHI_CREATE",
+      resourceType: "soap_notes",
+      resourceId: newNoteId,
+      patientId,
+      details: { sessionTitle: titleToSave, sessionDate: dateToSave, mock: true },
+      ipAddress: req.headers.get("x-forwarded-for") || undefined,
+      userAgent: req.headers.get("user-agent") || undefined,
+    });
 
     return NextResponse.json({
       soapNote: {
@@ -177,9 +220,13 @@ export async function PATCH(req: NextRequest) {
       id,
       sessionDate,
       sessionTitle,
+      sessionRecordingUrl,
+      session_recording_url,
       subjective,
       objective,
       assessment,
+      assessmentLinks,
+      assessment_links,
       plan,
       clientSummary,
     } = body;
@@ -187,6 +234,13 @@ export async function PATCH(req: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: "Note id is required" }, { status: 400 });
     }
+
+    const effectiveRecordingUrl = sessionRecordingUrl !== undefined
+      ? (sessionRecordingUrl ? sessionRecordingUrl.trim() : null)
+      : (session_recording_url !== undefined ? (session_recording_url ? session_recording_url.trim() : null) : undefined);
+    const effectiveAssessmentLinks = assessmentLinks !== undefined
+      ? assessmentLinks
+      : (assessment_links !== undefined ? assessment_links : undefined);
 
     const admin = createAdminClient();
     if (admin) {
@@ -196,9 +250,11 @@ export async function PATCH(req: NextRequest) {
         };
         if (sessionDate !== undefined) updatePayload.session_date = sessionDate;
         if (sessionTitle !== undefined) updatePayload.session_title = sessionTitle;
+        if (effectiveRecordingUrl !== undefined) updatePayload.session_recording_url = effectiveRecordingUrl;
         if (subjective !== undefined) updatePayload.subjective = subjective;
         if (objective !== undefined) updatePayload.objective = objective;
         if (assessment !== undefined) updatePayload.assessment = assessment;
+        if (effectiveAssessmentLinks !== undefined) updatePayload.assessment_links = effectiveAssessmentLinks;
         if (plan !== undefined) updatePayload.plan = plan;
         if (clientSummary !== undefined) updatePayload.client_summary = clientSummary;
 
@@ -210,6 +266,17 @@ export async function PATCH(req: NextRequest) {
           .single();
 
         if (!error && updated) {
+          await logAuditEvent({
+            userId: (updated.therapist_id as string) || DEMO_THERAPIST_ID,
+            userRole: "therapist",
+            action: "EPHI_UPDATE",
+            resourceType: "soap_notes",
+            resourceId: id,
+            patientId: updated.patient_id,
+            details: { updatedFields: Object.keys(updatePayload) },
+            ipAddress: req.headers.get("x-forwarded-for") || undefined,
+            userAgent: req.headers.get("user-agent") || undefined,
+          });
           return NextResponse.json({ soapNote: updated });
         }
       } catch (err) {
@@ -226,14 +293,28 @@ export async function PATCH(req: NextRequest) {
 
     if (sessionDate !== undefined) found.session_date = sessionDate;
     if (sessionTitle !== undefined) found.session_title = sessionTitle;
+    if (effectiveRecordingUrl !== undefined) found.session_recording_url = effectiveRecordingUrl;
     if (subjective !== undefined) found.subjective = subjective;
     if (objective !== undefined) found.objective = objective;
     if (assessment !== undefined) found.assessment = assessment;
+    if (effectiveAssessmentLinks !== undefined) found.assessment_links = effectiveAssessmentLinks;
     if (plan !== undefined) found.plan = plan;
     if (clientSummary !== undefined) found.client_summary = clientSummary;
     found.updated_at = new Date().toISOString();
 
     const therapist = store.profiles.find((p) => p.id === found.therapist_id);
+
+    await logAuditEvent({
+      userId: found.therapist_id,
+      userRole: "therapist",
+      action: "EPHI_UPDATE",
+      resourceType: "soap_notes",
+      resourceId: id,
+      patientId: found.patient_id,
+      details: { updatedFields: Object.keys(body).filter((k) => k !== "id"), mock: true },
+      ipAddress: req.headers.get("x-forwarded-for") || undefined,
+      userAgent: req.headers.get("user-agent") || undefined,
+    });
 
     return NextResponse.json({
       soapNote: {
@@ -279,6 +360,15 @@ export async function DELETE(req: NextRequest) {
     if (idx !== -1) {
       store.soapNotes.splice(idx, 1);
     }
+
+    await logAuditEvent({
+      action: "EPHI_DELETE",
+      resourceType: "soap_notes",
+      resourceId: id,
+      details: { deletedAt: new Date().toISOString() },
+      ipAddress: req.headers.get("x-forwarded-for") || undefined,
+      userAgent: req.headers.get("user-agent") || undefined,
+    });
 
     return NextResponse.json({ success: true, deletedId: id });
   } catch (err: unknown) {

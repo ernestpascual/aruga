@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getMockStore, DEMO_THERAPIST_ID } from "@/lib/supabase/mock-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { logAuditEvent } from "@/lib/hipaa/audit";
 
 export async function GET(req: NextRequest) {
   try {
@@ -67,15 +68,26 @@ export async function POST(req: NextRequest) {
       reviewId,
       stepReviews,
       overallFeedback,
+      sessionRecordingUrl,
+      session_recording_url,
       subjective,
       objective,
       assessment,
+      assessmentLinks,
+      assessment_links,
       plan,
       clientSummary,
       client_summary,
       confirmedObservationIds,
       stepSubmissionId,
     } = body;
+
+    const effectiveRecordingUrl = sessionRecordingUrl !== undefined
+      ? (sessionRecordingUrl ? sessionRecordingUrl.trim() : null)
+      : (session_recording_url !== undefined ? (session_recording_url ? session_recording_url.trim() : null) : undefined);
+    const effectiveAssessmentLinks = assessmentLinks !== undefined
+      ? assessmentLinks
+      : (assessment_links !== undefined ? assessment_links : undefined);
 
     const effectiveClientSummary = clientSummary || client_summary;
     let synthesizedFeedback = overallFeedback;
@@ -150,9 +162,11 @@ export async function POST(req: NextRequest) {
         updated_at: new Date().toISOString(),
       };
       if (synthesizedFeedback !== undefined) reviewPayload.overall_feedback = synthesizedFeedback;
+      if (effectiveRecordingUrl !== undefined) reviewPayload.session_recording_url = effectiveRecordingUrl;
       if (subjective !== undefined) reviewPayload.subjective = subjective;
       if (objective !== undefined) reviewPayload.objective = objective;
       if (assessment !== undefined) reviewPayload.assessment = assessment;
+      if (effectiveAssessmentLinks !== undefined) reviewPayload.assessment_links = effectiveAssessmentLinks;
       if (plan !== undefined) reviewPayload.plan = plan;
       if (effectiveClientSummary !== undefined) reviewPayload.client_summary = effectiveClientSummary;
       if (isPublish) reviewPayload.published_at = new Date().toISOString();
@@ -167,6 +181,8 @@ export async function POST(req: NextRequest) {
         if (!error) dbReview = data;
       } catch {
         // In case columns are not yet added in remote DB, fallback to upserting without newly added columns
+        delete reviewPayload.session_recording_url;
+        delete reviewPayload.assessment_links;
         delete reviewPayload.subjective;
         delete reviewPayload.objective;
         delete reviewPayload.assessment;
@@ -207,6 +223,23 @@ export async function POST(req: NextRequest) {
           .eq("id", submissionId);
       }
 
+      // HIPAA Audit Log for Submission Review (45 CFR § 164.312(b))
+      await logAuditEvent({
+        userId: therapistId,
+        userRole: "therapist",
+        action: isPublish ? "EPHI_UPDATE" : "EPHI_CREATE",
+        resourceType: "submission_reviews",
+        resourceId: dbReview?.id as string | undefined,
+        details: {
+          submissionId,
+          status: isPublish ? "published" : "draft",
+          hasRecordingUrl: Boolean(effectiveRecordingUrl),
+          assessmentLinksCount: Array.isArray(effectiveAssessmentLinks) ? effectiveAssessmentLinks.length : 0,
+        },
+        ipAddress: req.headers.get("x-forwarded-for") || undefined,
+        userAgent: req.headers.get("user-agent") || undefined,
+      });
+
       return NextResponse.json({
         success: true,
         review: dbReview,
@@ -229,9 +262,11 @@ export async function POST(req: NextRequest) {
         submission_id: submissionId,
         therapist_id: therapistId,
         overall_feedback: synthesizedFeedback || null,
+        session_recording_url: effectiveRecordingUrl || null,
         subjective: subjective || null,
         objective: objective || null,
         assessment: assessment || null,
+        assessment_links: effectiveAssessmentLinks || [],
         plan: plan || null,
         client_summary: effectiveClientSummary || null,
         status: isPublish ? "published" : "draft",
@@ -242,9 +277,11 @@ export async function POST(req: NextRequest) {
       store.reviews.push(review);
     } else {
       if (synthesizedFeedback !== undefined) review.overall_feedback = synthesizedFeedback;
+      if (effectiveRecordingUrl !== undefined) review.session_recording_url = effectiveRecordingUrl;
       if (subjective !== undefined) review.subjective = subjective;
       if (objective !== undefined) review.objective = objective;
       if (assessment !== undefined) review.assessment = assessment;
+      if (effectiveAssessmentLinks !== undefined) review.assessment_links = effectiveAssessmentLinks;
       if (plan !== undefined) review.plan = plan;
       if (effectiveClientSummary !== undefined) review.client_summary = effectiveClientSummary;
       if (isPublish) {
@@ -254,6 +291,25 @@ export async function POST(req: NextRequest) {
         review.status = "draft";
       }
     }
+
+    // HIPAA Audit Log for Fallback Store
+    await logAuditEvent({
+      userId: therapistId,
+      userRole: "therapist",
+      action: isPublish ? "EPHI_UPDATE" : "EPHI_CREATE",
+      resourceType: "submission_reviews",
+      resourceId: review.id,
+      patientId: submission.patient_id,
+      details: {
+        submissionId,
+        status: isPublish ? "published" : "draft",
+        hasRecordingUrl: Boolean(effectiveRecordingUrl),
+        assessmentLinksCount: Array.isArray(effectiveAssessmentLinks) ? effectiveAssessmentLinks.length : 0,
+        mock: true,
+      },
+      ipAddress: req.headers.get("x-forwarded-for") || undefined,
+      userAgent: req.headers.get("user-agent") || undefined,
+    });
 
     // Update step reviews (deduplicated by step_submission_id)
     if (Array.isArray(stepReviews)) {

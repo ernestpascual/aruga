@@ -67,7 +67,7 @@ export default function ClientDashboardPage() {
   const category = profile?.client_category || "adult";
   const isPedia = category === "pedia";
   const isAdolescent = category === "adolescent";
-  const isOldPeople = category === "old_people";
+  const isGeriatric = category === "geriatric" || category === "old_people";
 
   const fetchTherapistLink = async () => {
     if (!user?.id) return;
@@ -220,7 +220,7 @@ export default function ClientDashboardPage() {
           setActiveProgram({
             id: isPedia ? "44444444-4444-4444-8444-444444444445" : "44444444-4444-4444-8444-444444444444",
             patient_id: isPedia ? "33333333-3333-4333-8333-333333333334" : "33333333-3333-4333-8333-333333333333",
-            title: isPedia ? "Playful Pincer Grasp & Bilateral Toy Routine" : "Tabletop Grasp & Precision Release Routine",
+            title: isPedia ? "Playful Pincer Grasp & Bilateral Toy Home Program" : "Tabletop Grasp & Precision Release Home Program",
             main_instructions: isPedia
               ? "Engage in 3 fun play exercises using dough, pegs, and containers to strengthen finger dexterity."
               : "Perform 3 structured tabletop repetitions focusing on smooth finger extension and controlled release.",
@@ -313,7 +313,7 @@ export default function ClientDashboardPage() {
                 {linkData.therapist?.email || (linkData as any).pending_therapist_email ? (
                   <span className="text-amber-300/90 font-medium"> ({linkData.therapist?.email || (linkData as any).pending_therapist_email})</span>
                 ) : null}
-                . Once your clinician confirms in their caseload, your personalized home routines and video feedback will be activated.
+                . Once your clinician confirms in their caseload, your personalized home programs and video feedback will be activated.
               </p>
             </div>
           </div>
@@ -353,7 +353,7 @@ export default function ClientDashboardPage() {
           ? "bg-gradient-to-r from-zinc-900 via-amber-950/20 to-teal-950/40 border-amber-500/30"
           : isAdolescent
           ? "bg-gradient-to-r from-zinc-900 via-sky-950/20 to-teal-950/40 border-sky-500/30"
-          : isOldPeople
+          : isGeriatric
           ? "bg-gradient-to-r from-zinc-900 via-amber-950/15 to-teal-950/40 border-amber-500/40"
           : "bg-gradient-to-r from-zinc-900 via-zinc-900 to-teal-950/40 border-zinc-800"
       }`}>
@@ -367,7 +367,7 @@ export default function ClientDashboardPage() {
                     <Baby className="w-3.5 h-3.5" />
                   ) : isAdolescent ? (
                     <GraduationCap className="w-3.5 h-3.5" />
-                  ) : isOldPeople ? (
+                  ) : isGeriatric ? (
                     <HeartPulse className="w-3.5 h-3.5 text-amber-400" />
                   ) : (
                     <User className="w-3.5 h-3.5" />
@@ -378,8 +378,8 @@ export default function ClientDashboardPage() {
                     ? "Pediatric Rehabilitation Portal"
                     : isAdolescent
                     ? "Adolescent Skill Building"
-                    : isOldPeople
-                    ? "Old People (55+) Independence Portal"
+                    : isGeriatric
+                    ? "Geriatrics (55+) Independence Portal"
                     : "Adult Rehabilitation Portal"
                 }
               />
@@ -400,7 +400,7 @@ export default function ClientDashboardPage() {
                   ? "Hi Leo! Ready for Fun Practice?"
                   : isAdolescent
                   ? "Welcome back, Maya!"
-                  : isOldPeople
+                  : isGeriatric
                   ? "Welcome back, Arthur!"
                   : "Welcome back, Marcus!"
                 : "Welcome to your Care Portal"}
@@ -411,7 +411,7 @@ export default function ClientDashboardPage() {
                 ? "Complete today's play activities, record your fun milestones, and earn your daily therapy badge!"
                 : isAdolescent
                 ? "Track your daily fine-motor drills, school coordination tasks, and share progress videos with your therapist."
-                : isOldPeople
+                : isGeriatric
                 ? "Your specialized home program for joint mobility, fall risk reduction, and everyday living independence."
                 : "Your personalized clinician-prescribed occupational therapy program designed for functional daily independence."}
             </p>
@@ -422,7 +422,7 @@ export default function ClientDashboardPage() {
               <Link href="/client">
                 <Button className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold shadow-md">
                   <Play className="w-4 h-4 fill-zinc-950" />
-                  {isPedia ? "Start Play Routine" : "Start Today's Exercises"}
+                  {isPedia ? "Start Play Home Program" : "Start Today's Exercises"}
                 </Button>
               </Link>
             )}
@@ -460,7 +460,7 @@ export default function ClientDashboardPage() {
                 ? "Next milestone: 5 day star"
                 : clientStats.streak > 0
                 ? "Consistency supports recovery"
-                : "Complete a routine to start streak"}
+                : "Complete a home program to start streak"}
             </p>
           </CardContent>
         </Card>
@@ -540,14 +540,14 @@ export default function ClientDashboardPage() {
         </Card>
       </div>
 
-      {/* Main Hub: Current Routine Card & Quick Links */}
+      {/* Main Hub: Current Home Program Card & Quick Links */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Active Program Card */}
         <Card className="lg:col-span-2 bg-zinc-900/60 border-zinc-800">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div>
               <CardTitle className="text-sm font-bold text-zinc-100">
-                {isPedia ? "Today's Assigned Play Activity" : "Your Active Rehabilitation Routine"}
+                {isPedia ? "Today's Assigned Play Activity" : "Your Active Rehabilitation Home Program"}
               </CardTitle>
               <p className="text-xs text-zinc-400">Prescribed by your occupational therapist</p>
             </div>
@@ -570,7 +570,7 @@ export default function ClientDashboardPage() {
                         "Follow each prescribed exercise step and submit short video clips for your clinician to review."}
                     </p>
                   </div>
-                  <Badge variant="teal" statusText="Active Routine" />
+                  <Badge variant="teal" statusText="Active Home Program" />
                 </div>
 
                 {/* Steps overview */}
@@ -607,7 +607,7 @@ export default function ClientDashboardPage() {
                     </>
                   ) : (
                     <div className="sm:col-span-3 p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800 text-xs text-zinc-400 text-center">
-                      Follow each prescribed exercise step in your active routine.
+                      Follow each prescribed exercise step in your active home program.
                     </div>
                   )}
                 </div>
@@ -630,9 +630,9 @@ export default function ClientDashboardPage() {
                   <Sparkles className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-base font-bold text-zinc-100">No Active Routine Assigned Yet</h3>
+                  <h3 className="text-base font-bold text-zinc-100">No Active Home Program Assigned Yet</h3>
                   <p className="text-xs text-zinc-400 max-w-md mx-auto">
-                    Your occupational therapist has not assigned a home exercise program yet. Once assigned, your routine exercises and practice instructions will appear here.
+                    Your occupational therapist has not assigned a home exercise program yet. Once assigned, your home program exercises and practice instructions will appear here.
                   </p>
                 </div>
                 <div className="pt-2">

@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   role TEXT NOT NULL CHECK (role IN ('therapist', 'client')),
   display_name TEXT NOT NULL,
   discipline TEXT CHECK (discipline IN ('SLP', 'OT', 'PT') OR discipline IS NULL),
-  client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia', 'old_people') OR client_category IS NULL),
+  client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia', 'geriatric', 'old_people') OR client_category IS NULL),
   email TEXT,
   
   -- Therapist specific fields
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS public.patients (
   condition VARCHAR(255) NOT NULL DEFAULT 'General Occupational Therapy',
   email VARCHAR(255) NOT NULL UNIQUE,
   caregiver_name TEXT,
-  client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia', 'old_people') OR client_category IS NULL),
+  client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia', 'geriatric', 'old_people') OR client_category IS NULL),
   invitation_status TEXT NOT NULL DEFAULT 'accepted',
   invitation_initiated_by TEXT DEFAULT 'therapist' CHECK (invitation_initiated_by IN ('therapist', 'client') OR invitation_initiated_by IS NULL),
   invitation_sent_at TIMESTAMPTZ DEFAULT NOW(),
@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS public.home_programs (
   creator_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   title VARCHAR(200) NOT NULL,
   main_instructions TEXT NOT NULL,
+  scheduled_dates JSONB DEFAULT '[]'::jsonb,
   status TEXT NOT NULL DEFAULT 'assigned' CHECK (status IN ('draft', 'assigned', 'archived')),
   assigned_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -123,9 +124,10 @@ CREATE INDEX IF NOT EXISTS idx_program_steps_program ON public.program_steps(pro
 -- 4. Submissions & Step Reviews
 CREATE TABLE IF NOT EXISTS public.submissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  program_id UUID NOT NULL UNIQUE REFERENCES public.home_programs(id) ON DELETE CASCADE,
+  program_id UUID NOT NULL REFERENCES public.home_programs(id) ON DELETE CASCADE,
   patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
   client_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  scheduled_date TEXT,
   state TEXT NOT NULL DEFAULT 'submitted' CHECK (state IN ('draft', 'submitted', 'reviewed')),
   consent_therapist BOOLEAN NOT NULL DEFAULT true,
   consent_meta_ai BOOLEAN NOT NULL DEFAULT true,
@@ -136,6 +138,7 @@ CREATE TABLE IF NOT EXISTS public.submissions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_submissions_patient ON public.submissions(patient_id);
+CREATE INDEX IF NOT EXISTS idx_submissions_prog_date ON public.submissions(program_id, scheduled_date);
 
 CREATE TABLE IF NOT EXISTS public.step_submissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -951,3 +954,26 @@ VALUES
   ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '33333333-3333-4333-8333-333333333333', 'Great job Marcus! I reviewed your video. Your finger aperture was much cleaner today. Keep practicing step 1 daily.', '44444444-4444-4444-8444-444444444444', NOW() - INTERVAL '18 hours'),
   ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', '44444444-4444-4444-8444-444444444444', 'Hello Dr. Ramos, Leo really enjoyed the putty exercises today! He managed to make 5 mini pancakes with his index finger.', '22222222-2222-4222-8222-222222222222', NOW() - INTERVAL '10 hours')
 ON CONFLICT (id) DO NOTHING;
+
+-- 7. SOAP Notes for Live Sessions
+CREATE TABLE IF NOT EXISTS public.soap_notes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
+  therapist_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  session_date TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  session_title TEXT NOT NULL DEFAULT 'Live Therapy Session',
+  session_recording_url TEXT,
+  subjective TEXT NOT NULL DEFAULT '',
+  objective TEXT NOT NULL DEFAULT '',
+  assessment TEXT NOT NULL DEFAULT '',
+  assessment_links JSONB DEFAULT '[]'::jsonb,
+  plan TEXT NOT NULL DEFAULT '',
+  client_summary TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_soap_notes_patient_id ON public.soap_notes(patient_id);
+CREATE INDEX IF NOT EXISTS idx_soap_notes_session_date ON public.soap_notes(session_date DESC);
+ALTER TABLE public.soap_notes ENABLE ROW LEVEL SECURITY;
+

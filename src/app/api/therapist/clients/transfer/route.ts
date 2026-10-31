@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { getMockStore, DEMO_THERAPIST_ID } from "@/lib/supabase/mock-store";
+import { logAuditEvent } from "@/lib/hipaa/audit";
 import { z } from "zod";
 
 const TransferCareSchema = z.object({
@@ -142,6 +143,24 @@ export async function POST(req: NextRequest) {
         .update({ creator_id: targetTherapistId })
         .eq("patient_id", patientId);
 
+      // HIPAA Audit Log: Record client handover & transfer of care
+      await logAuditEvent({
+        userId: currentTherapistId,
+        userRole: "therapist",
+        action: "EPHI_TRANSFER",
+        resourceType: "patients",
+        resourceId: patientId,
+        patientId,
+        details: {
+          previousTherapistId: patient.therapist_id,
+          targetTherapistId,
+          targetTherapistEmail: normalizedTargetEmail,
+          hasHandoverNotes: Boolean(handoverNotes),
+        },
+        ipAddress: req.headers.get("x-forwarded-for") || undefined,
+        userAgent: req.headers.get("user-agent") || undefined,
+      });
+
       return NextResponse.json({
         success: true,
         message: `Client care successfully transferred to ${targetTherapistName}.`,
@@ -171,6 +190,24 @@ export async function POST(req: NextRequest) {
     patient.invitation_status = "pending";
     patient.invitation_initiated_by = "therapist";
     patient.updated_at = new Date().toISOString();
+
+    await logAuditEvent({
+      userId: currentTherapistId,
+      userRole: "therapist",
+      action: "EPHI_TRANSFER",
+      resourceType: "patients",
+      resourceId: patientId,
+      patientId,
+      details: {
+        previousTherapistId: previousId,
+        targetTherapistId: "th-transferred-colleague",
+        targetTherapistEmail: normalizedTargetEmail,
+        hasHandoverNotes: Boolean(handoverNotes),
+        mock: true,
+      },
+      ipAddress: req.headers.get("x-forwarded-for") || undefined,
+      userAgent: req.headers.get("user-agent") || undefined,
+    });
 
     return NextResponse.json({
       success: true,

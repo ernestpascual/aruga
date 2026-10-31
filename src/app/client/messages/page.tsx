@@ -270,7 +270,7 @@ function ClientMessagesContent() {
                     className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-900/90 border border-teal-500/60 text-[11px] font-medium text-teal-300 hover:bg-zinc-800 transition-colors"
                   >
                     <BookOpen className="w-3 h-3 text-teal-400" />
-                    <span>View Referenced Routine</span>
+                    <span>View Referenced Home Program</span>
                   </Link>
                 )}
 
@@ -292,14 +292,14 @@ function ClientMessagesContent() {
           availablePrograms={availablePrograms}
           placeholder={
             isDemo
-              ? "Ask Dr. Ramos a question... (Type @ to attach an assigned routine)"
-              : "Ask your therapist a question... (Type @ to attach an assigned routine)"
+              ? "Ask Dr. Ramos a question... (Type @ to attach an assigned home program)"
+              : "Ask your therapist a question... (Type @ to attach an assigned home program)"
           }
           className="min-h-[80px]"
         />
 
         <div className="flex items-center justify-between text-xs text-zinc-500">
-          <span>Type <kbd className="px-1 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">@</kbd> to cite an assigned exercise routine</span>
+          <span>Type <kbd className="px-1 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">@</kbd> to cite an assigned exercise home program</span>
           <Button
             type="submit"
             isLoading={sending}

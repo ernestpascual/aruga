@@ -44,3 +44,4 @@ supabase/.schema.sql
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+opencode.jsonc

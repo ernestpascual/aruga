@@ -8,7 +8,7 @@
 
 ## 1. Overview and Architecture
 
-Aruga integrates **Meta AI** to assist licensed occupational, physical, and speech therapists in clinical routine prescription, kinematic video tracking, multi-box SOAP documentation, and accessible family communication.
+Aruga integrates **Meta AI** to assist licensed occupational, physical, and speech therapists in clinical home program prescription, kinematic video tracking, multi-box SOAP documentation, and accessible family communication.
 
 All AI interactions adhere to strict **human-in-the-loop clinical governance**: AI outputs are strictly treated as tentative drafts that clinicians must review, confirm, or modify before being made visible to patients.
 
@@ -93,7 +93,7 @@ Aruga includes 7 pre-validated clinical and environmental keyword engines:
 1. **Pediatric Care Engine** (100 keywords): Fine-motor play tools (crayons, pegboards, bubbles, pop tubes, therapy putty).
 2. **Adolescent Care Engine** (100 keywords): Academic & executive function tools (mechanical pencil, geometry compass, locker lock, binder clips).
 3. **Adult Rehabilitation Engine** (100 keywords): Stroke & neuro-rehab items (cylindrical cup, weighted fork, therapeutic washcloth, key turner).
-4. **Old People (55+) Engine** (100 keywords): Fall prevention & joint mobility items (long-handled shoehorn, button hook, pill organizer, walker grip).
+4. **Geriatrics (55+) Engine** (100 keywords): Fall prevention & joint mobility items (long-handled shoehorn, button hook, pill organizer, walker grip).
 5. **Everyday Home Items Engine** (100 keywords): Toothbrush, television remote, house key, hairbrush, nail clipper.
 6. **Everyday School Items Engine** (100 keywords): Safety scissors, glue stick, lunchbox latch, highlighter, eraser cap.
 7. **Kitchen Items Engine** (100 keywords): Measuring spoon, spatula, soup ladle, jar opener, vegetable peeler.

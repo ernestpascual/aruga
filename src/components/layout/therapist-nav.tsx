@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
+  ClipboardList,
   MessageSquare,
   LogOut,
   Stethoscope,
@@ -27,6 +28,7 @@ export function TherapistNav() {
   const navItems = [
     { href: "/therapist/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/therapist/clients", label: "Clients", icon: Users },
+    { href: "/therapist/assessments", label: "Assessments", icon: ClipboardList },
     { href: "/therapist/messages", label: "Messages", icon: MessageSquare },
     { href: "/ask-ot", label: "Ask OT", icon: Bot },
     { href: "/sam-test", label: "SAM Test", icon: Scan },

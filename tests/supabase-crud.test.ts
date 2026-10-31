@@ -62,7 +62,7 @@ import {
   DEMO_SUBMISSION_ID,
 } from "../src/lib/supabase/mock-store";
 
-describe("Therapist and Client Supabase CRUD Operations", () => {
+describe("Therapist and Client Database CRUD Operations", () => {
   beforeEach(() => {
     resetMockStore();
   });
@@ -313,6 +313,44 @@ describe("Therapist and Client Supabase CRUD Operations", () => {
       expect(data.program.steps.length).toBe(3);
     });
 
+    it("creates and updates a home program with up to 10 scheduled practice dates (POST & PATCH)", async () => {
+      const initialDates = ["2026-11-01", "2026-11-03", "2026-11-05"];
+      const createReq = new NextRequest("http://localhost:3000/api/therapist/programs", {
+        method: "POST",
+        body: JSON.stringify({
+          patientId: DEMO_PATIENT_ID,
+          title: "Scheduled Practice Session Routine",
+          mainInstructions: "Practice on designated scheduled dates.",
+          scheduledDates: initialDates,
+          steps: [
+            { title: "Warmup Stretch", instructions: "Slow wrist rotations." },
+          ],
+        }),
+      });
+
+      const createRes = await postPrograms(createReq);
+      expect(createRes.status).toBe(201);
+      const createData = await createRes.json();
+      expect(createData.program).toBeDefined();
+      expect(createData.program.scheduled_dates).toEqual(initialDates);
+      const programId = createData.program.id;
+
+      // Update with up to 5 dates
+      const updatedDates = ["2026-11-01", "2026-11-03", "2026-11-05", "2026-11-07", "2026-11-09"];
+      const updateReq = new NextRequest("http://localhost:3000/api/therapist/programs", {
+        method: "PATCH",
+        body: JSON.stringify({
+          programId,
+          scheduledDates: updatedDates,
+        }),
+      });
+
+      const updateRes = await updateProgram(updateReq);
+      expect(updateRes.status).toBe(200);
+      const updateData = await updateRes.json();
+      expect(updateData.program.scheduled_dates).toEqual(updatedDates);
+    });
+
     it("assigns, duplicates, and archives programs (POST actions)", async () => {
       // 1. Assign
       const assignReq = new NextRequest("http://localhost:3000/api/therapist/programs", {
@@ -348,6 +386,23 @@ describe("Therapist and Client Supabase CRUD Operations", () => {
       expect(dupRes.status).toBe(200);
       const dupData = await dupRes.json();
       expect(dupData.program.title).toContain("(Copy)");
+    });
+
+    it("attaches submissions and latest_submission to home programs so therapist can view completed status and provide feedback", async () => {
+      const progReq = new NextRequest(
+        `http://localhost:3000/api/therapist/programs?patientId=${DEMO_PATIENT_ID}&isDemo=true`
+      );
+      const progRes = await getPrograms(progReq);
+      expect(progRes.status).toBe(200);
+      const progData = await progRes.json();
+      expect(progData.programs.length).toBeGreaterThan(0);
+
+      // Verify that programs contain submissions and latest_submission
+      const progWithSub = progData.programs.find((p: any) => p.latest_submission);
+      expect(progWithSub).toBeDefined();
+      expect(progWithSub.latest_submission.id).toBe(DEMO_SUBMISSION_ID);
+      expect(progWithSub.latest_submission.state).toBeDefined();
+      expect(Array.isArray(progWithSub.submissions)).toBe(true);
     });
 
     it("deletes a home program (DELETE)", async () => {
@@ -472,7 +527,142 @@ describe("Therapist and Client Supabase CRUD Operations", () => {
       expect(data.submission.state).toBe("submitted");
     });
 
-    it("uploads video per step to Supabase Storage compliant with free tier limits", async () => {
+    it("manages separate submissions per scheduled practice date (one submission per date)", async () => {
+      const programId = "prog-multi-dates-test";
+      const date1 = "2026-11-01";
+      const date2 = "2026-11-03";
+
+      // 1. Create or get submission for Date 1
+      const req1 = new NextRequest("http://localhost:3000/api/client/submissions", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "get_or_create",
+          programId,
+          patientId: DEMO_PATIENT_ID,
+          scheduledDate: date1,
+        }),
+      });
+      const res1 = await postSubmissions(req1);
+      expect(res1.status).toBe(200);
+      const data1 = await res1.json();
+      expect(data1.submission.program_id).toBe(programId);
+      expect(data1.submission.scheduled_date).toBe(date1);
+
+      // 2. Create or get submission for Date 2
+      const req2 = new NextRequest("http://localhost:3000/api/client/submissions", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "get_or_create",
+          programId,
+          patientId: DEMO_PATIENT_ID,
+          scheduledDate: date2,
+        }),
+      });
+      const res2 = await postSubmissions(req2);
+      expect(res2.status).toBe(200);
+      const data2 = await res2.json();
+      expect(data2.submission.program_id).toBe(programId);
+      expect(data2.submission.scheduled_date).toBe(date2);
+
+      // Verify that they are distinct submissions
+      expect(data1.submission.id).not.toBe(data2.submission.id);
+
+      // 3. Query submission by programId + scheduledDate (GET)
+      const getReq = new NextRequest(
+        `http://localhost:3000/api/client/submissions?programId=${programId}&scheduledDate=${date1}`
+      );
+      const getRes = await getSubmissions(getReq);
+      expect(getRes.status).toBe(200);
+      const getData = await getRes.json();
+      expect(getData.submission.id).toBe(data1.submission.id);
+      expect(getData.submission.scheduled_date).toBe(date1);
+    });
+
+    it("allows client to edit an already-submitted home program submission (POST action: save_step_draft and update_submission)", async () => {
+      // 1. Create and submit a home program routine
+      const draft = await createDraft("prog-edit-submitted-test");
+
+      await postSubmissions(
+        new NextRequest("http://localhost:3000/api/client/submissions", {
+          method: "POST",
+          body: JSON.stringify({
+            action: "save_step_draft",
+            submissionId: draft.id,
+            stepId: "step-1",
+            videoPath: "/uploads/initial_video.mp4",
+            clientComment: "Initial attempt with mild fatigue.",
+            skipped: false,
+          }),
+        })
+      );
+
+      const submitReq = new NextRequest("http://localhost:3000/api/client/submissions", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "submit",
+          submissionId: draft.id,
+          consentTherapist: true,
+          consentMetaAi: false,
+        }),
+      });
+      const submitRes = await postSubmissions(submitReq);
+      expect(submitRes.status).toBe(200);
+      const submitData = await submitRes.json();
+      expect(submitData.submission.state).toBe("submitted");
+
+      // 2. Client re-edits step details on the submitted submission
+      const editStepReq = new NextRequest("http://localhost:3000/api/client/submissions", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "save_step_draft",
+          submissionId: draft.id,
+          stepId: "step-1",
+          videoPath: "/uploads/improved_video_retake.mp4",
+          clientComment: "Retook video: much better wrist stability and grip.",
+          skipped: false,
+        }),
+      });
+      const editStepRes = await postSubmissions(editStepReq);
+      expect(editStepRes.status).toBe(200);
+      const editStepData = await editStepRes.json();
+      expect(editStepData.success).toBe(true);
+      expect(editStepData.stepSubmission.video_path).toBe("/uploads/improved_video_retake.mp4");
+      expect(editStepData.stepSubmission.client_comment).toBe(
+        "Retook video: much better wrist stability and grip."
+      );
+
+      // 3. Client re-submits updated submission
+      const reSubmitReq = new NextRequest("http://localhost:3000/api/client/submissions", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "update_submission",
+          submissionId: draft.id,
+          consentTherapist: true,
+          consentMetaAi: false,
+        }),
+      });
+      const reSubmitRes = await postSubmissions(reSubmitReq);
+      expect(reSubmitRes.status).toBe(200);
+      const reSubmitData = await reSubmitRes.json();
+      expect(reSubmitData.success).toBe(true);
+      expect(reSubmitData.submission.state).toBe("submitted");
+
+      // 4. Verify step submission shows updated details on fetch
+      const verifyReq = new NextRequest(
+        `http://localhost:3000/api/client/submissions?submissionId=${draft.id}`
+      );
+      const verifyRes = await getSubmissions(verifyReq);
+      expect(verifyRes.status).toBe(200);
+      const verifyData = await verifyRes.json();
+      const step1 = verifyData.submission.step_submissions.find(
+        (s: any) => s.program_step_id === "step-1"
+      );
+      expect(step1).toBeDefined();
+      expect(step1.video_path).toBe("/uploads/improved_video_retake.mp4");
+      expect(step1.client_comment).toBe("Retook video: much better wrist stability and grip.");
+    });
+
+    it("uploads video per step to Cloud Storage compliant with limits", async () => {
       const draft = await createDraft("prog-upload-test");
 
       const formData = new FormData();
@@ -495,7 +685,7 @@ describe("Therapist and Client Supabase CRUD Operations", () => {
       expect(data.bucket).toBe("program-videos");
     });
 
-    it("rejects video upload exceeding Supabase Free Tier limit (50MB)", async () => {
+    it("rejects video upload exceeding maximum limit (50MB)", async () => {
       const formData = new FormData();
       const oversizedBlob = new Blob(["mock"], { type: "video/mp4" });
       formData.append("file", oversizedBlob, "huge_exercise.mp4");
@@ -509,7 +699,7 @@ describe("Therapist and Client Supabase CRUD Operations", () => {
       const uploadRes = await uploadVideo(uploadReq);
       expect(uploadRes.status).toBe(400);
       const data = await uploadRes.json();
-      expect(data.error).toContain("Supabase Free Tier maximum of 50MB");
+      expect(data.error).toContain("maximum allowed size of 50MB");
     });
 
     it("rejects non-video mime types for step uploads", async () => {
@@ -1373,6 +1563,53 @@ describe("Therapist and Client Supabase CRUD Operations", () => {
       expect(firstNote.assessment).toBeTruthy();
       expect(firstNote.plan).toBeTruthy();
       expect(firstNote.client_summary).toBeTruthy();
+    });
+
+    it("creates and updates SOAP note with session recording URL and multiple assessment document links", async () => {
+      // 1. Create with recording URL and multiple assessment document links
+      const createReq = new NextRequest("http://localhost:3000/api/therapist/soap-notes", {
+        method: "POST",
+        body: JSON.stringify({
+          patientId: DEMO_PATIENT_ID,
+          therapistId: DEMO_THERAPIST_ID,
+          sessionDate: "2026-10-31",
+          sessionTitle: "Evaluation & Standardized Assessment Session",
+          sessionRecordingUrl: "https://meet.google.com/rec/eval-session-123",
+          subjective: "Patient ready for formal evaluation.",
+          objective: "Fugl-Meyer score 48/66.",
+          assessment: "Substantial motor recovery observed.",
+          assessmentLinks: [
+            { title: "Fugl-Meyer UE Motor Assessment (PDF)", url: "https://clinic.org/fm-score.pdf" },
+            { title: "Goniometry ROM Evaluation Log", url: "https://clinic.org/goniometry.pdf" },
+          ],
+          plan: "Maintain current progression.",
+          clientSummary: "Great session today! Your assessment showed clear improvement in wrist extension.",
+        }),
+      });
+      const createRes = await postTherapistSoapNotes(createReq);
+      expect(createRes.status).toBe(201);
+      const createData = await createRes.json();
+      expect(createData.soapNote.session_recording_url).toBe("https://meet.google.com/rec/eval-session-123");
+      expect(createData.soapNote.assessment_links.length).toBe(2);
+      expect(createData.soapNote.assessment_links[0].title).toBe("Fugl-Meyer UE Motor Assessment (PDF)");
+
+      // 2. Update with modified assessment links and recording URL
+      const patchReq = new NextRequest("http://localhost:3000/api/therapist/soap-notes", {
+        method: "PATCH",
+        body: JSON.stringify({
+          id: createData.soapNote.id,
+          sessionRecordingUrl: "https://meet.google.com/rec/eval-session-123-updated",
+          assessmentLinks: [
+            { title: "Updated Fugl-Meyer Scorecard", url: "https://clinic.org/fm-score-v2.pdf" },
+          ],
+        }),
+      });
+      const patchRes = await patchTherapistSoapNotes(patchReq);
+      expect(patchRes.status).toBe(200);
+      const patchData = await patchRes.json();
+      expect(patchData.soapNote.session_recording_url).toBe("https://meet.google.com/rec/eval-session-123-updated");
+      expect(patchData.soapNote.assessment_links.length).toBe(1);
+      expect(patchData.soapNote.assessment_links[0].title).toBe("Updated Fugl-Meyer Scorecard");
     });
 
     it("allows therapist to review home program submission with 4 SOAP boxes and client summary", async () => {

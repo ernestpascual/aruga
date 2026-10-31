@@ -38,7 +38,7 @@ export default function TherapistClientsPage() {
   const [clients, setClients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [populationFilter, setPopulationFilter] = useState<"all" | "pending" | "pedia" | "adolescent" | "adult" | "old_people">("all");
+  const [populationFilter, setPopulationFilter] = useState<"all" | "pending" | "pedia" | "adolescent" | "adult" | "geriatric" | "old_people">("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"intake" | "link_email">("intake");
   const [linkEmail, setLinkEmail] = useState("");
@@ -330,7 +330,7 @@ Note: For client privacy and safety, temporary credentials are automatically del
     .filter((c) => {
       if (populationFilter === "pending") return c.invitation_status === "pending";
       if (populationFilter === "adult") return c.age >= 18 && c.age < 55;
-      if (populationFilter === "old_people") return c.age >= 55;
+      if (populationFilter === "geriatric" || populationFilter === "old_people") return c.age >= 55 || (c as any).client_category === "geriatric" || (c as any).client_category === "old_people";
       if (populationFilter === "adolescent") return c.age >= 12 && c.age < 18;
       if (populationFilter === "pedia") return c.age < 12;
       return true;
@@ -346,7 +346,7 @@ Note: For client privacy and safety, temporary credentials are automatically del
   const pediaCount = clients.filter((c) => c.age < 12).length;
   const adolescentCount = clients.filter((c) => c.age >= 12 && c.age < 18).length;
   const adultCount = clients.filter((c) => c.age >= 18 && c.age < 55).length;
-  const oldPeopleCount = clients.filter((c) => c.age >= 55).length;
+  const geriatricCount = clients.filter((c) => c.age >= 55 || (c as any).client_category === "geriatric" || (c as any).client_category === "old_people").length;
   const pendingConfirmations = clients.filter((c) => c.invitation_status === "pending");
 
   return (
@@ -359,7 +359,7 @@ Note: For client privacy and safety, temporary credentials are automatically del
             Clients
           </h1>
           <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-            Manage your caseload across pediatric and adult care, assign routines, and review tabletop submissions.
+            Manage your caseload across pediatric and adult care, assign home programs, and review tabletop submissions.
           </p>
         </div>
 
@@ -529,15 +529,15 @@ Note: For client privacy and safety, temporary credentials are automatically del
           </button>
           <button
             type="button"
-            onClick={() => setPopulationFilter("old_people")}
+            onClick={() => setPopulationFilter("geriatric")}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-              populationFilter === "old_people"
+              populationFilter === "geriatric" || populationFilter === "old_people"
                 ? "bg-amber-950/80 text-amber-300 border border-amber-500/40 font-semibold shadow-sm"
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
             <HeartPulse className="w-3 h-3 text-amber-400" />
-            Old People (55+) ({oldPeopleCount})
+            Geriatrics (55+) ({geriatricCount})
           </button>
         </div>
       </div>
@@ -623,7 +623,7 @@ Note: For client privacy and safety, temporary credentials are automatically del
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-950/80 border border-amber-500/40 text-amber-300">
                             <HeartPulse className="w-3 h-3 text-amber-400" />
-                            Old People ({client.age}y)
+                            Geriatrics ({client.age}y)
                           </span>
                         )}
 

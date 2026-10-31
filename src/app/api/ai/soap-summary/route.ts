@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getMockStore } from "@/lib/supabase/mock-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createMetaOpenAiClient, getMetaConfig } from "@/lib/meta/client";
+import { deidentifyClinicalText } from "@/lib/hipaa/de-identify";
+import { logAuditEvent } from "@/lib/hipaa/audit";
 
 interface SoapSummaryPayload {
   targetType?: "soap_note" | "submission_review";
@@ -63,7 +65,7 @@ function synthesizePlainLanguageSummary(params: {
   }
 
   // Extract plan takeaway
-  let planNote = " Keep up your daily routine, and we will build on this foundation in our next session!";
+  let planNote = " Keep up your daily home program, and we will build on this foundation in our next session!";
   if (p.toLowerCase().includes("posture") || p.toLowerCase().includes("table")) {
     planNote = " Remember to keep your chair close to the table and your shoulders relaxed during practice.";
   } else if (p.toLowerCase().includes("warm")) {
@@ -239,6 +241,13 @@ export async function POST(req: NextRequest) {
     if (hasLiveAi) {
       try {
         const client = createMetaOpenAiClient();
+
+        // HIPAA Safe Harbor: de-identify clinical text before third-party LLM transmission
+        const safeSubjective = deidentifyClinicalText(subjective || "", { clientName });
+        const safeObjective = deidentifyClinicalText(objective || "", { clientName });
+        const safeAssessment = deidentifyClinicalText(assessment || "", { clientName });
+        const safePlan = deidentifyClinicalText(plan || "", { clientName });
+
         const response = await client.chat.completions.create({
           model: models.spark,
           messages: [
@@ -249,7 +258,7 @@ export async function POST(req: NextRequest) {
             },
             {
               role: "user",
-              content: `Patient Name: ${clientName || "Patient"}\n\nClinical SOAP Notes:\n- Subjective: ${subjective}\n- Objective: ${objective}\n- Assessment: ${assessment}\n- Plan: ${plan}\n\nGenerate the plain-English summary:`,
+              content: `Client: Client\n\nClinical SOAP Notes (De-Identified):\n- Subjective: ${safeSubjective}\n- Objective: ${safeObjective}\n- Assessment: ${safeAssessment}\n- Plan: ${safePlan}\n\nGenerate the plain-English summary:`,
             },
           ],
           temperature: 0.3,
@@ -304,6 +313,17 @@ export async function POST(req: NextRequest) {
         }
       }
     }
+
+    // HIPAA Audit Logging: record synthesis of ePHI summary
+    await logAuditEvent({
+      action: "EPHI_AI_SYNTHESIS",
+      affectedResource: targetType || "soap_notes",
+      resourceId: targetId || null,
+      metadata: {
+        summaryLength: generatedSummary.length,
+        deidentified: true,
+      },
+    });
 
     return NextResponse.json({
       summary: generatedSummary,

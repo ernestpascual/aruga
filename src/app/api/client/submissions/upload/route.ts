@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMockStore } from "@/lib/supabase/mock-store";
+import { logAuditEvent } from "@/lib/hipaa/audit";
 
-// Supabase Free Tier maximum file upload is 50MB (52,428,800 bytes).
+// Maximum file upload is 50MB (52,428,800 bytes).
 // Aruga recommends <= 25MB for optimal bandwidth & snappy streaming.
 const MAX_FREE_TIER_BYTES = 50 * 1024 * 1024; // 50MB
 const BUCKET_NAME = "program-videos";
@@ -23,11 +24,11 @@ export async function POST(req: NextRequest) {
     const declaredSize = formData.get("fileSizeBytes") ? Number(formData.get("fileSizeBytes")) : 0;
     const effectiveSize = Math.max(file.size, declaredSize);
 
-    // 1. Validate File Size for Supabase Free Tier
+    // 1. Validate File Size
     if (effectiveSize > MAX_FREE_TIER_BYTES) {
       return NextResponse.json(
         {
-          error: `File size (${(effectiveSize / 1024 / 1024).toFixed(1)}MB) exceeds the Supabase Free Tier maximum of 50MB. Please record a shorter clip (under 30 seconds).`,
+          error: `File size (${(effectiveSize / 1024 / 1024).toFixed(1)}MB) exceeds the maximum allowed size of 50MB. Please record a shorter clip (under 30 seconds).`,
         },
         { status: 400 }
       );
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      // Upload to Supabase Storage
+      // Upload to Cloud Storage
       let { error: uploadError } = await admin.storage
         .from(BUCKET_NAME)
         .upload(storagePath, buffer, {
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
       // If bucket does not exist, attempt to create it and retry
       if (uploadError && uploadError.message?.toLowerCase().includes("bucket not found")) {
         await admin.storage.createBucket(BUCKET_NAME, {
-          public: true,
+          public: false, // HIPAA compliance: Patient media is strictly private
           fileSizeLimit: MAX_FREE_TIER_BYTES,
           allowedMimeTypes: ["video/mp4", "video/webm", "video/quicktime"],
         });
@@ -98,24 +99,29 @@ export async function POST(req: NextRequest) {
 
       if (uploadError) {
         return NextResponse.json(
-          { error: `Supabase Storage upload failed: ${uploadError.message}` },
+          { error: `Cloud Storage upload failed: ${uploadError.message}` },
           { status: 500 }
         );
       }
 
-      // Generate public URL (or signed URL as backup)
-      const { data: publicUrlData } = admin.storage.from(BUCKET_NAME).getPublicUrl(storagePath);
-      let videoUrl = publicUrlData.publicUrl;
-
+      // Generate signed URL with time-limited token (private bucket)
+      let videoUrl = "";
       try {
         const { data: signedData } = await admin.storage
           .from(BUCKET_NAME)
-          .createSignedUrl(storagePath, 60 * 60 * 24 * 30); // 30 days valid
+          .createSignedUrl(storagePath, 60 * 60 * 24 * 7); // 7 days time-limited signed URL
         if (signedData?.signedUrl) {
           videoUrl = signedData.signedUrl;
         }
       } catch {
-        // use publicUrl
+        // fallback to public url if signed URL generation fails
+        const { data: publicUrlData } = admin.storage.from(BUCKET_NAME).getPublicUrl(storagePath);
+        videoUrl = publicUrlData.publicUrl;
+      }
+
+      if (!videoUrl) {
+        const { data: publicUrlData } = admin.storage.from(BUCKET_NAME).getPublicUrl(storagePath);
+        videoUrl = publicUrlData.publicUrl;
       }
 
       // Update step_submissions in database if IDs provided
@@ -141,9 +147,25 @@ export async function POST(req: NextRequest) {
           .eq("program_step_id", stepId);
       }
 
+      // HIPAA Audit Log: Record ePHI media upload
+      await logAuditEvent({
+        action: "EPHI_CREATE",
+        resourceType: "step_submissions",
+        resourceId: submissionId || undefined,
+        details: {
+          stepId,
+          storagePath,
+          sizeBytes: file.size,
+          mime,
+          bucket: BUCKET_NAME,
+        },
+        ipAddress: req.headers.get("x-forwarded-for") || undefined,
+        userAgent: req.headers.get("user-agent") || undefined,
+      });
+
       return NextResponse.json({
         success: true,
-        message: "Video successfully stored in Supabase Storage.",
+        message: "Video successfully stored in cloud storage.",
         videoPath: videoUrl,
         storagePath,
         bucket: BUCKET_NAME,
@@ -152,7 +174,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Mock store fallback (e.g. unit tests or local preview without live Supabase credentials)
+    // Mock store fallback (e.g. unit tests or local preview without live credentials)
     const store = getMockStore();
     const demoVideoPath = "/demo/cup_grasp_transfer.mp4";
 

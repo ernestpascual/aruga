@@ -29,6 +29,7 @@ export const metadata: Metadata = {
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/lib/supabase/auth-context";
+import { SessionTimeoutProvider } from "@/components/auth/session-timeout-provider";
 
 export default function RootLayout({
   children,
@@ -68,7 +69,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100 selection:bg-teal-500/30 selection:text-teal-200 transition-colors duration-150">
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <SessionTimeoutProvider>{children}</SessionTimeoutProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

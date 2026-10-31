@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
     const programId = searchParams.get("programId");
     let patientId = searchParams.get("patientId");
     const clientUserId = searchParams.get("clientUserId");
+    const scheduledDate = searchParams.get("scheduledDate") || searchParams.get("scheduled_date");
 
     const admin = createAdminClient();
 
@@ -38,8 +39,10 @@ export async function GET(req: NextRequest) {
       } else if (programId) {
         query = query.eq("program_id", programId);
         if (patientId) query = query.eq("patient_id", patientId);
+        if (scheduledDate) query = query.eq("scheduled_date", scheduledDate);
       } else if (patientId) {
         query = query.eq("patient_id", patientId);
+        if (scheduledDate) query = query.eq("scheduled_date", scheduledDate);
       }
 
       const { data: dbSubs, error } = await query.order("created_at", { ascending: false });
@@ -80,8 +83,10 @@ export async function GET(req: NextRequest) {
     } else if (programId) {
       matchingSubs = matchingSubs.filter((s) => s.program_id === programId);
       if (patientId) matchingSubs = matchingSubs.filter((s) => s.patient_id === patientId);
+      if (scheduledDate) matchingSubs = matchingSubs.filter((s) => s.scheduled_date === scheduledDate);
     } else if (patientId) {
       matchingSubs = matchingSubs.filter((s) => s.patient_id === patientId);
+      if (scheduledDate) matchingSubs = matchingSubs.filter((s) => s.scheduled_date === scheduledDate);
     }
 
     const enriched = matchingSubs.map((s) => {
@@ -127,7 +132,11 @@ export async function POST(req: NextRequest) {
       skipReason,
       consentTherapist,
       consentMetaAi,
+      scheduledDate,
+      scheduled_date,
     } = body;
+
+    const targetScheduledDate = scheduledDate || scheduled_date || null;
 
     const store = getMockStore();
     const admin = createAdminClient();
@@ -153,8 +162,8 @@ export async function POST(req: NextRequest) {
         }
 
         if (resolvedPatientId) {
-          // Find existing submission
-          const { data: existingSub } = await admin
+          // Find existing submission for this program and scheduled date (if specified)
+          let subQuery = admin
             .from("submissions")
             .select(`
               *,
@@ -163,8 +172,14 @@ export async function POST(req: NextRequest) {
               review:submission_reviews(*, step_reviews(*))
             `)
             .eq("program_id", programId)
-            .eq("patient_id", resolvedPatientId)
-            .maybeSingle();
+            .eq("patient_id", resolvedPatientId);
+
+          if (targetScheduledDate) {
+            subQuery = subQuery.eq("scheduled_date", targetScheduledDate);
+          }
+
+          const { data: existingSubList } = await subQuery.order("created_at", { ascending: false });
+          const existingSub = existingSubList && existingSubList.length > 0 ? existingSubList[0] : null;
 
           if (existingSub) {
             // Check if step_submissions are complete
@@ -208,6 +223,7 @@ export async function POST(req: NextRequest) {
               program_id: programId,
               patient_id: resolvedPatientId,
               client_id: clientUserId || null,
+              scheduled_date: targetScheduledDate,
               state: "draft",
               consent_therapist: true,
               consent_meta_ai: true,
@@ -249,16 +265,21 @@ export async function POST(req: NextRequest) {
       }
 
       // Fallback in-memory
-      let sub = store.submissions.find((s) => s.program_id === programId);
+      let sub = store.submissions.find(
+        (s) =>
+          s.program_id === programId &&
+          (targetScheduledDate ? s.scheduled_date === targetScheduledDate : true)
+      );
       if (!sub) {
         const prog = store.programs.find((p) => p.id === programId);
         const resolvedPatientId = patientId || prog?.patient_id || DEMO_CLIENT_ID;
-        const newSubId = `sub-${Date.now()}`;
+        const newSubId = `sub-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         sub = {
           id: newSubId,
           program_id: programId,
           patient_id: resolvedPatientId,
           client_id: DEMO_CLIENT_ID,
+          scheduled_date: targetScheduledDate,
           state: "draft",
           consent_therapist: true,
           consent_meta_ai: true,
@@ -272,7 +293,7 @@ export async function POST(req: NextRequest) {
         const progSteps = store.steps.filter((s) => s.program_id === programId);
         progSteps.forEach((ps, idx) => {
           store.stepSubmissions.push({
-            id: `ss-${Date.now()}-${idx + 1}`,
+            id: `ss-${Date.now()}-${idx + 1}-${Math.random().toString(36).slice(2, 7)}`,
             submission_id: newSubId,
             program_step_id: ps.id,
             video_path: null,
@@ -303,19 +324,28 @@ export async function POST(req: NextRequest) {
     if (admin) {
       const { data: dbSub } = await admin
         .from("submissions")
-        .select("*")
+        .select("*, review:submission_reviews(status)")
         .eq("id", submissionId)
         .maybeSingle();
 
       if (dbSub) {
-        if (dbSub.state !== "draft" && action !== "get_status") {
+        const isReviewed =
+          dbSub.state === "reviewed" ||
+          (Array.isArray(dbSub.review)
+            ? dbSub.review.some((r: { status?: string }) => r.status === "published")
+            : (dbSub.review as { status?: string } | null)?.status === "published");
+
+        if (
+          isReviewed &&
+          (action === "save_step_draft" || action === "submit" || action === "update_submission")
+        ) {
           return NextResponse.json(
             {
-              error: "This program submission has already been submitted and cannot be modified.",
-              submission: dbSub,
-              deduplicated: true,
+              error:
+                "This submission cannot be edited because feedback has already been published by your therapist.",
+              isLocked: true,
             },
-            { status: 200 }
+            { status: 403 }
           );
         }
 
@@ -385,7 +415,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        if (action === "submit") {
+        if (action === "submit" || action === "update_submission") {
           const { data: submittedSub } = await admin
             .from("submissions")
             .update({
@@ -430,15 +460,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Submission not found" }, { status: 404 });
     }
 
-    // Guard: read-only after submission
-    if (submission.state !== "draft") {
+    const existingReview = store.reviews.find((r) => r.submission_id === submissionId);
+    const isReviewed = submission.state === "reviewed" || existingReview?.status === "published";
+
+    if (
+      isReviewed &&
+      (action === "save_step_draft" || action === "submit" || action === "update_submission")
+    ) {
       return NextResponse.json(
         {
-          error: "This program submission has already been submitted and cannot be modified.",
-          submission,
-          deduplicated: true,
+          error:
+            "This submission cannot be edited because feedback has already been published by your therapist.",
+          isLocked: true,
         },
-        { status: 200 }
+        { status: 403 }
       );
     }
 
@@ -458,7 +493,7 @@ export async function POST(req: NextRequest) {
 
       if (!stepSub && stepId) {
         stepSub = {
-          id: `ss-${Date.now()}`,
+          id: `ss-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           submission_id: submissionId,
           program_step_id: stepId,
           video_path: videoPath || null,
@@ -491,7 +526,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. FINAL SUBMISSION TO THERAPIST
-    if (action === "submit") {
+    if (action === "submit" || action === "update_submission") {
       // Validate all steps are accounted for
       const stepsForSub = store.stepSubmissions.filter((ss) => ss.submission_id === submissionId);
       const invalidSteps = stepsForSub.filter((ss) => {
@@ -522,7 +557,7 @@ export async function POST(req: NextRequest) {
         const prog = store.programs.find((p) => p.id === submission.program_id);
         const therapistId = prog?.creator_id || "demo-therapist-id";
         review = {
-          id: `rev-${Date.now()}`,
+          id: `rev-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           submission_id: submissionId,
           therapist_id: therapistId,
           overall_feedback: null,

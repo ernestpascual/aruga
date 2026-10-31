@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
         );
       }
     } catch {
-      // Supabase persist optional if offline
+      // Database persist optional if offline
     }
 
     return NextResponse.json({

@@ -17,6 +17,7 @@ import {
   X,
   Layers,
   HelpCircle,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,8 @@ function NewHomeProgramContent({
   const [title, setTitle] = useState("");
   const [mainInstructions, setMainInstructions] = useState("");
   const [discipline, setDiscipline] = useState<"SLP" | "OT" | "PT">("OT");
+  const [scheduledDates, setScheduledDates] = useState<string[]>([]);
+  const [newDateInput, setNewDateInput] = useState("");
   const [steps, setSteps] = useState<StepItem[]>([
     {
       id: "step-1",
@@ -137,7 +140,7 @@ function NewHomeProgramContent({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          rawInstructions: rawText || "Tabletop grasp and transfer exercise routine",
+          rawInstructions: rawText || "Tabletop grasp and transfer home program",
           discipline,
           currentTitle: title,
         }),
@@ -173,6 +176,19 @@ function NewHomeProgramContent({
     setRefineProposal(null);
   };
 
+  const handleAddDate = (dateToAdd?: string) => {
+    const val = (dateToAdd || newDateInput).trim();
+    if (!val) return;
+    if (scheduledDates.includes(val)) return;
+    if (scheduledDates.length >= 10) return;
+    setScheduledDates([...scheduledDates, val].sort());
+    setNewDateInput("");
+  };
+
+  const handleRemoveDate = (dateToRemove: string) => {
+    setScheduledDates(scheduledDates.filter((d) => d !== dateToRemove));
+  };
+
   // Save Program (Draft or Assign)
   const handleSave = async (action: "draft" | "assign") => {
     if (submitting) return;
@@ -204,6 +220,7 @@ function NewHomeProgramContent({
           patientId,
           title,
           mainInstructions,
+          scheduledDates,
           steps: steps.map((s) => ({ title: s.title, instructions: s.instructions })),
         }),
       });
@@ -289,7 +306,7 @@ function NewHomeProgramContent({
             <label className="text-xs font-semibold text-zinc-300">Program Title *</label>
             <Input
               required
-              placeholder="e.g. Tabletop Grasp & Precision Release Routine"
+              placeholder="e.g. Tabletop Grasp & Precision Release Home Program"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
@@ -310,22 +327,122 @@ function NewHomeProgramContent({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-zinc-300">Main Instructions / Routine Overview *</label>
+          <label className="text-xs font-semibold text-zinc-300">Main Instructions / Home Program Overview *</label>
           <Textarea
             required
             rows={3}
-            placeholder="Explain the routine context, posture recommendations, and repetition pacing..."
+            placeholder="Explain the home program context, posture recommendations, and repetition pacing..."
             value={mainInstructions}
             onChange={(e) => setMainInstructions(e.target.value)}
           />
         </div>
       </Card>
 
+      {/* Practice Schedule (Up to 10 Dates) */}
+      <Card className="border-zinc-800 bg-zinc-900/90 p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-teal-400" />
+              Practice Schedule Dates (Up to 10 Dates)
+            </h3>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              Specify dates on when the client should do this home program (up to 10 dates). Each date is one submission.
+            </p>
+          </div>
+          <Badge
+            variant={scheduledDates.length >= 10 ? "amber" : "teal"}
+            statusText={`${scheduledDates.length} of 10 dates`}
+          />
+        </div>
+
+        {/* Date Input & Quick Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            type="date"
+            value={newDateInput}
+            onChange={(e) => setNewDateInput(e.target.value)}
+            className="w-44 bg-zinc-950 border-zinc-800 text-xs h-9 text-zinc-200"
+            disabled={scheduledDates.length >= 10}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleAddDate()}
+            disabled={!newDateInput || scheduledDates.length >= 10}
+            className="h-9 gap-1 text-xs border-teal-500/40 text-teal-300 hover:bg-teal-950/30"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Date
+          </Button>
+
+          {/* Quick Date Presets */}
+          <div className="flex items-center gap-1.5 ml-auto">
+            <span className="text-[11px] text-zinc-500 mr-1">Quick Add:</span>
+            {[
+              { label: "Today", days: 0 },
+              { label: "+1 Day", days: 1 },
+              { label: "+2 Days", days: 2 },
+              { label: "+3 Days", days: 3 },
+              { label: "+1 Wk", days: 7 },
+            ].map((preset) => {
+              const d = new Date();
+              d.setDate(d.getDate() + preset.days);
+              const dateStr = d.toISOString().split("T")[0];
+              const alreadyAdded = scheduledDates.includes(dateStr);
+              return (
+                <button
+                  key={preset.label}
+                  type="button"
+                  disabled={alreadyAdded || scheduledDates.length >= 10}
+                  onClick={() => handleAddDate(dateStr)}
+                  className={`px-2 py-1 rounded text-[11px] font-mono border transition-colors ${
+                    alreadyAdded
+                      ? "opacity-40 border-zinc-800 text-zinc-600 cursor-not-allowed"
+                      : "border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-teal-500/50 hover:text-teal-300"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Selected Dates Badges */}
+        {scheduledDates.length > 0 ? (
+          <div className="flex flex-wrap gap-2 pt-2">
+            {scheduledDates.map((dateStr, idx) => (
+              <div
+                key={dateStr}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-950 border border-teal-500/30 text-xs text-zinc-200"
+              >
+                <span className="font-semibold text-teal-400">Date {idx + 1}:</span>
+                <span className="font-mono">{dateStr}</span>
+                <span className="text-[10px] text-zinc-500">(1 submission)</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveDate(dateStr)}
+                  className="text-zinc-500 hover:text-red-400 transition-colors ml-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-zinc-500 italic pt-1">
+            No specific dates scheduled yet. If no dates are specified, the client submits 1 submission for this home program.
+          </p>
+        )}
+      </Card>
+
       {/* Steps List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
-            Ordered Routine Steps ({steps.length})
+            Ordered Home Program Steps ({steps.length})
           </h2>
           <Button
             type="button"

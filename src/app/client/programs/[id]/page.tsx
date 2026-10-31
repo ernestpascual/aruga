@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -19,6 +20,8 @@ import {
   FileText,
   Check,
   Stethoscope,
+  Edit3,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,7 +38,7 @@ export default function ClientProgramRunnerPage({
   params: Promise<{ id: string }>;
 }) {
   return (
-    <React.Suspense fallback={<div className="p-8 text-center text-zinc-500">Loading routine...</div>}>
+    <React.Suspense fallback={<div className="p-8 text-center text-zinc-500">Loading home program...</div>}>
       <ClientProgramRunnerContent params={params} />
     </React.Suspense>
   );
@@ -58,12 +61,19 @@ function ClientProgramRunnerContent({
   const resolvedParams = use(params);
   const programId = resolvedParams.id;
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+
+  const initialEditParam = searchParams.get("edit") === "true";
+  const initialDateParam = searchParams.get("date") || "";
 
   const [program, setProgram] = useState<HomeProgram | null>(null);
   const [steps, setSteps] = useState<ProgramStep[]>([]);
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [stepData, setStepData] = useState<Record<string, StepItemData>>({});
   const [loading, setLoading] = useState(true);
+
+  const [selectedDate, setSelectedDate] = useState<string>(initialDateParam);
+  const [isEditingMode, setIsEditingMode] = useState(initialEditParam);
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isSummaryView, setIsSummaryView] = useState(false);
@@ -78,7 +88,7 @@ function ClientProgramRunnerContent({
   const [consentTherapist, setConsentTherapist] = useState(true);
   const [consentMetaAi, setConsentMetaAi] = useState(true);
 
-  // Load Program & Submissions from Supabase
+  // Load Program & Submissions from database
   useEffect(() => {
     let isMounted = true;
 
@@ -86,7 +96,7 @@ function ClientProgramRunnerContent({
       try {
         setLoading(true);
 
-        // 1. Fetch Program & Steps from Supabase
+        // 1. Fetch Program & Steps
         const progRes = await fetch(`/api/therapist/programs?id=${programId}`);
         const progData = await progRes.json();
         let loadedProg: HomeProgram | null = null;
@@ -102,13 +112,24 @@ function ClientProgramRunnerContent({
           setSteps(loadedSteps);
         }
 
-        // 2. Fetch or create draft submission for this program in Supabase
+        const effectiveDate =
+          selectedDate ||
+          (loadedProg?.scheduled_dates && loadedProg.scheduled_dates.length > 0
+            ? loadedProg.scheduled_dates[0]
+            : undefined);
+
+        if (effectiveDate && !selectedDate && isMounted) {
+          setSelectedDate(effectiveDate);
+        }
+
+        // 2. Fetch or create draft submission for this program & scheduled date
         const subRes = await fetch("/api/client/submissions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "get_or_create",
             programId,
+            scheduledDate: effectiveDate || undefined,
             clientUserId: user?.id,
           }),
         });
@@ -117,9 +138,28 @@ function ClientProgramRunnerContent({
         if (isMounted && subData.submission) {
           const currentSub: Submission = subData.submission;
           setSubmission(currentSub);
-          if (currentSub.state === "submitted" || currentSub.state === "reviewed") {
+          const isFeedbackGiven =
+            currentSub.state === "reviewed" ||
+            currentSub.review?.status === "published" ||
+            Boolean(currentSub.review?.overall_feedback);
+          const isDone = currentSub.state === "submitted" || isFeedbackGiven;
+
+          if (isFeedbackGiven) {
+            // Therapist already gave feedback: client CANNOT edit anymore
+            setIsEditingMode(false);
             setIsSubmitted(true);
+            if (initialEditParam) {
+              setErrorMsg(
+                "Feedback has already been published by your therapist. This submission is finalized and cannot be modified."
+              );
+            }
+          } else if (initialEditParam) {
+            setIsEditingMode(true);
+            setIsSubmitted(false);
+          } else {
+            setIsSubmitted(isDone);
           }
+
           if (typeof currentSub.consent_therapist === "boolean") {
             setConsentTherapist(currentSub.consent_therapist);
           }
@@ -155,7 +195,7 @@ function ClientProgramRunnerContent({
           setStepData(initialMap);
         }
       } catch (err) {
-        console.warn("Could not load program from Supabase:", err);
+        console.warn("Could not load program:", err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -166,7 +206,79 @@ function ClientProgramRunnerContent({
     return () => {
       isMounted = false;
     };
-  }, [programId, user?.id]);
+  }, [programId, user?.id, initialEditParam]);
+
+  // Start Editing Submission
+  const handleStartEdit = () => {
+    const isFeedbackGiven =
+      submission?.state === "reviewed" ||
+      submission?.review?.status === "published" ||
+      Boolean(submission?.review?.overall_feedback);
+    if (isFeedbackGiven) {
+      setErrorMsg(
+        "Feedback has already been published by your therapist. This submission is finalized and cannot be modified."
+      );
+      return;
+    }
+    setIsEditingMode(true);
+    setIsSubmitted(false);
+    setIsSummaryView(false);
+    setCurrentStepIndex(0);
+    setErrorMsg(null);
+  };
+
+  // Switch Scheduled Practice Date (Each date is 1 submission)
+  const handleSelectDate = async (newDate: string) => {
+    if (newDate === selectedDate) return;
+    setSelectedDate(newDate);
+    setIsEditingMode(false);
+    setIsSummaryView(false);
+    setCurrentStepIndex(0);
+    setErrorMsg(null);
+    setSaveSuccessMsg(null);
+    setLoading(true);
+
+    try {
+      const subRes = await fetch("/api/client/submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "get_or_create",
+          programId,
+          scheduledDate: newDate,
+          clientUserId: user?.id,
+        }),
+      });
+      const subData = await subRes.json();
+      if (subData.submission) {
+        const cur: Submission = subData.submission;
+        setSubmission(cur);
+        setIsSubmitted(cur.state === "submitted" || cur.state === "reviewed");
+        const initialMap: Record<string, StepItemData> = {};
+        if (Array.isArray(cur.step_submissions)) {
+          cur.step_submissions.forEach((ss: StepSubmission) => {
+            initialMap[ss.program_step_id] = {
+              stepSubmissionId: ss.id,
+              videoPath: ss.video_path || undefined,
+              comment: ss.client_comment || "",
+              skipped: Boolean(ss.skipped),
+              skipReason: ss.skip_reason || "",
+            };
+          });
+        }
+        steps.forEach((st) => {
+          if (!initialMap[st.id]) {
+            initialMap[st.id] = { comment: "", skipped: false, skipReason: "" };
+          }
+        });
+        setStepData(initialMap);
+      }
+    } catch (err) {
+      console.warn("Date switch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const activeStep = steps[currentStepIndex];
   const activeStepData = (activeStep && stepData[activeStep.id]) || {
@@ -195,7 +307,7 @@ function ClientProgramRunnerContent({
       },
     }));
 
-    // If submission exists, upload directly to Supabase Storage
+    // If submission exists, upload directly to cloud storage
     if (submission) {
       setUploadingStepId(currentStepId);
       setErrorMsg(null);
@@ -213,7 +325,7 @@ function ClientProgramRunnerContent({
 
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || "Failed to upload video to Supabase Storage.");
+          throw new Error(data.error || "Failed to upload video to secure storage.");
         }
 
         if (data.videoPath) {
@@ -224,7 +336,7 @@ function ClientProgramRunnerContent({
               videoPath: data.videoPath,
             },
           }));
-          setSaveSuccessMsg("Video saved directly to Supabase Storage ('program-videos').");
+          setSaveSuccessMsg("Video saved directly to secure cloud storage.");
           setTimeout(() => setSaveSuccessMsg(null), 3500);
         }
       } catch (err: unknown) {
@@ -248,7 +360,7 @@ function ClientProgramRunnerContent({
     }));
   };
 
-  // Save Step Draft to Supabase
+  // Save Step Draft to database
   const handleSaveProgress = async () => {
     if (!submission || !activeStep || savingDraft) return;
     setErrorMsg(null);
@@ -285,7 +397,7 @@ function ClientProgramRunnerContent({
         }));
       }
 
-      setSaveSuccessMsg("Draft progress saved to Supabase.");
+      setSaveSuccessMsg("Draft progress saved.");
       setTimeout(() => setSaveSuccessMsg(null), 3000);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : String(err));
@@ -294,11 +406,67 @@ function ClientProgramRunnerContent({
     }
   };
 
-  const handleNext = async () => {
-    if (activeStepData.skipped && !activeStepData.skipReason.trim()) {
-      setErrorMsg("Please provide a brief reason for skipping this step before proceeding.");
+  const handleResetStepVideo = async (stepId: string) => {
+    if (uploadingStepId === stepId) {
+      setErrorMsg("Video is currently uploading to cloud storage. Please wait for it to complete before resetting.");
       return;
     }
+    const currentStepVideo = stepData[stepId]?.videoPath;
+    if (currentStepVideo && currentStepVideo.startsWith("blob:")) {
+      URL.revokeObjectURL(currentStepVideo);
+    }
+
+    setStepData((prev) => ({
+      ...prev,
+      [stepId]: {
+        ...prev[stepId],
+        videoBlob: undefined,
+        videoPath: undefined,
+      },
+    }));
+
+    if (submission) {
+      try {
+        await fetch("/api/client/submissions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "save_step_draft",
+            submissionId: submission.id,
+            stepId,
+            stepSubmissionId: stepData[stepId]?.stepSubmissionId,
+            videoPath: null,
+          }),
+        });
+      } catch (err: unknown) {
+        console.warn("Reset step video draft sync error:", err);
+      }
+    }
+
+    setSaveSuccessMsg("Video reset successfully. You can now record or upload a new video.");
+    setTimeout(() => setSaveSuccessMsg(null), 3500);
+  };
+
+  const handleNext = async () => {
+    // 1. Guard against in-flight cloud video uploads
+    if (uploadingStepId) {
+      setErrorMsg("Please wait for your step video to finish uploading to cloud storage before proceeding to the next step.");
+      return;
+    }
+
+    // 2. Validate skip status or video presence
+    if (activeStepData.skipped) {
+      if (!activeStepData.skipReason.trim()) {
+        setErrorMsg("Please provide a brief reason for skipping this step before proceeding.");
+        return;
+      }
+    } else {
+      if (!activeStepData.videoPath && !activeStepData.videoBlob) {
+        setErrorMsg("Please record or upload a video for this step before proceeding, or select 'I could not complete this step'.");
+        return;
+      }
+    }
+
     setErrorMsg(null);
 
     // Auto-save draft on step navigation
@@ -335,9 +503,23 @@ function ClientProgramRunnerContent({
     }
   };
 
-  // Final Submit to Therapist in Supabase
+  // Final Submit to Therapist
   const handleSubmitToTherapist = async () => {
     if (submitting || isSubmitted || !submission) return;
+    const isFeedbackGiven =
+      submission.state === "reviewed" ||
+      submission.review?.status === "published" ||
+      Boolean(submission.review?.overall_feedback);
+    if (isFeedbackGiven) {
+      setErrorMsg(
+        "Feedback has already been published by your therapist. This submission is finalized and cannot be modified."
+      );
+      return;
+    }
+    if (uploadingStepId) {
+      setErrorMsg("A video is still uploading to cloud storage. Please wait for it to finish before submitting.");
+      return;
+    }
     setSubmitting(true);
     setErrorMsg(null);
 
@@ -385,7 +567,13 @@ function ClientProgramRunnerContent({
         throw new Error(data.error || "Submission failed.");
       }
 
+      if (data.submission) {
+        setSubmission(data.submission);
+      }
+      setIsEditingMode(false);
       setIsSubmitted(true);
+      setSaveSuccessMsg(isEditingMode ? "Submission updated and re-sent to clinician!" : "Home program submitted successfully!");
+      setTimeout(() => setSaveSuccessMsg(null), 4000);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : String(err));
     } finally {
@@ -397,13 +585,16 @@ function ClientProgramRunnerContent({
     return (
       <div className="max-w-2xl mx-auto py-16 text-center space-y-3">
         <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-xs text-zinc-400">Loading home exercise routine from Supabase...</p>
+        <p className="text-xs text-zinc-400">Loading home program...</p>
       </div>
     );
   }
 
   if (isSubmitted) {
-    const isReviewed = submission?.state === "reviewed";
+    const isReviewed =
+      submission?.state === "reviewed" ||
+      submission?.review?.status === "published" ||
+      Boolean(submission?.review?.overall_feedback);
     const review = submission?.review;
 
     if (isReviewed) {
@@ -423,14 +614,25 @@ function ClientProgramRunnerContent({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h1 className="text-xl font-bold text-zinc-100">
-                  {program?.title || "Exercise Routine"} — Clinician Feedback
+                  {program?.title || "Home Program"} — Clinician Feedback
                 </h1>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Your occupational therapist has reviewed your exercise routine. Review your clinician&apos;s step-by-step guidance below.
+                  Your occupational therapist has reviewed your home program. Review your clinician&apos;s step-by-step guidance below.
                 </p>
               </div>
-              <Badge variant="emerald" statusText="Reviewed & Published" icon={<Check className="w-3 h-3" />} />
+              <Badge variant="emerald" statusText="Reviewed & Finalized" icon={<Check className="w-3 h-3" />} />
             </div>
+          </div>
+
+          {/* Clinician Feedback finalized notice banner */}
+          <div className="rounded-xl border border-teal-500/30 bg-teal-950/20 p-3.5 text-xs text-teal-200 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+              <span>
+                <strong>Submission Finalized:</strong> Your therapist has provided and published clinical feedback for this session. This submission is complete and cannot be edited.
+              </span>
+            </div>
+            <Badge variant="teal" statusText="Submission Locked" />
           </div>
 
           {/* Clinical SOAP Evaluation and Simple Family Summary */}
@@ -529,7 +731,7 @@ function ClientProgramRunnerContent({
                   <span>Overall Clinician Session Feedback</span>
                 </div>
                 <p className="text-xs text-zinc-200 leading-relaxed italic bg-zinc-900/60 p-3.5 rounded-xl border border-teal-500/20">
-                  &quot;{review?.overall_feedback || "Excellent dedication to your prescribed routine! Keep up the regular practice."}&quot;
+                  &quot;{review?.overall_feedback || "Excellent dedication to your prescribed home program! Keep up the regular practice."}&quot;
                 </p>
               </Card>
 
@@ -630,15 +832,10 @@ function ClientProgramRunnerContent({
                 Back to Dashboard
               </Button>
             </Link>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsSubmitted(false)}
-                className="text-xs text-teal-400 border-teal-500/30 hover:bg-teal-950/40 gap-1.5"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Practice Again
-              </Button>
+            <div className="flex flex-row items-center gap-2 whitespace-nowrap">
+              <span className="text-[11px] text-zinc-500 hidden sm:inline">
+                Submission finalized • Locked from edits
+              </span>
               <Link href="/client/messages">
                 <Button className="bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-xs gap-1.5">
                   <MessageSquare className="w-3.5 h-3.5" />
@@ -659,22 +856,74 @@ function ClientProgramRunnerContent({
         </div>
 
         <div className="space-y-2">
-          <Badge variant="teal" statusText="Submitted to Therapist" />
+          <div className="flex items-center justify-center gap-2">
+            <Badge variant="teal" statusText="Submitted to Therapist" />
+            {submission?.scheduled_date && (
+              <Badge
+                variant="outline"
+                statusText={`Session Date: ${submission.scheduled_date}`}
+                icon={<Calendar className="w-3 h-3 text-teal-400" />}
+              />
+            )}
+          </div>
           <h1 className="text-2xl font-bold text-zinc-100">
-            Routine Successfully Submitted!
+            Home Program Successfully Submitted!
           </h1>
           <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
-            Your videos, comments, and notes have been securely uploaded to Supabase Storage (<span className="font-mono text-teal-400">program-videos</span> bucket).
-            Your therapist will review your performance and provide feedback per step and overall feedback.
+            Your videos, comments, and notes have been securely uploaded for your therapist to review. Each prescribed date is one submission.
           </p>
+          {submission?.submitted_at && (
+            <p className="text-[11px] text-zinc-500 font-mono">
+              Submitted on: {new Date(submission.submitted_at).toLocaleString()}
+            </p>
+          )}
         </div>
 
-        <div className="pt-4 flex items-center justify-center gap-3">
+        {/* Date Session Switcher if program has scheduled dates */}
+        {program?.scheduled_dates && program.scheduled_dates.length > 1 && (
+          <div className="max-w-lg mx-auto p-3.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-left space-y-2.5">
+            <div className="flex items-center justify-between text-xs font-semibold text-zinc-200">
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-teal-400" />
+                Scheduled Dates ({program.scheduled_dates.length} sessions, 1 submission each):
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {program.scheduled_dates.map((dStr, idx) => {
+                const isCurrent = (selectedDate || program.scheduled_dates?.[0]) === dStr;
+                return (
+                  <button
+                    key={dStr}
+                    type="button"
+                    onClick={() => handleSelectDate(dStr)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-colors ${
+                      isCurrent
+                        ? "bg-teal-950 border-teal-500 text-teal-300 font-bold shadow-sm"
+                        : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    Date {idx + 1}: {dStr}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="pt-4 flex flex-row items-center justify-center gap-3 whitespace-nowrap">
           <Link href="/client">
             <Button className="bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-xs">
               Return to Dashboard
             </Button>
           </Link>
+          <Button
+            variant="outline"
+            onClick={handleStartEdit}
+            className="text-xs text-amber-300 border-amber-500/40 hover:bg-amber-950/40 gap-1.5"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            Edit Submission
+          </Button>
           <Link href="/client/messages">
             <Button variant="outline" className="text-zinc-200 text-xs">
               Message Clinician
@@ -689,7 +938,7 @@ function ClientProgramRunnerContent({
     return (
       <div className="max-w-2xl mx-auto py-12 text-center space-y-4">
         <Layers className="w-12 h-12 text-zinc-600 mx-auto" />
-        <h2 className="text-lg font-bold text-zinc-200">No steps found for this routine</h2>
+        <h2 className="text-lg font-bold text-zinc-200">No steps found for this home program</h2>
         <p className="text-xs text-zinc-500">
           Your therapist has not added exercise steps to this program yet.
         </p>
@@ -714,11 +963,65 @@ function ClientProgramRunnerContent({
         </Link>
       </div>
 
+      {/* Editing Mode Alert Banner */}
+      {isEditingMode && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs">
+          <div className="flex items-center gap-2">
+            <Edit3 className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              <strong>Editing Mode:</strong> You are revising your previous submission{selectedDate ? ` for ${selectedDate}` : ""}. Replace videos with drag & drop or file upload, edit comments, or change skipped items. Click <em>Update & Re-Submit</em> when finished.
+            </span>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setIsEditingMode(false);
+              setIsSubmitted(true);
+            }}
+            className="h-7 text-xs border-amber-500/40 text-amber-300 hover:bg-amber-900/40 self-start sm:self-auto shrink-0"
+          >
+            Cancel Edit
+          </Button>
+        </div>
+      )}
+
+      {/* Scheduled Dates Session Switcher */}
+      {program?.scheduled_dates && program.scheduled_dates.length > 1 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-zinc-900/90 border border-zinc-800">
+          <div className="flex items-center gap-2 text-xs">
+            <Calendar className="w-4 h-4 text-teal-400 shrink-0" />
+            <span className="font-semibold text-zinc-200">Scheduled Sessions:</span>
+            <span className="text-zinc-400">1 submission per date</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {program.scheduled_dates.map((dStr, idx) => {
+              const isSelected = (selectedDate || program.scheduled_dates?.[0]) === dStr;
+              return (
+                <button
+                  key={dStr}
+                  type="button"
+                  onClick={() => handleSelectDate(dStr)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono transition-colors border ${
+                    isSelected
+                      ? "bg-teal-950 border-teal-500 text-teal-300 font-bold shadow-sm"
+                      : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <span>Date {idx + 1}: {dStr}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Program Header */}
       <div className="border-b border-zinc-800 pb-4 space-y-1">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold text-zinc-100">
-            {program?.title || "Exercise Routine"}
+            {program?.title || "Home Program"}
           </h1>
           <span className="text-xs text-teal-400 font-mono font-medium">
             Step {currentStepIndex + 1} of {steps.length}
@@ -829,24 +1132,37 @@ function ClientProgramRunnerContent({
             ) : (
               <div className="space-y-4">
                 {uploadingStepId === activeStep.id && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-teal-950/50 border border-teal-500/40 text-xs text-teal-300">
+                  <div className="flex flex-row items-center gap-2 p-2.5 rounded-lg bg-teal-950/50 border border-teal-500/40 text-xs text-teal-300">
                     <div className="w-3.5 h-3.5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin shrink-0" />
-                    <span>Uploading step video to Supabase Storage (<span className="font-mono text-teal-200">program-videos</span> bucket)...</span>
+                    <span>Uploading step video to cloud storage before you can proceed...</span>
                   </div>
                 )}
 
                 {activeStepData.videoPath && (
-                  <div className="flex items-center justify-between text-[11px] text-zinc-400 bg-zinc-950/60 px-3 py-1.5 rounded-md border border-zinc-800">
-                    <span className="flex items-center gap-1.5 text-teal-400">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Video stored in Supabase Storage
+                  <div className="flex flex-row items-center justify-between text-[11px] text-zinc-400 bg-zinc-950/60 px-3 py-2 rounded-md border border-zinc-800 gap-2">
+                    <span className="flex flex-row items-center gap-1.5 text-teal-400 whitespace-nowrap">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Video stored in cloud storage
                     </span>
-                    <span className="text-zinc-500 font-mono text-[10px]">Free Tier 50MB compliant</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleResetStepVideo(activeStep.id)}
+                      disabled={uploadingStepId === activeStep.id}
+                      className="h-7 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 gap-1 px-2 whitespace-nowrap"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      Reset Video
+                    </Button>
                   </div>
                 )}
 
                 <VideoRecorder
+                  key={`${activeStep.id}-${activeStepData.videoPath ? "has-video" : "no-video"}`}
                   onVideoReady={handleVideoReady}
                   existingVideoPath={activeStepData.videoPath}
+                  onReset={() => handleResetStepVideo(activeStep.id)}
+                  isUploading={uploadingStepId === activeStep.id}
                 />
 
                 {/* Optional client comment */}
@@ -875,25 +1191,25 @@ function ClientProgramRunnerContent({
           </Card>
 
           {/* Navigation and Save Progress */}
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex flex-row items-center justify-between gap-3 pt-2">
             <Button
               type="button"
               variant="outline"
               disabled={currentStepIndex === 0}
               onClick={handlePrevious}
-              className="gap-1.5 text-xs text-zinc-300"
+              className="gap-1.5 text-xs text-zinc-300 whitespace-nowrap"
             >
               <ChevronLeft className="w-4 h-4" /> Previous Step
             </Button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-row items-center gap-2 whitespace-nowrap">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={handleSaveProgress}
                 isLoading={savingDraft}
-                className="gap-1.5 text-xs text-zinc-400 hover:text-zinc-200"
+                className="gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 whitespace-nowrap"
               >
                 <Save className="w-3.5 h-3.5" /> Save Draft
               </Button>
@@ -901,10 +1217,20 @@ function ClientProgramRunnerContent({
               <Button
                 type="button"
                 onClick={handleNext}
-                className="gap-1.5 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-xs"
+                disabled={Boolean(uploadingStepId)}
+                className="gap-1.5 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-xs whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {currentStepIndex === steps.length - 1 ? "Review Summary" : "Next Step"}
-                <ChevronRight className="w-4 h-4" />
+                {uploadingStepId ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin shrink-0" />
+                    <span>Uploading Video...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{currentStepIndex === steps.length - 1 ? "Review Summary" : "Next Step"}</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -916,7 +1242,7 @@ function ClientProgramRunnerContent({
             <div className="border-b border-zinc-800 pb-3">
               <CardTitle className="text-base text-zinc-100 flex items-center gap-2">
                 <FileCheck className="w-5 h-5 text-teal-400" />
-                Routine Completion Summary
+                Home Program Completion Summary
               </CardTitle>
               <p className="text-xs text-zinc-400 mt-0.5">
                 Review your step submissions and confirm consent before sending to your therapist.
@@ -1009,12 +1335,12 @@ function ClientProgramRunnerContent({
           </Card>
 
           {/* Action Bar */}
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex flex-row items-center justify-between gap-3 pt-2">
             <Button
               type="button"
               variant="outline"
               onClick={handlePrevious}
-              className="gap-1.5 text-xs text-zinc-300"
+              className="gap-1.5 text-xs text-zinc-300 whitespace-nowrap"
             >
               <ChevronLeft className="w-4 h-4" /> Back to Steps
             </Button>
@@ -1022,11 +1348,12 @@ function ClientProgramRunnerContent({
             <Button
               type="button"
               isLoading={submitting}
+              disabled={Boolean(uploadingStepId)}
               onClick={handleSubmitToTherapist}
-              className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-sm px-6"
+              className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-sm px-6 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Send className="w-4 h-4" />
-              Submit to Therapist
+              {isEditingMode ? "Update & Re-Submit to Therapist" : "Submit to Therapist"}
             </Button>
           </div>
         </div>

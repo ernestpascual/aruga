@@ -112,13 +112,14 @@ export default function TherapistDashboardPage() {
     }
   };
 
-  const oldPeopleCount = clients.filter(
-    (c) => c.age >= 55 || c.client_category === "old_people"
+  const geriatricCount = clients.filter(
+    (c) => c.age >= 55 || c.client_category === "geriatric" || c.client_category === "old_people"
   ).length;
   const adultCount = clients.filter(
     (c) =>
       ((c.age >= 18 && c.age < 55) || c.client_category === "adult") &&
       c.age < 55 &&
+      c.client_category !== "geriatric" &&
       c.client_category !== "old_people"
   ).length;
   const adolescentCount = clients.filter(
@@ -190,7 +191,7 @@ export default function TherapistDashboardPage() {
                   <Badge variant="amber" statusText="Action Required" icon={<Clock className="w-3 h-3" />} />
                 </div>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Clients who requested to link with your care caseload or awaiting confirmation. Approve to grant access to prescribed routines, video uploads, and therapist feedback.
+                  Clients who requested to link with your care caseload or awaiting confirmation. Approve to grant access to prescribed home programs, video uploads, and therapist feedback.
                 </p>
               </div>
             </div>
@@ -307,7 +308,7 @@ export default function TherapistDashboardPage() {
 
         <Card className="bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium text-zinc-400">Active Home Routines</CardTitle>
+            <CardTitle className="text-xs font-medium text-zinc-400">Active Home Programs</CardTitle>
             <FileCheck2 className="w-4 h-4 text-teal-400" />
           </CardHeader>
           <CardContent>
@@ -379,15 +380,15 @@ export default function TherapistDashboardPage() {
                 <div className="text-[11px] text-zinc-500 mt-0.5">Neuro/stroke recovery & workplace ergonomics</div>
               </div>
 
-              {/* Old People */}
+              {/* Geriatrics */}
               <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800 hover:border-zinc-700 transition-colors">
                 <div className="flex items-center justify-between mb-2">
                   <div className="p-2 rounded-lg bg-teal-950/50 text-teal-400">
                     <HeartPulse className="w-4 h-4" />
                   </div>
-                  <span className="text-lg font-bold text-zinc-100">{oldPeopleCount}</span>
+                  <span className="text-lg font-bold text-zinc-100">{geriatricCount}</span>
                 </div>
-                <div className="text-xs font-semibold text-zinc-200">Old People (55+)</div>
+                <div className="text-xs font-semibold text-zinc-200">Geriatrics (55+)</div>
                 <div className="text-[11px] text-zinc-500 mt-0.5">Mobility, fall prevention & daily independence</div>
               </div>
             </div>
@@ -412,7 +413,7 @@ export default function TherapistDashboardPage() {
                               ? "Adolescent"
                               : client.age < 55
                               ? "Adult"
-                              : "Old People (55+)"} ({client.age}y)
+                              : "Geriatrics (55+)"} ({client.age}y)
                           </span>
                         </div>
                         <div className="text-[11px] text-zinc-400">{client.condition}</div>

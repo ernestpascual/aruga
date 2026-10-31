@@ -167,7 +167,7 @@ const ENGINE_CONFIGS: Record<
   },
   old_people: {
     icon: HeartPulse,
-    title: "Old People",
+    title: "Geriatrics",
     subtext: "Geriatrics & Falls",
     ageRange: "Ages 55+",
     group: "demographic",
@@ -632,7 +632,7 @@ export default function SamTestPage() {
               </span>
             </h1>
             <p className="text-xs text-zinc-400">
-              Switch between 100-keyword clinical engines across the lifespan (Pediatric, Adolescent, Adult, Old People) and everyday environments (Home, School, Kitchen).
+              Switch between 100-keyword clinical engines across the lifespan (Pediatric, Adolescent, Adult, Geriatrics) and everyday environments (Home, School, Kitchen).
             </p>
           </div>
 
@@ -1279,7 +1279,7 @@ export default function SamTestPage() {
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-950/60 border border-teal-500/40 text-teal-300 text-xs">
                 <CheckCircle2 className="w-3.5 h-3.5 text-teal-400 shrink-0" />
                 <span>
-                  Tracking session successfully saved to Supabase under your profile
+                  Tracking session successfully saved to database under your profile
                 </span>
               </div>
             )}

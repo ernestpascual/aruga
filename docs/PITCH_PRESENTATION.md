@@ -29,7 +29,7 @@
 - **Title**: How Aruga Works
 - **Subtitle**: A digital co-pilot that keeps the licensed clinician in the driver's seat.
 - **Workflow**:
-  1. **You Prescribe (30s)**: Type rough shorthand. Aruga formats it into a clear 3-step routine with patient-ready instructions.
+  1. **You Prescribe (30s)**: Type rough shorthand. Aruga formats it into a clear 3-step home program with patient-ready instructions.
   2. **Patient Records (30s)**: Clients record a quick video of their tabletop drill. If fatigued, they log a quick reason why.
   3. **You Sign Off (3m)**: Smart tracking spots key movements and pre-drafts your SOAP notes. You review, edit, and publish.
 - **Golden Rule**: **Human-in-the-Loop**. Aruga never sends feedback to patients automatically. AI only creates private drafts for your clinical approval.
@@ -85,7 +85,7 @@
 - **Key Operations**:
   - **Easy Email Invites**: Invite clients with their email address. Temporary passwords wipe automatically on first login.
   - **Care Transfers**: Covering maternity leave or vacation? Transfer an entire patient caseload to a colleague with complete history and handover notes.
-  - **Direct Messaging**: Switch between patients via selector dropdown, link directly to exercise routines with `@routine`, and delete sent messages.
+  - **Direct Messaging**: Switch between patients via selector dropdown, link directly to exercise home programs with `@program`, and delete sent messages.
 
 ---
 
@@ -94,7 +94,7 @@
 - **Title**: End-to-End Walkthrough in Practice
 - **Subtitle**: Experience the 4 connected steps from shorthand prescribing to family feedback.
 - **Workflow Stages (Pediatric Case: Leo Chen, 6y • Mom: Sarah)**:
-  1. **Step 1: Prescribe with Shorthand (30s)**: Type rapid clinical thoughts without formatting worries (*"Leo Chen: 5 pegboard stackings, 2s pincer hold, keep helper hand on table, 30s rest"*). Aruga formats them into a 3-step structured routine (*Step 1: Colorful Peg Stacking Game*) with target repetitions, visual cues, and compensation warnings.
+  1. **Step 1: Prescribe with Shorthand (30s)**: Type rapid clinical thoughts without formatting worries (*"Leo Chen: 5 pegboard stackings, 2s pincer hold, keep helper hand on table, 30s rest"*). Aruga formats them into a 3-step structured home program (*Step 1: Colorful Peg Stacking Game*) with target repetitions, visual cues, and compensation warnings.
      - *Clinician Win*: Saves 15–20 minutes compared to drafting manual home handouts.
      - *Live Route*: `/therapist/clients/22222222-2222-4222-8222-222222222224`
   2. **Step 2: Patient Mobile Run (30s)**: Leo and caregiver Sarah record a 15–30s video on their phone (*"Pick up 5 colorful pegs using your crab claw pinch (2s)"*). If fatigue or frustration occurs, they tap **"Log Fatigue / Skip"** with a clinical reason (*"Jar lid was too tight for tiny hands"*) so therapy remains positive and safe.
@@ -125,6 +125,6 @@ When presenting live to peers, use the top **"⚡ Live UI References"** button i
 1. **Therapist Profile & Live SOAP Notes**: `/therapist/clients/22222222-2222-4222-8222-222222222224` (Leo Chen • 4 clinical S.O.A.P. textareas)
 2. **Video Submission Review & SAM Tracking**: `/therapist/submissions/55555555-5555-4555-8555-555555555556` (Leo Chen's Peg Stacking)
 3. **Client History & Database-Cached Summaries**: `/client/history`
-4. **Client 30-Second Exercise Runner**: `/client/programs/44444444-4444-4444-8444-444444444445` (Leo Chen's Playful Pincer Routine)
+4. **Client 30-Second Exercise Runner**: `/client/programs/44444444-4444-4444-8444-444444444445` (Leo Chen's Playful Pincer Home Program)
 5. **Multi-Client Caseload Messaging Hub**: `/therapist/messages`
 6. **SAM 3.1 Kinematic Test Workspace**: `/sam-test`

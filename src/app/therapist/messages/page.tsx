@@ -61,17 +61,17 @@ function TherapistMessagesContent() {
   const [loadingCaseload, setLoadingCaseload] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<"all" | "pedia" | "adolescent" | "adult" | "old_people">("all");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | "pedia" | "adolescent" | "adult" | "geriatric" | "old_people">("all");
   const [mobileView, setMobileView] = useState<"list" | "chat">("chat");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Helper to categorize patient demographic
-  const getPatientCategory = (p: Patient): "pedia" | "adolescent" | "adult" | "old_people" => {
+  const getPatientCategory = (p: Patient): "pedia" | "adolescent" | "adult" | "geriatric" | "old_people" => {
     if (p.client_category) return p.client_category as any;
     if (p.age < 12) return "pedia";
     if (p.age < 18) return "adolescent";
-    if (p.age >= 55) return "old_people";
+    if (p.age >= 55) return "geriatric";
     return "adult";
   };
 
@@ -206,7 +206,11 @@ function TherapistMessagesContent() {
       (p.caregiver_name && p.caregiver_name.toLowerCase().includes(q));
 
     const category = getPatientCategory(p);
-    const matchesCategory = categoryFilter === "all" || category === categoryFilter;
+    const matchesCategory =
+      categoryFilter === "all" ||
+      category === categoryFilter ||
+      ((categoryFilter === "geriatric" || categoryFilter === "old_people") &&
+        (category === "geriatric" || category === "old_people"));
 
     return matchesSearch && matchesCategory;
   });
@@ -272,8 +276,8 @@ function TherapistMessagesContent() {
                   ? "Pediatric"
                   : cat === "adolescent"
                   ? "Adolescent"
-                  : cat === "old_people"
-                  ? "Geriatric"
+                  : cat === "geriatric" || cat === "old_people"
+                  ? "Geriatrics"
                   : "Adult";
               return (
                 <option key={p.id} value={p.id}>
@@ -352,7 +356,7 @@ function TherapistMessagesContent() {
                 { id: "pedia", label: "Pedia" },
                 { id: "adolescent", label: "Adolescent" },
                 { id: "adult", label: "Adult" },
-                { id: "old_people", label: "Geriatric" },
+                { id: "geriatric", label: "Geriatrics" },
               ] as const
             ).map((filter) => (
               <button
@@ -411,7 +415,7 @@ function TherapistMessagesContent() {
                           ? "bg-sky-950/80 border-sky-500/40 text-sky-400"
                           : cat === "adolescent"
                           ? "bg-indigo-950/80 border-indigo-500/40 text-indigo-400"
-                          : cat === "old_people"
+                          : cat === "geriatric" || cat === "old_people"
                           ? "bg-amber-950/80 border-amber-500/40 text-amber-400"
                           : "bg-teal-950/80 border-teal-500/40 text-teal-400"
                       }`}
@@ -420,7 +424,7 @@ function TherapistMessagesContent() {
                         <Baby className="w-4 h-4" />
                       ) : cat === "adolescent" ? (
                         <GraduationCap className="w-4 h-4" />
-                      ) : cat === "old_people" ? (
+                      ) : cat === "geriatric" || cat === "old_people" ? (
                         <HeartPulse className="w-4 h-4" />
                       ) : (
                         <User className="w-4 h-4" />
@@ -452,8 +456,8 @@ function TherapistMessagesContent() {
                             ? `Pedia • ${p.age}y`
                             : cat === "adolescent"
                             ? `Teen • ${p.age}y`
-                            : cat === "old_people"
-                            ? `Senior • ${p.age}y`
+                            : cat === "geriatric" || cat === "old_people"
+                            ? `Geriatrics • ${p.age}y`
                             : `Adult • ${p.age}y`}
                         </span>
                       </div>
@@ -499,14 +503,14 @@ function TherapistMessagesContent() {
                 className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
                   isPediatric
                     ? "bg-sky-950/80 border-sky-500/40 text-sky-400"
-                    : (currentPatient as any)?.client_category === "old_people"
+                    : (currentPatient as any)?.client_category === "geriatric" || (currentPatient as any)?.client_category === "old_people" || (currentPatient?.age != null && currentPatient.age >= 55)
                     ? "bg-amber-950/80 border-amber-500/40 text-amber-400"
                     : "bg-teal-950/80 border-teal-500/40 text-teal-400"
                 }`}
               >
                 {isPediatric ? (
                   <Baby className="w-5 h-5" />
-                ) : (currentPatient as any)?.client_category === "old_people" ? (
+                ) : (currentPatient as any)?.client_category === "geriatric" || (currentPatient as any)?.client_category === "old_people" || (currentPatient?.age != null && currentPatient.age >= 55) ? (
                   <HeartPulse className="w-5 h-5" />
                 ) : (
                   <User className="w-5 h-5" />
@@ -523,15 +527,15 @@ function TherapistMessagesContent() {
                       className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                         isPediatric
                           ? "bg-sky-950/80 border border-sky-500/40 text-sky-300"
-                          : (currentPatient as any)?.client_category === "old_people"
+                          : (currentPatient as any)?.client_category === "geriatric" || (currentPatient as any)?.client_category === "old_people" || (currentPatient?.age != null && currentPatient.age >= 55)
                           ? "bg-amber-950/80 border border-amber-500/40 text-amber-300"
                           : "bg-zinc-800 border border-zinc-700/60 text-zinc-300"
                       }`}
                     >
                       {isPediatric
                         ? `Pediatric (${currentPatient.age}y)`
-                        : (currentPatient as any)?.client_category === "old_people"
-                        ? `Geriatric (${currentPatient.age}y)`
+                        : (currentPatient as any)?.client_category === "geriatric" || (currentPatient as any)?.client_category === "old_people" || (currentPatient?.age != null && currentPatient.age >= 55)
+                        ? `Geriatrics (${currentPatient.age}y)`
                         : `Adult (${currentPatient.age}y)`}
                     </span>
                   )}
@@ -566,7 +570,7 @@ function TherapistMessagesContent() {
                     className="text-xs h-8 border-teal-500/40 text-teal-300 hover:bg-teal-950/50 gap-1"
                   >
                     <PlusCircle className="w-3 h-3" />
-                    <span className="hidden sm:inline">New Routine</span>
+                    <span className="hidden sm:inline">New Home Program</span>
                   </Button>
                 </Link>
               </div>
@@ -592,7 +596,7 @@ function TherapistMessagesContent() {
                   No Messages with {currentPatient?.name || "Client"} Yet
                 </div>
                 <p className="text-xs max-w-sm">
-                  Send an initial care note, instruction, or cite an assigned home exercise routine using the composer below.
+                  Send an initial care note, instruction, or cite an assigned home program using the composer below.
                 </p>
               </div>
             ) : (
@@ -623,7 +627,7 @@ function TherapistMessagesContent() {
                         <>
                           {isPediatric ? (
                             <Baby className="w-3 h-3 text-sky-400" />
-                          ) : (currentPatient as any)?.client_category === "old_people" ? (
+                          ) : (currentPatient as any)?.client_category === "geriatric" || (currentPatient as any)?.client_category === "old_people" || (currentPatient?.age != null && currentPatient.age >= 55) ? (
                             <HeartPulse className="w-3 h-3 text-amber-400" />
                           ) : (
                             <User className="w-3 h-3 text-zinc-400" />
@@ -668,13 +672,13 @@ function TherapistMessagesContent() {
                           <Link
                             href={`/therapist/clients/${currentPatient?.id}`}
                             className="flex items-center gap-1.5 hover:text-teal-200 hover:underline transition-colors truncate"
-                            title="View client profile & routine details"
+                            title="View client profile & home program details"
                           >
                             <BookOpen className="w-3.5 h-3.5 shrink-0 text-teal-400" />
                             <span className="truncate">
-                              Referenced Routine:{" "}
+                              Referenced Home Program:{" "}
                               <span className="font-semibold">
-                                {(msg as any).referenced_program?.title || "Assigned Tabletop Routine"}
+                                {(msg as any).referenced_program?.title || "Assigned Tabletop Home Program"}
                               </span>
                             </span>
                             <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
@@ -697,7 +701,7 @@ function TherapistMessagesContent() {
               selectedProgram={selectedMentionProgram}
               onSelectProgram={setSelectedMentionProgram}
               availablePrograms={availablePrograms}
-              placeholder={`Write a message to ${currentPatient?.name || "client"}... (Type @ to attach an assigned routine)`}
+              placeholder={`Write a message to ${currentPatient?.name || "client"}... (Type @ to attach an assigned home program)`}
               className="min-h-[75px]"
             />
 

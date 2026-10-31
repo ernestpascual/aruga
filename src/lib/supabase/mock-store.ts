@@ -10,6 +10,7 @@ import {
   Message,
   AiAnalysisRecord,
   SoapNote,
+  AuditEvent,
 } from "@/types/database";
 
 export interface MockStoreData {
@@ -24,6 +25,7 @@ export interface MockStoreData {
   messages: Message[];
   aiAnalyses: AiAnalysisRecord[];
   soapNotes: SoapNote[];
+  auditEvents: AuditEvent[];
 }
 
 // Fixed UUIDs for predictable demo fixtures
@@ -184,10 +186,11 @@ function getInitialStore(): MockStoreData {
       id: DEMO_PROGRAM_ID,
       patient_id: DEMO_PATIENT_ID,
       creator_id: DEMO_THERAPIST_ID,
-      title: "Tabletop Grasp & Precision Release Routine",
+      title: "Tabletop Grasp & Precision Release Home Program",
       main_instructions:
         "Perform these 3 coordinated tabletop exercises once daily in a seated position with good posture. Keep the forearm supported on the table and record a short 10-20 second clip of each activity.",
       status: "assigned",
+      scheduled_dates: ["2026-10-28", "2026-10-30", "2026-11-01"],
       assigned_at: new Date(Date.now() - 2 * 86400000).toISOString(),
       created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
       updated_at: new Date().toISOString(),
@@ -196,10 +199,11 @@ function getInitialStore(): MockStoreData {
       id: DEMO_PEDIATRIC_PROGRAM_ID,
       patient_id: DEMO_PEDIATRIC_PATIENT_ID,
       creator_id: DEMO_THERAPIST_ID,
-      title: "Playful Pincer Grasp & Bilateral Toy Routine",
+      title: "Playful Pincer Grasp & Bilateral Toy Home Program",
       main_instructions:
         "Complete these 3 playful tabletop activities together with a parent or caregiver once daily. Keep exercises fun and encouraging, and record a 10-20s video clip of each activity.",
       status: "assigned",
+      scheduled_dates: ["2026-10-29", "2026-10-31"],
       assigned_at: new Date(Date.now() - 1 * 86400000).toISOString(),
       created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
       updated_at: new Date().toISOString(),
@@ -208,10 +212,11 @@ function getInitialStore(): MockStoreData {
       id: DEMO_GERIATRIC_PROGRAM_ID,
       patient_id: DEMO_GERIATRIC_PATIENT_ID,
       creator_id: DEMO_THERAPIST_ID,
-      title: "Gentle Wrist Mobility & Tabletop Stability Routine",
+      title: "Gentle Wrist Mobility & Tabletop Stability Home Program",
       main_instructions:
         "Perform these gentle non-weight bearing wrist and hand stretches once daily in a comfortable seated position with forearm supported.",
       status: "assigned",
+      scheduled_dates: ["2026-10-30"],
       assigned_at: new Date(Date.now() - 2 * 86400000).toISOString(),
       created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
       updated_at: new Date().toISOString(),
@@ -224,6 +229,7 @@ function getInitialStore(): MockStoreData {
       main_instructions:
         "Complete the 10-minute spacing and tripod grip relaxation drills before typing or schoolwork to minimize strain on the thumb joint.",
       status: "assigned",
+      scheduled_dates: ["2026-10-31"],
       assigned_at: new Date(Date.now() - 2 * 86400000).toISOString(),
       created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
       updated_at: new Date().toISOString(),
@@ -297,6 +303,7 @@ function getInitialStore(): MockStoreData {
       patient_id: DEMO_PATIENT_ID,
       client_id: DEMO_CLIENT_ID,
       state: "submitted",
+      scheduled_date: "2026-10-30",
       consent_therapist: true,
       consent_meta_ai: true,
       submitted_at: new Date(Date.now() - 86400000).toISOString(),
@@ -311,6 +318,7 @@ function getInitialStore(): MockStoreData {
       patient_id: DEMO_PEDIATRIC_PATIENT_ID,
       client_id: DEMO_PEDIATRIC_CLIENT_ID,
       state: "submitted",
+      scheduled_date: "2026-10-31",
       consent_therapist: true,
       consent_meta_ai: true,
       submitted_at: new Date(Date.now() - 40000000).toISOString(),
@@ -326,7 +334,7 @@ function getInitialStore(): MockStoreData {
       id: DEMO_STEP_SUB_1_ID,
       submission_id: DEMO_SUBMISSION_ID,
       program_step_id: DEMO_STEP_1_ID,
-      video_path: "demo/cup_grasp_transfer.mp4",
+      video_path: "/demo/cup_grasp_transfer.mp4",
       media_meta: {
         mime: "video/mp4",
         sizeBytes: 8420000,
@@ -346,7 +354,7 @@ function getInitialStore(): MockStoreData {
       id: DEMO_STEP_SUB_2_ID,
       submission_id: DEMO_SUBMISSION_ID,
       program_step_id: DEMO_STEP_2_ID,
-      video_path: "demo/block_stacking.mp4",
+      video_path: "/demo/block_stacking.mp4",
       media_meta: {
         mime: "video/mp4",
         sizeBytes: 7100000,
@@ -365,11 +373,18 @@ function getInitialStore(): MockStoreData {
       id: DEMO_STEP_SUB_3_ID,
       submission_id: DEMO_SUBMISSION_ID,
       program_step_id: DEMO_STEP_3_ID,
-      video_path: null,
-      media_meta: {},
-      client_comment: null,
-      skipped: true,
-      skip_reason: "Shoulder felt tight and fatigued after step 2; rested per precautions.",
+      video_path: "/demo/washcloth_supination.mp4",
+      media_meta: {
+        mime: "video/mp4",
+        sizeBytes: 7800000,
+        durationSeconds: 15,
+        width: 1280,
+        height: 720,
+        formatSupported: true,
+      },
+      client_comment: "Slowed rotation tempo per instructions. Completed 5 full active repetitions with washcloth.",
+      skipped: false,
+      skip_reason: null,
       created_at: new Date(Date.now() - 86400000).toISOString(),
       updated_at: new Date(Date.now() - 86400000).toISOString(),
     },
@@ -378,7 +393,7 @@ function getInitialStore(): MockStoreData {
       id: DEMO_PEDIATRIC_STEP_SUB_1_ID,
       submission_id: DEMO_PEDIATRIC_SUBMISSION_ID,
       program_step_id: DEMO_PEDIATRIC_STEP_1_ID,
-      video_path: "demo/cup_grasp_transfer.mp4",
+      video_path: "/demo/cup_grasp_transfer.mp4",
       media_meta: {
         mime: "video/mp4",
         sizeBytes: 6500000,
@@ -397,7 +412,7 @@ function getInitialStore(): MockStoreData {
       id: DEMO_PEDIATRIC_STEP_SUB_2_ID,
       submission_id: DEMO_PEDIATRIC_SUBMISSION_ID,
       program_step_id: DEMO_PEDIATRIC_STEP_2_ID,
-      video_path: "demo/block_stacking.mp4",
+      video_path: "/demo/block_stacking.mp4",
       media_meta: {
         mime: "video/mp4",
         sizeBytes: 5900000,
@@ -416,11 +431,18 @@ function getInitialStore(): MockStoreData {
       id: DEMO_PEDIATRIC_STEP_SUB_3_ID,
       submission_id: DEMO_PEDIATRIC_SUBMISSION_ID,
       program_step_id: DEMO_PEDIATRIC_STEP_3_ID,
-      video_path: null,
-      media_meta: {},
-      client_comment: null,
-      skipped: true,
-      skip_reason: "Jar lid was too tight for tiny hands; will practice with a looser lid tomorrow.",
+      video_path: "/demo/washcloth_supination.mp4",
+      media_meta: {
+        mime: "video/mp4",
+        sizeBytes: 6200000,
+        durationSeconds: 13,
+        width: 1280,
+        height: 720,
+        formatSupported: true,
+      },
+      client_comment: "Leo practiced gentle wrist rotation and lid placement on tabletop.",
+      skipped: false,
+      skip_reason: null,
       created_at: new Date(Date.now() - 40000000).toISOString(),
       updated_at: new Date(Date.now() - 40000000).toISOString(),
     },
@@ -433,14 +455,25 @@ function getInitialStore(): MockStoreData {
       therapist_id: DEMO_THERAPIST_ID,
       overall_feedback:
         "Great effort on the tabletop transfer, Marcus. Your wrist alignment during the cup release is noticeably improved. Good decision to rest your shoulder on step 3—honoring fatigue prevents compensatory shoulder hiking.",
+      session_recording_url: "https://meet.google.com/rec/aruga-marcus-telehealth",
       subjective:
         "Marcus reported feeling smoother during cup lifts but noted residual morning finger stiffness. Made a sound clinical decision to skip step 3 when shoulder fatigue set in.",
       objective:
         "Video review demonstrates active cylindrical grasp with 3-4 inch vertical cup lift. Trunk lateral flexion under 5°. Step 2 lateral block stacking completed with 4 clean chuck releases.",
       assessment:
         "Right UE hemiparesis shows steady neuromuscular re-education. Tabletop grasp and release are functional; proximal shoulder girdle endurance is the remaining limiting factor.",
+      assessment_links: [
+        {
+          title: "Fugl-Meyer UE Motor Assessment (Baseline)",
+          url: "https://drive.google.com/file/d/marcus-fugl-meyer-baseline/view",
+        },
+        {
+          title: "Box and Blocks Test Protocol",
+          url: "https://drive.google.com/file/d/box-and-blocks-standardized/view",
+        },
+      ],
       plan:
-        "Maintain current tabletop routine 1x daily. Introduce 30-second resting intervals between block sets. Re-check active shoulder flexion in next live session.",
+        "Maintain current tabletop home program 1x daily. Introduce 30-second resting intervals between block sets. Re-check active shoulder flexion in next live session.",
       client_summary:
         "You did an outstanding job lifting and releasing the cup smoothly without leaning your body. Listening to your shoulder and resting on step 3 was 100% the right call. Keep practicing the cup and block exercises once a day, and remember to take 30-second breathers whenever your shoulder feels tired!",
       status: "draft",
@@ -454,12 +487,19 @@ function getInitialStore(): MockStoreData {
       therapist_id: DEMO_THERAPIST_ID,
       overall_feedback:
         "Fantastic progress, Leo! Sarah, his pincer grasp on the pegs showed wonderful isolated finger control with much less whole-hand raking. Great call on loosening the jar lid for step 3.",
+      session_recording_url: "https://meet.google.com/rec/aruga-leo-pediatric-telehealth",
       subjective:
         "Caregiver (Sarah) reported Leo was engaged and enthusiastic, especially with colored pegs. Step 3 jar lid was too tight for unassisted opening.",
       objective:
         "Clean thumb-index pad opposition (pincer grasp) recorded across 5 peg placements. Non-dominant hand maintained stabilizing tabletop contact on container rim.",
       assessment:
         "Bilateral coordination and distal fine motor control show marked maturation from baseline raking grasp. Helper hand stabilization is emerging consistently.",
+      assessment_links: [
+        {
+          title: "Peabody Developmental Motor Scales (PDMS-2) Fine Motor Report",
+          url: "https://drive.google.com/file/d/leo-pdms2-scorecard/view",
+        },
+      ],
       plan:
         "Continue daily peg stacking and play-doh bead squashing. Use pre-loosened plastic containers for bilateral twist-off practice.",
       client_summary:
@@ -558,7 +598,7 @@ function getInitialStore(): MockStoreData {
       id: "aaaaaaa7-aaaa-4aaa-8aaa-aaaaaaaaaaa7",
       patient_id: DEMO_PATIENT_ID,
       sender_id: DEMO_THERAPIST_ID,
-      body: "I reviewed your submission clip—your forearm rotation angle is improving significantly. Keep up the daily routine!",
+      body: "I reviewed your submission clip—your forearm rotation angle is improving significantly. Keep up the daily home program!",
       referenced_program_id: null,
       created_at: new Date(Date.now() - 4 * 3600000).toISOString(),
     },
@@ -568,7 +608,7 @@ function getInitialStore(): MockStoreData {
       id: "aaaaaaa3-aaaa-4aaa-8aaa-aaaaaaaaaaa3",
       patient_id: DEMO_PEDIATRIC_PATIENT_ID,
       sender_id: DEMO_THERAPIST_ID,
-      body: "Hi Sarah! I've assigned Leo's new play routine. Focus on keeping his helper hand steady while using his pincers.",
+      body: "Hi Sarah! I've assigned Leo's new play home program. Focus on keeping his helper hand steady while using his pincers.",
       referenced_program_id: DEMO_PEDIATRIC_PROGRAM_ID,
       created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
     },
@@ -610,7 +650,7 @@ function getInitialStore(): MockStoreData {
       id: "aaaaaa11-aaaa-4aaa-8aaa-aaaaaaaaaa11",
       patient_id: DEMO_GERIATRIC_PATIENT_ID,
       sender_id: DEMO_THERAPIST_ID,
-      body: "Hello Mrs. Ramos, welcome to your digital home routine. We will start with gentle range of motion exercises for your right wrist.",
+      body: "Hello Mrs. Ramos, welcome to your digital home program. We will start with gentle range of motion exercises for your right wrist.",
       referenced_program_id: DEMO_GERIATRIC_PROGRAM_ID,
       created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
     },
@@ -634,7 +674,7 @@ function getInitialStore(): MockStoreData {
       id: "aaaaaa14-aaaa-4aaa-8aaa-aaaaaaaaaa14",
       patient_id: DEMO_GERIATRIC_PATIENT_ID,
       sender_id: DEMO_GERIATRIC_CLIENT_ID,
-      body: "The swelling has gone down noticeably after the warm compress routine. Looking forward to tomorrow's session.",
+      body: "The swelling has gone down noticeably after the warm compress home program. Looking forward to tomorrow's session.",
       referenced_program_id: null,
       created_at: new Date(Date.now() - 1 * 3600000).toISOString(),
     },
@@ -809,14 +849,25 @@ function getInitialStore(): MockStoreData {
       therapist_id: DEMO_THERAPIST_ID,
       session_date: new Date(Date.now() - 6 * 86400000).toISOString(),
       session_title: "Live Session #3: Tabletop Grasp & Proximal Shoulder Stabilization",
+      session_recording_url: "https://meet.google.com/rec/aruga-marcus-session-03",
       subjective:
         "Marcus reports increased comfort when holding eating utensils with dominant right hand. Rates fatigue 3/10 after 15 minutes of continuous tabletop use. Goals for today: improve release consistency without body sway.",
       objective:
         "Active right wrist extension measured at 32° (baseline 20°). Cylindrical grasp achieved over 10 consecutive trials with lightweight 8oz cup. 2/10 trials showed mild compensatory shoulder elevation when reaching across midline.",
       assessment:
         "Patient demonstrates significant neuromuscular recovery in distal grasp mechanics. Proximal compensations are reduced when seated with firm lumbar support and elbow resting on table.",
+      assessment_links: [
+        {
+          title: "Fugl-Meyer Upper Extremity Motor Assessment Score Sheet (PDF)",
+          url: "https://aruga.clinic/docs/assessments/marcus-fugl-meyer-ue.pdf",
+        },
+        {
+          title: "Active Range of Motion Goniometric Readings (Baseline vs Session 3)",
+          url: "https://aruga.clinic/docs/assessments/marcus-rom-tracking.pdf",
+        },
+      ],
       plan:
-        "Assigned updated Tabletop Grasp & Precision Release Routine. Instructed on 10-second posture reset between sets. Next live tele-rehab scheduled for Friday 10:00 AM.",
+        "Assigned updated Tabletop Grasp & Precision Release Home Program. Instructed on 10-second posture reset between sets. Next live tele-rehab scheduled for Friday 10:00 AM.",
       client_summary:
         "Marcus, your wrist strength and finger grip are improving noticeably! You lifted the cup 10 times in a row with great control. Keep your chair close to the table and rest your elbow on the surface so your shoulder stays relaxed. Fantastic work today!",
       created_at: new Date(Date.now() - 6 * 86400000).toISOString(),
@@ -828,12 +879,19 @@ function getInitialStore(): MockStoreData {
       therapist_id: DEMO_THERAPIST_ID,
       session_date: new Date(Date.now() - 2 * 86400000).toISOString(),
       session_title: "Live Session #4: Midline Crossing & Forearm Supination",
+      session_recording_url: "https://meet.google.com/rec/aruga-marcus-session-04",
       subjective:
-        "Marcus reports completing home routine daily. Felt minor tightness in dorsal forearm when rotating palm upward with the washcloth exercise.",
+        "Marcus reports completing home program daily. Felt minor tightness in dorsal forearm when rotating palm upward with the washcloth exercise.",
       objective:
         "Forearm active supination from pronation measured at 48° (up from 35°). Successfully transferred 6 small blocks across midline with three-jaw chuck grasp. No compensatory trunk flexion observed during the sequence.",
       assessment:
         "Excellent progression in active supination range. Bilateral stability and motor control are progressing on schedule toward independent dining activities.",
+      assessment_links: [
+        {
+          title: "Box and Block Fine Motor Dexterity Test Report (Session 4)",
+          url: "https://aruga.clinic/docs/assessments/marcus-box-block-report.pdf",
+        },
+      ],
       plan:
         "Maintain current sets and reps. Add warm compress prior to morning stretching if tightness persists. Review next video submission via Aruga portal.",
       client_summary:
@@ -849,14 +907,25 @@ function getInitialStore(): MockStoreData {
       therapist_id: DEMO_THERAPIST_ID,
       session_date: new Date(Date.now() - 5 * 86400000).toISOString(),
       session_title: "Pediatric Play Session: Bilateral Toy Exploration & Fine Motor Opposition",
+      session_recording_url: "https://meet.google.com/rec/aruga-leo-pediatric-01",
       subjective:
         "Mom (Sarah) reports Leo was excited to play today. Notes he occasionally switches to a whole-hand fisted grasp when tired or rushing.",
       objective:
         "Completed 8/10 peg placements using neat pad-to-pad pincer grasp with right hand. Helper hand spontaneously stabilized the container edge on 6 trials without verbal prompting.",
       assessment:
         "Distal finger isolation and bilateral cooperative hand use show marked improvement. Hand dominance is consolidating on the right side.",
+      assessment_links: [
+        {
+          title: "Peabody Developmental Motor Scales (PDMS-2) Fine Motor Subtest",
+          url: "https://aruga.clinic/docs/assessments/leo-pdms2-summary.pdf",
+        },
+        {
+          title: "Sensory Profile 2 Caregiver Questionnaire Breakdown",
+          url: "https://aruga.clinic/docs/assessments/leo-sensory-profile.pdf",
+        },
+      ],
       plan:
-        "Assigned Playful Pincer Grasp Routine. Encourage positive verbal cues when Leo uses his helper hand. Next playful check-in Wednesday.",
+        "Assigned Playful Pincer Grasp Home Program. Encourage positive verbal cues when Leo uses his helper hand. Next playful check-in Wednesday.",
       client_summary:
         "Leo was a superstar today! He used his 'crocodile pincer fingers' to catch 8 pegs and remembered to hold the box steady with his other hand. Sarah, praising his helper hand whenever you see it on the table will keep him super motivated!",
       created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
@@ -896,7 +965,7 @@ function getInitialStore(): MockStoreData {
       assessment:
         "Post-fall wrist rehabilitation is progressing safely. Non-weight bearing tabletop stretches are well tolerated. Confidence and protective balance strategies are improving.",
       plan:
-        "Assigned Gentle Wrist Mobility Routine. Instructed on warm water soak before morning exercise sequence. Next live telehealth session in 5 days.",
+        "Assigned Gentle Wrist Mobility Home Program. Instructed on warm water soak before morning exercise sequence. Next live telehealth session in 5 days.",
       client_summary:
         "Mrs. Ramos, your wrist is healing smoothly and your grip strength is coming back nicely! You rested your palm flat on the table with zero discomfort today. A gentle warm water soak for 5 minutes before your morning exercises will keep your wrist nice and limber.",
       created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
@@ -937,6 +1006,7 @@ function getInitialStore(): MockStoreData {
     messages,
     aiAnalyses,
     soapNotes,
+    auditEvents: [],
   };
 }
 

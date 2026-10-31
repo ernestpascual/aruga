@@ -16,28 +16,31 @@ import {
   Stethoscope,
   UserCheck,
   Activity,
+  ExternalLink,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { isDemoUser } from "@/lib/supabase/demo-helpers";
-import { SoapNote } from "@/types/database";
+import { SoapNote, SoapNoteAssessmentLink } from "@/types/database";
 import { SoapSummaryCard } from "@/components/ui/soap-summary-card";
 
 type PrimaryTab = "programs" | "live_sessions";
 type FilterTab = "all" | "awaiting" | "reviewed" | "archived";
 
-interface RoutineDisplayItem {
+interface HomeProgramDisplayItem {
   id: string;
   title: string;
   status: "awaiting" | "reviewed" | "archived";
   submittedDate: string;
   reviewedDate: string | null;
   overallFeedback: string | null;
+  sessionRecordingUrl?: string | null;
   subjective?: string | null;
   objective?: string | null;
   assessment?: string | null;
+  assessmentLinks?: SoapNoteAssessmentLink[];
   plan?: string | null;
   clientSummary?: string | null;
   therapistName?: string | null;
@@ -71,25 +74,36 @@ export default function ClientHistoryPage() {
     setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const demoPrograms: RoutineDisplayItem[] = [
+  const demoPrograms: HomeProgramDisplayItem[] = [
     {
       id: "prog-demo",
-      title: "Tabletop Grasp & Precision Release Routine",
+      title: "Tabletop Grasp & Precision Release Home Program",
       status: "reviewed",
       submittedDate: "Oct 27, 2026",
       reviewedDate: "Oct 27, 2026",
       overallFeedback:
         "Great effort on the tabletop transfer, Marcus. Your wrist alignment during the cup release is noticeably improved. Good decision to rest your shoulder on step 3—honoring fatigue prevents compensatory shoulder hiking.",
+      sessionRecordingUrl: "https://meet.google.com/rec/aruga-marcus-telehealth",
       subjective:
-        "Client completed routine in dining room. Reported feeling confident with cylindrical grasp, rating fatigue at 3/10. Noted slight stiffness during step 3 before resting.",
+        "Client completed home program in dining room. Reported feeling confident with cylindrical grasp, rating fatigue at 3/10. Noted slight stiffness during step 3 before resting.",
       objective:
         "Full completion of steps 1 & 2. 10/10 cup transfers with stable wrist neutral alignment. Step 3 forearm supination paused appropriately due to muscular fatigue.",
       assessment:
         "Notable progression in distal grasp strength and release control. Self-monitoring fatigue demonstrates excellent compensatory safety awareness.",
+      assessmentLinks: [
+        {
+          title: "Fugl-Meyer UE Motor Assessment (Baseline)",
+          url: "https://drive.google.com/file/d/marcus-fugl-meyer-baseline/view",
+        },
+        {
+          title: "Box and Blocks Test Protocol",
+          url: "https://drive.google.com/file/d/box-and-blocks-standardized/view",
+        },
+      ],
       plan:
         "Continue daily tabletop transfers. Re-test active supination at Friday live tele-rehab session.",
       clientSummary:
-        "Marcus, fantastic dedication to your tabletop grasp routine! Your wrist stability and cup control are visibly stronger. Taking a break on step 3 when your shoulder felt tired was the exact right move. Keep up the daily practice and we will check your progress on Friday!",
+        "Marcus, fantastic dedication to your tabletop grasp home program! Your wrist stability and cup control are visibly stronger. Taking a break on step 3 when your shoulder felt tired was the exact right move. Keep up the daily practice and we will check your progress on Friday!",
       therapistName: "Dr. Sarah Jenkins, OTR/L",
       steps: [
         {
@@ -120,7 +134,7 @@ export default function ClientHistoryPage() {
     },
     {
       id: "prog-demo-pediatric",
-      title: "Playful Pincer Grasp & Bilateral Toy Routine",
+      title: "Playful Pincer Grasp & Bilateral Toy Home Program",
       status: "reviewed",
       category: "pediatric",
       clientName: "Leo Chen (Pediatric, 6y • Mom: Sarah)",
@@ -128,14 +142,21 @@ export default function ClientHistoryPage() {
       reviewedDate: "Oct 28, 2026",
       overallFeedback:
         "Fantastic progress, Leo! Sarah, his pincer grasp on the pegs showed wonderful isolated finger control with much less whole-hand raking. Great call on loosening the jar lid for step 3.",
+      sessionRecordingUrl: "https://meet.google.com/rec/aruga-leo-pediatric-telehealth",
       subjective:
         "Mom (Sarah) reports Leo was excited to play today. Notes he occasionally switches to a whole-hand fisted grasp when tired or rushing.",
       objective:
         "Completed 8/10 peg placements using neat pad-to-pad pincer grasp with right hand. Helper hand spontaneously stabilized the container edge on 6 trials without verbal prompting.",
       assessment:
         "Distal finger isolation and bilateral cooperative hand use show marked improvement. Hand dominance is consolidating on the right side.",
+      assessmentLinks: [
+        {
+          title: "Peabody Developmental Motor Scales (PDMS-2) Fine Motor Report",
+          url: "https://drive.google.com/file/d/leo-pdms2-scorecard/view",
+        },
+      ],
       plan:
-        "Assigned Playful Pincer Grasp Routine. Encourage positive verbal cues when Leo uses his helper hand. Next playful check-in Wednesday.",
+        "Assigned Playful Pincer Grasp Home Program. Encourage positive verbal cues when Leo uses his helper hand. Next playful check-in Wednesday.",
       clientSummary:
         "Sarah, Leo had such a fun and focused session today! His little fingers are getting much better at pinching small pegs one by one instead of grabbing with his whole fist. Remember to give him a high-five whenever he uses his 'helper hand' to hold the container steady. Keep up the playful practice at home!",
       therapistName: "Dr. Sarah Jenkins, OTR/L",
@@ -168,7 +189,7 @@ export default function ClientHistoryPage() {
     },
   ];
 
-  const [realPrograms, setRealPrograms] = useState<RoutineDisplayItem[]>([]);
+  const [realPrograms, setRealPrograms] = useState<HomeProgramDisplayItem[]>([]);
   const [, setLoading] = useState(!isDemo && Boolean(user?.id));
 
   // Fetch Home Program Submissions & Reviews
@@ -180,7 +201,7 @@ export default function ClientHistoryPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.submissions && Array.isArray(data.submissions)) {
-          const mapped: RoutineDisplayItem[] = data.submissions.map((s: Record<string, unknown>) => {
+          const mapped: HomeProgramDisplayItem[] = data.submissions.map((s: Record<string, unknown>) => {
             const program = s.program as { title?: string; steps?: Array<{ id: string; position?: number; title?: string; instructions?: string }> } | undefined;
             const review = s.review as {
               overall_feedback?: string;
@@ -203,14 +224,16 @@ export default function ClientHistoryPage() {
 
             return {
               id: String(s.id),
-              title: program?.title || "Home Rehabilitation Routine",
+              title: program?.title || "Home Program",
               status: s.state === "reviewed" ? "reviewed" : s.state === "submitted" ? "awaiting" : "archived",
               submittedDate: s.submitted_at ? new Date(String(s.submitted_at)).toLocaleDateString() : new Date(String(s.created_at)).toLocaleDateString(),
               reviewedDate: s.reviewed_at ? new Date(String(s.reviewed_at)).toLocaleDateString() : null,
               overallFeedback: review?.overall_feedback || null,
+              sessionRecordingUrl: (review as { session_recording_url?: string | null })?.session_recording_url || null,
               subjective: review?.subjective || null,
               objective: review?.objective || null,
               assessment: review?.assessment || null,
+              assessmentLinks: ((review as { assessment_links?: SoapNoteAssessmentLink[] })?.assessment_links) || [],
               plan: review?.plan || null,
               clientSummary: review?.client_summary || null,
               therapistName: review?.therapist_name || profile?.clinician_name || null,
@@ -321,7 +344,7 @@ export default function ClientHistoryPage() {
             {(
               [
                 { id: "reviewed", label: "Reviewed by Therapist" },
-                { id: "all", label: "All Routines" },
+                { id: "all", label: "All Home Programs" },
                 { id: "awaiting", label: "Awaiting Feedback" },
                 { id: "archived", label: "Archived" },
               ] as const
@@ -340,7 +363,7 @@ export default function ClientHistoryPage() {
             ))}
           </div>
 
-          {/* Routine Cards List */}
+          {/* Home Program Cards List */}
           <div className="space-y-4">
             {filteredPrograms.map((item) => {
               const isExpanded = expandedCards[item.id] ?? false;
@@ -406,6 +429,33 @@ export default function ClientHistoryPage() {
                             </span>
                           </div>
 
+                          {/* Pre-SOAP Session Recording Link */}
+                          {item.sessionRecordingUrl && (
+                            <div className="rounded-xl border border-teal-500/30 bg-teal-950/20 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400 shrink-0">
+                                  <Video className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <div className="text-xs font-bold text-teal-300">Session Video Recording Attached</div>
+                                  <div className="text-[11px] text-zinc-400 truncate max-w-sm sm:max-w-md">
+                                    {item.sessionRecordingUrl}
+                                  </div>
+                                </div>
+                              </div>
+                              <a
+                                href={item.sessionRecordingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-zinc-950 text-xs font-bold transition-colors shrink-0"
+                              >
+                                <Video className="w-3.5 h-3.5" />
+                                Watch Recording
+                                <ExternalLink className="w-3 h-3 ml-0.5" />
+                              </a>
+                            </div>
+                          )}
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {/* Subjective Box */}
                             <div className="p-3.5 rounded-xl border border-sky-500/20 bg-sky-950/10 space-y-1.5">
@@ -444,12 +494,36 @@ export default function ClientHistoryPage() {
                                   A
                                 </span>
                                 <span className="text-xs font-bold text-amber-300">
-                                  Assessment
+                                  Assessment (Clinical Evaluation)
                                 </span>
                               </div>
-                              <p className="text-xs text-zinc-300 leading-relaxed">
+                              <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap">
                                 {item.assessment || "No clinical assessment recorded."}
                               </p>
+
+                              {/* Assessment documents links */}
+                              {Array.isArray(item.assessmentLinks) && item.assessmentLinks.length > 0 && (
+                                <div className="pt-2 border-t border-amber-500/20 space-y-1.5">
+                                  <span className="text-[10px] uppercase font-bold text-amber-400 block">
+                                    Attached Documents & Reports:
+                                  </span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {item.assessmentLinks.map((link, lIdx) => (
+                                      <a
+                                        key={lIdx}
+                                        href={link.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-zinc-900 border border-amber-500/30 text-amber-200 hover:text-white hover:border-amber-400"
+                                      >
+                                        <FileText className="w-3 h-3 text-amber-400" />
+                                        <span>{link.title || link.url}</span>
+                                        <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
 
                             {/* Plan Box */}
@@ -540,9 +614,9 @@ export default function ClientHistoryPage() {
                   <Sparkles className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-base font-bold text-zinc-100">No Routine History in this Tab</h3>
+                  <h3 className="text-base font-bold text-zinc-100">No Home Program History in this Tab</h3>
                   <p className="text-xs text-zinc-400 max-w-md mx-auto">
-                    Once you submit exercise routine recordings, clinician evaluations and SOAP breakdowns will be displayed here.
+                    Once you submit home program recordings, clinician evaluations and SOAP breakdowns will be displayed here.
                   </p>
                 </div>
                 <div className="pt-2">
@@ -630,6 +704,33 @@ export default function ClientHistoryPage() {
                       </div>
                     </div>
 
+                    {/* Pre-SOAP Session Recording Link */}
+                    {note.session_recording_url && (
+                      <div className="rounded-xl border border-teal-500/30 bg-teal-950/20 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400 shrink-0">
+                            <Video className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-teal-300">Live Session Recording</div>
+                            <div className="text-[11px] text-zinc-400 truncate max-w-sm sm:max-w-md">
+                              {note.session_recording_url}
+                            </div>
+                          </div>
+                        </div>
+                        <a
+                          href={note.session_recording_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-zinc-950 text-xs font-bold transition-colors shrink-0"
+                        >
+                          <Video className="w-3.5 h-3.5" />
+                          Watch Recording
+                          <ExternalLink className="w-3 h-3 ml-0.5" />
+                        </a>
+                      </div>
+                    )}
+
                     {/* 4 SOAP Boxes Grid */}
                     <div className="space-y-2">
                       <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block">
@@ -647,7 +748,7 @@ export default function ClientHistoryPage() {
                               Subjective (Your Symptoms & Reports)
                             </span>
                           </div>
-                          <p className="text-xs text-zinc-300 leading-relaxed">
+                          <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap">
                             {note.subjective}
                           </p>
                         </div>
@@ -662,7 +763,7 @@ export default function ClientHistoryPage() {
                               Objective (Measurements & Performance)
                             </span>
                           </div>
-                          <p className="text-xs text-zinc-300 leading-relaxed">
+                          <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap">
                             {note.objective}
                           </p>
                         </div>
@@ -677,9 +778,33 @@ export default function ClientHistoryPage() {
                               Assessment (Clinical Evaluation)
                             </span>
                           </div>
-                          <p className="text-xs text-zinc-300 leading-relaxed">
+                          <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap">
                             {note.assessment}
                           </p>
+
+                          {/* Assessment documents links */}
+                          {Array.isArray(note.assessment_links) && note.assessment_links.length > 0 && (
+                            <div className="pt-2 border-t border-amber-500/20 space-y-1.5">
+                              <span className="text-[10px] uppercase font-bold text-amber-400 block">
+                                Attached Documents & Reports:
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {note.assessment_links.map((link, lIdx) => (
+                                  <a
+                                    key={lIdx}
+                                    href={link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-zinc-900 border border-amber-500/30 text-amber-200 hover:text-white hover:border-amber-400"
+                                  >
+                                    <FileText className="w-3 h-3 text-amber-400" />
+                                    <span>{link.title || link.url}</span>
+                                    <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         {/* Plan Box */}
@@ -689,7 +814,7 @@ export default function ClientHistoryPage() {
                               P
                             </span>
                             <span className="text-xs font-bold text-violet-300">
-                              Plan (Next Steps & Routine Goals)
+                              Plan (Next Steps & Home Program Goals)
                             </span>
                           </div>
                           <p className="text-xs text-zinc-300 leading-relaxed">

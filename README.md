@@ -1,6 +1,6 @@
 # Aruga (Clinician-Directed Home-Program Companion)
 
-> **Aruga** is a modern, clinician-directed home-program companion for speech-language pathologists (SLP), occupational therapists (OT), and physical therapists (PT). Clinicians assign structured home routines across **pediatric**, **adolescent**, **adult**, and **old people (55+)** populations; clients (and caregivers) record short tabletop activity videos; and Meta AI assists with program drafting, video segmentation, multi-box SOAP documentation, and plain-English client summaries under licensed human supervision.
+> **Aruga** is a modern, clinician-directed home-program companion for speech-language pathologists (SLP), occupational therapists (OT), and physical therapists (PT). Clinicians assign structured home routines across **pediatric**, **adolescent**, **adult**, and **geriatrics (55+)** populations; clients (and caregivers) record short tabletop activity videos; and Meta AI assists with program drafting, video segmentation, multi-box SOAP documentation, and plain-English client summaries under licensed human supervision.
 
 ---
 
@@ -8,11 +8,11 @@
 
 - **Branding & Aesthetic**: Refined cursive *Playwrite IT Trad* wordmark paired with a medical-grade aesthetic—charcoal/black background, dark zinc cards, off-white text, and restrained teal accents.
 - **Light & Dark Mode**: Seamless theme toggle supporting system preferences, dark mode, and light mode.
-- **Multi-Population Care (Pediatric, Adolescent, Adult, Old People 55+)**:
+- **Multi-Population Care (Pediatric, Adolescent, Adult, Geriatrics 55+)**:
   - **Pediatric Care (<12y)**: Play-based fine motor development with dedicated **Caregiver Co-Runner** tracking.
   - **Adolescent Care (12–17y)**: School ergonomics, writing stamina, executive function, and bilateral coordination.
   - **Adult Care (18–54y)**: Post-stroke neurorehabilitation, upper extremity dexterity, and workplace ergonomics.
-  - **Old People Care (55+y)**: Fall prevention, joint mobility with osteoarthritis, hip precautions, tremor damping, and presbyphagia.
+  - **Geriatrics Care (55+y)**: Fall prevention, joint mobility with osteoarthritis, hip precautions, tremor damping, and presbyphagia.
 - **Clinical Multi-Box SOAP Notes Architecture**:
   - **Live Session SOAP Notes**: Dedicated tab on each client profile allowing therapists to create, view, edit, and delete multiple session notes over time.
   - **Home Program Feedback**: Replaced single feedback boxes with **4 distinct SOAP textareas**:
@@ -32,15 +32,15 @@
 - **Care Transfer Service**:
   - Therapists can transfer an entire patient caseload, exercise history, and videos to a colleague clinician.
   - Preserves clinical audit trails with `previous_therapist_id` and mandatory `handover_notes`.
-- **Direct Supabase Storage Video Uploads**:
-  - High-res `.mp4`/`.webm` client recordings upload directly to private Supabase Storage (`program-videos` bucket) using signed URLs, bypassing serverless request body constraints.
+- **Direct Cloud Storage Video Uploads**:
+  - High-res `.mp4`/`.webm` client recordings upload directly to private cloud storage (`program-videos` bucket) using signed URLs, bypassing serverless request body constraints.
   - Enforces 50MB free tier file size boundaries.
 - **SAM 3.1 Clinical & Environmental Keyword Engines**:
   - **7 Validated Engines (700 Keywords Total)**:
     1. *Pediatric Care Engine* (100 keywords across OT, PT, SLP & OTPF-4)
     2. *Adolescent Care Engine* (100 keywords for school, motor planning & ADLs)
     3. *Adult Rehabilitation Engine* (100 keywords for neuro-rehab, stroke & ergonomics)
-    4. *Old People (55+) Engine* (100 keywords for mobility, fall prevention & daily independence)
+    4. *Geriatrics (55+) Engine* (100 keywords for mobility, fall prevention & daily independence)
     5. *Everyday Objects at Home Engine* (cups, utensils, keys, remote, toothbrush, etc.)
     6. *Everyday Objects at School Engine* (pencils, scissors, markers, notebook, glue, etc.)
     7. *Kitchen Items Engine* (spatula, mugs, jars, bowls, tongs, measuring spoons, etc.)
@@ -63,7 +63,7 @@
 ### Core Features (Completed)
 - [x] **Theme Switcher**: Instant toggle between Dark Mode and Light Mode with persistence.
 - [x] **Branding**: Cursive *Playwrite IT Trad* typography; removed generic hand logo icon.
-- [x] **Multi-Demographic Care**: Adult, Adolescent, Pediatric, and Old People (55+) care with Caregiver co-runner fields.
+- [x] **Multi-Demographic Care**: Adult, Adolescent, Pediatric, and Geriatrics (55+) care with Caregiver co-runner fields.
 - [x] **SAM 3.1 Clinical Lifespan Engines**: 4 demographic engines + 3 environmental testing engines (700 keywords total).
 - [x] **SAM 3.1 Benchmarking & History**: Processing latency measurement, session storage, and reload capability.
 - [x] **Clinical Multi-Box SOAP Notes**: 4 distinct textareas (S, O, A, P) for live sessions (`soap_notes`) and home program reviews (`submission_reviews`).
@@ -71,17 +71,17 @@
 - [x] **On-Demand AI Credit Protection**: Zero-credit database caching layer (`<15ms` cache hit) with manual "See Summary" expansion.
 - [x] **Two-Way Handshake Invitations**: Bidirectional email invitations and linking requests between clinicians and clients.
 - [x] **Care Transfer Service**: Seamless patient caseload transfer between clinicians with handover notes.
-- [x] **Direct Supabase Storage Uploads**: Browser-to-bucket direct upload to private `program-videos` storage bucket.
+- [x] **Direct Cloud Storage Uploads**: Browser-to-bucket direct upload to private `program-videos` storage bucket.
 - [x] **Multi-Client Messaging**: Caseload selector dropdown, routine `@mention` chips, and message deletion.
 - [x] **In-App Notifications Dropdown**: Real-time event notifications for assignments, reviews, and transfers.
-- [x] **Full Supabase CRUD Architecture**: 100% relational coverage across patients, programs, steps, submissions, reviews, SOAP notes, and messages.
+- [x] **Full Relational CRUD Architecture**: 100% relational coverage across patients, programs, steps, submissions, reviews, SOAP notes, and messages.
 - [x] **Zero Dummy Data for Clinicians**: Clean empty states; synthetic demo data restricted strictly to demo bypass accounts.
 - [x] **Credential Privacy Lifecycle**: Temporary passwords automatically purged from clinician view upon first client login.
 - [x] **Ask OT Assistant (`/ask-ot`)**: Multi-chat clinical assistant with conversation management and database persistence.
 - [x] **Idempotent Database Migrations**: 6 clean sequential migrations + `all_in_one_setup.sql`.
 
 ### Roadmap & Next Milestones
-- [ ] **Supabase Realtime Subscriptions**: Live WebSocket push updates for messages and review publications without page reload.
+- [ ] **Realtime Push Subscriptions**: Live WebSocket push updates for messages and review publications without page reload.
 - [ ] **Automated SMTP Email Dispatch (Resend / SendGrid)**: Deliver invitations directly to client inboxes.
 - [ ] **Gamified Pediatric Engagement**: Visual milestones, badges, and streaks for pediatric daily practice.
 - [ ] **RTM Billing & CPT Documentation Generator**: Automated logs for Remote Therapeutic Monitoring (CPT 98975, 98977, 98980).
@@ -122,7 +122,7 @@ For a full intensive 60-minute video rehabilitation workload, total direct AI co
 
 - **Framework**: Next.js 16 (App Router) with React 19 and TypeScript (Strict Mode)
 - **Styling**: Tailwind CSS v4 & custom clinical theme tokens
-- **Backend & Auth**: Supabase Auth (@supabase/ssr), PostgreSQL, Private Storage, and Row-Level Security (RLS)
+- **Backend & Auth**: Database Authentication, PostgreSQL, Private Cloud Storage, and Row-Level Security (RLS)
 - **AI Models**: Meta Muse Spark 1.3 & SAM 3.1 (`https://api.meta.ai/v1`)
 - **Parsers & Validation**: `@meta-sam/parser`, Zod, React Hook Form
 - **Icons**: Lucide Icons
@@ -162,13 +162,13 @@ MAX_VIDEO_SECONDS=30
 > **Security Note**: Never expose or commit `.env.local` or service keys to version control.
 
 ### 3. Database Setup & Migrations
-- **Fresh Setup**: Execute [`supabase/all_in_one_setup.sql`](supabase/all_in_one_setup.sql) directly in your Supabase SQL Editor.
+- **Fresh Setup**: Execute [`supabase/all_in_one_setup.sql`](supabase/all_in_one_setup.sql) directly in your PostgreSQL SQL Editor.
 - **Incremental Migrations**: If your database is already initialized, run the migrations sequentially:
   1. [`supabase/migrations/20261030000001_add_old_people_category.sql`](supabase/migrations/20261030000001_add_old_people_category.sql) — adds `'old_people'` category.
   2. [`supabase/migrations/20261031000001_link_therapist_in_new_user_trigger.sql`](supabase/migrations/20261031000001_link_therapist_in_new_user_trigger.sql) — automatic client-therapist email linking on client signup.
   3. [`supabase/migrations/20261031000002_two_way_handshake_invitations.sql`](supabase/migrations/20261031000002_two_way_handshake_invitations.sql) — two-way confirmation handshake (`invitation_status`, `invitation_initiated_by`).
   4. [`supabase/migrations/20261031000003_care_transfer_service.sql`](supabase/migrations/20261031000003_care_transfer_service.sql) — care transfer service (`previous_therapist_id`, `handover_notes`).
-  5. [`supabase/migrations/20261031000004_program_videos_storage.sql`](supabase/migrations/20261031000004_program_videos_storage.sql) — Supabase Storage `program-videos` bucket setup (50MB free tier limit, video streaming).
+  5. [`supabase/migrations/20261031000004_program_videos_storage.sql`](supabase/migrations/20261031000004_program_videos_storage.sql) — Cloud Storage `program-videos` bucket setup (50MB limit, video streaming).
   6. [`supabase/migrations/20261031000005_pending_requests_and_profiles_email.sql`](supabase/migrations/20261031000005_pending_requests_and_profiles_email.sql) — index optimizations and profile email synchronization.
   7. [`supabase/migrations/20261031000006_soap_notes_and_program_feedback.sql`](supabase/migrations/20261031000006_soap_notes_and_program_feedback.sql) — multi-box `soap_notes` table and `submission_reviews` SOAP fields.
 
@@ -188,7 +188,7 @@ npm test
 ```
 Runs **80 unit and integration tests** across 5 suites:
 - `tests/authorization.test.ts`: Role-based isolation, draft concealment, frozen protocol checks.
-- `tests/supabase-crud.test.ts`: Complete CRUD operations for clients, home programs, step video uploads (Supabase Storage), therapist per-step feedback and overall reviews, real-time messaging, **Two-Way Handshake Confirmations**, **Care Transfer Service**, and **Live Session SOAP Notes**.
+- `tests/supabase-crud.test.ts`: Complete CRUD operations for clients, home programs, step video uploads (Cloud Storage), therapist per-step feedback and overall reviews, real-time messaging, **Two-Way Handshake Confirmations**, **Care Transfer Service**, and **Live Session SOAP Notes**.
 - `tests/sam-engine.test.ts`: SAM 3.1 concept handling, deduplication, caching, and multi-concept segmentation.
 - `tests/sam-payloads.test.ts`: Validation of the 7 clinical & environmental 100-keyword engines.
 - `tests/meta-ai.test.ts`: Muse Spark structured output, safety boundaries, and feedback generation.

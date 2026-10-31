@@ -16,13 +16,22 @@ import {
   ChevronUp,
   FileText,
   Video,
+  ExternalLink,
+  Plus,
+  Trash2,
+  Clock,
+  Wand2,
+  Stethoscope,
+  Layers,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SamOverlay } from "@/components/ui/sam-overlay";
-import { Submission, StepSubmission, ProgramStep, AiAnalysisRecord } from "@/types/database";
+import { Submission, StepSubmission, ProgramStep, AiAnalysisRecord, SoapNoteAssessmentLink } from "@/types/database";
 import {
   DEMO_SUBMISSION_ID,
   DEMO_PEDIATRIC_SUBMISSION_ID,
@@ -65,10 +74,14 @@ function TherapistSubmissionReviewContent({
   // Therapist feedback state
   const [stepNotes, setStepNotes] = useState<Record<string, string>>({});
   const [overallFeedback, setOverallFeedback] = useState("");
+  const [soapRecordingUrl, setSoapRecordingUrl] = useState("");
   const [soapSubjective, setSoapSubjective] = useState("");
   const [soapObjective, setSoapObjective] = useState("");
   const [soapAssessment, setSoapAssessment] = useState("");
+  const [soapAssessmentLinks, setSoapAssessmentLinks] = useState<SoapNoteAssessmentLink[]>([]);
   const [soapPlan, setSoapPlan] = useState("");
+  const [clientSummary, setClientSummary] = useState("");
+  const [isAiSummarizing, setIsAiSummarizing] = useState(false);
 
   // AI Assistant state per step
   const [analyzingStepId, setAnalyzingStepId] = useState<string | null>(null);
@@ -82,7 +95,7 @@ function TherapistSubmissionReviewContent({
       try {
         setLoading(true);
 
-        // Attempt live fetch from Supabase
+        // Attempt live fetch from database
         const res = await fetch(`/api/client/submissions?submissionId=${submissionId}`);
         const data = await res.json();
 
@@ -98,10 +111,19 @@ function TherapistSubmissionReviewContent({
             if (data.submission.review.overall_feedback) {
               setOverallFeedback(data.submission.review.overall_feedback);
             }
+            if (data.submission.review.session_recording_url) {
+              setSoapRecordingUrl(data.submission.review.session_recording_url);
+            }
             if (data.submission.review.subjective) setSoapSubjective(data.submission.review.subjective);
             if (data.submission.review.objective) setSoapObjective(data.submission.review.objective);
             if (data.submission.review.assessment) setSoapAssessment(data.submission.review.assessment);
+            if (Array.isArray(data.submission.review.assessment_links)) {
+              setSoapAssessmentLinks(data.submission.review.assessment_links);
+            }
             if (data.submission.review.plan) setSoapPlan(data.submission.review.plan);
+            if (data.submission.review.client_summary) {
+              setClientSummary(data.submission.review.client_summary);
+            }
 
             if (Array.isArray(data.submission.review.step_reviews)) {
               const notesMap: Record<string, string> = {};
@@ -217,11 +239,11 @@ function TherapistSubmissionReviewContent({
                 id: "88888886-8888-4888-8888-888888888886",
                 submission_id: submissionId,
                 program_step_id: mockSteps[2].id,
-                video_path: null,
-                media_meta: {},
-                client_comment: null,
-                skipped: true,
-                skip_reason: "Jar lid was too tight for tiny hands; will practice with a looser lid tomorrow.",
+                video_path: "/demo/washcloth_supination.mp4",
+                media_meta: { mime: "video/mp4", durationSeconds: 13, formatSupported: true },
+                client_comment: "Leo practiced gentle tabletop wrist rotation and lid placement.",
+                skipped: false,
+                skip_reason: null,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               },
@@ -255,11 +277,11 @@ function TherapistSubmissionReviewContent({
                 id: "88888883-8888-4888-8888-888888888883",
                 submission_id: submissionId,
                 program_step_id: mockSteps[2].id,
-                video_path: null,
-                media_meta: {},
-                client_comment: null,
-                skipped: true,
-                skip_reason: "Shoulder felt tight and fatigued after step 2; rested per precautions.",
+                video_path: "/demo/washcloth_supination.mp4",
+                media_meta: { mime: "video/mp4", durationSeconds: 15, formatSupported: true },
+                client_comment: "Slowed rotation tempo per instructions. Completed 5 full active repetitions with washcloth.",
+                skipped: false,
+                skip_reason: null,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               },
@@ -277,10 +299,18 @@ function TherapistSubmissionReviewContent({
           setOverallFeedback(
             "Fantastic progress, Leo! Sarah, his pincer grasp on the pegs showed wonderful isolated finger control with much less whole-hand raking. Great call on loosening the jar lid for step 3."
           );
+          setSoapRecordingUrl("https://meet.google.com/rec/aruga-leo-pediatric-telehealth");
           setSoapSubjective("Sarah reported Leo was enthusiastic with the colored pegs. Noted step 3 jar was too tight for independent opening.");
           setSoapObjective("Neat pincer grasp achieved on 5 peg placements. Helper hand spontaneously stabilized container rim.");
           setSoapAssessment("Bilateral coordination and thumb-index pad opposition show marked maturation from gross raking grasp.");
-          setSoapPlan("Continue daily peg stacking and play-doh routines. Use pre-loosened plastic containers for bilateral twist-off practice.");
+          setSoapAssessmentLinks([
+            {
+              title: "Peabody Developmental Motor Scales (PDMS-2) Fine Motor Report",
+              url: "https://drive.google.com/file/d/leo-pdms2-scorecard/view",
+            },
+          ]);
+          setSoapPlan("Continue daily peg stacking and play-doh home programs. Use pre-loosened plastic containers for bilateral twist-off practice.");
+          setClientSummary("Leo did an incredible job using his 'pincer fingers' to place the colorful pegs! Sarah, your encouragement and having him hold the board with his helper hand made all the difference. For tomorrow, start with the jar lid already partly twisted open so Leo can celebrate taking it off all by himself!");
         } else {
           setStepNotes({
             [mockStepSubs[0].id]: "Smooth cylindrical grasp observed. Minimal trunk compensation. Keep focusing on slow finger release.",
@@ -288,12 +318,24 @@ function TherapistSubmissionReviewContent({
             [mockStepSubs[2].id]: "Appropriate skip. We will re-evaluate shoulder active range of motion during our next session.",
           });
           setOverallFeedback(
-            "Great effort on the tabletop transfer routine. Wrist alignment during the cup release is noticeably improved. Good decision to rest the shoulder on step 3—honoring fatigue prevents compensatory shoulder hiking."
+            "Great effort on the tabletop transfer home program. Wrist alignment during the cup release is noticeably improved. Good decision to rest the shoulder on step 3—honoring fatigue prevents compensatory shoulder hiking."
           );
+          setSoapRecordingUrl("https://meet.google.com/rec/aruga-marcus-telehealth");
           setSoapSubjective("Marcus reported feeling smoother during cup lifts, but noted residual morning finger stiffness. Made an appropriate clinical decision to rest shoulder on step 3.");
           setSoapObjective("Video review demonstrates active cylindrical grasp with 3-4 inch vertical cup lift. Trunk lateral flexion under 5°. Step 2 block stacking completed with 4 clean chuck releases.");
           setSoapAssessment("Right UE hemiparesis shows steady neuromuscular recovery. Tabletop grasp and release are functional; proximal shoulder girdle endurance is the remaining limiting factor.");
-          setSoapPlan("Maintain current tabletop routine 1x daily. Introduce 30-second resting intervals between block sets. Re-check active shoulder flexion in next live session.");
+          setSoapAssessmentLinks([
+            {
+              title: "Fugl-Meyer UE Motor Assessment (Baseline)",
+              url: "https://drive.google.com/file/d/marcus-fugl-meyer-baseline/view",
+            },
+            {
+              title: "Box and Blocks Test Protocol",
+              url: "https://drive.google.com/file/d/box-and-blocks-standardized/view",
+            },
+          ]);
+          setSoapPlan("Maintain current tabletop home program 1x daily. Introduce 30-second resting intervals between block sets. Re-check active shoulder flexion in next live session.");
+          setClientSummary("You did an outstanding job lifting and releasing the cup smoothly without leaning your body. Listening to your shoulder and resting on step 3 was 100% the right call. Keep practicing the cup and block exercises once a day, and remember to take 30-second breathers whenever your shoulder feels tired!");
         }
 
         // Preload step 1 AI record from demo
@@ -452,6 +494,134 @@ function TherapistSubmissionReviewContent({
     }
   };
 
+  const handleAddAssessmentLink = () => {
+    setSoapAssessmentLinks((prev) => [...prev, { title: "", url: "" }]);
+  };
+
+  const handleUpdateAssessmentLink = (index: number, field: "title" | "url", value: string) => {
+    setSoapAssessmentLinks((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const handleRemoveAssessmentLink = (index: number) => {
+    setSoapAssessmentLinks((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleApplyClinicalPreset = (preset: "pediatric" | "neuro" | "geriatric") => {
+    if (preset === "pediatric") {
+      setSoapSubjective("Caregiver reported high engagement with colorful object activities. Minor frustration when jar lid was over-tightened.");
+      setSoapObjective("Neat pincer grasp achieved across 5 peg placements. Stabilizing tabletop contact maintained on container rim.");
+      setSoapAssessment("Bilateral coordination and thumb-index pad opposition show marked maturation from baseline raking grasp.");
+      setSoapPlan("Continue daily peg stacking and sensory dough bead squashing. Use pre-loosened plastic containers for twist-off practice.");
+      setSoapAssessmentLinks([
+        {
+          title: "Peabody Developmental Motor Scales (PDMS-2) Fine Motor Report",
+          url: "https://drive.google.com/file/d/leo-pdms2-scorecard/view",
+        },
+      ]);
+    } else if (preset === "neuro") {
+      setSoapSubjective("Patient reported feeling smoother during cup lifts, but noted residual morning finger stiffness. Made sound clinical decision to rest shoulder on step 3.");
+      setSoapObjective("Video review demonstrates active cylindrical grasp with 3-4 inch vertical cup lift. Trunk lateral flexion under 5°. Step 2 block stacking completed with 4 clean chuck releases.");
+      setSoapAssessment("Right UE hemiparesis shows steady neuromuscular re-education. Tabletop grasp and release are functional; proximal shoulder girdle endurance is the remaining limiting factor.");
+      setSoapPlan("Maintain current tabletop home program 1x daily. Introduce 30-second resting intervals between block sets. Re-check active shoulder flexion in next live session.");
+      setSoapAssessmentLinks([
+        {
+          title: "Fugl-Meyer UE Motor Assessment (Baseline)",
+          url: "https://drive.google.com/file/d/marcus-fugl-meyer-baseline/view",
+        },
+        {
+          title: "Box and Blocks Test Protocol",
+          url: "https://drive.google.com/file/d/box-and-blocks-standardized/view",
+        },
+      ]);
+    } else if (preset === "geriatric") {
+      setSoapSubjective("Client reports feeling more confident reaching into overhead kitchen cabinets. Mild balance hesitation when turning 180 degrees in kitchen.");
+      setSoapObjective("Timed Up and Go (TUG) observed at 11.2s. Functional reach forward 9.5 inches with steady plantar surface contact. 8 sit-to-stand repetitions with minimal armrest push.");
+      setSoapAssessment("Dynamic balance and lower extremity functional power demonstrate noticeable improvement with consistent home compliance. Fall risk reduced from moderate to mild.");
+      setSoapPlan("Advance dynamic balance program with tandem stance holding counter. Progress sit-to-stand to alternating chair heights 2x daily.");
+      setSoapAssessmentLinks([
+        {
+          title: "Berg Balance Scale (BBS) 14-Item Score Sheet",
+          url: "https://drive.google.com/file/d/geriatric-berg-balance-evaluation/view",
+        },
+        {
+          title: "Timed Up and Go (TUG) Normative Mobility Chart",
+          url: "https://drive.google.com/file/d/tug-mobility-geriatric-chart/view",
+        },
+      ]);
+    }
+  };
+
+  const handleAutoFillFromAiObservations = () => {
+    const observationTexts: string[] = [];
+    Object.values(aiRecords).forEach((rec) => {
+      if (rec.spark_results?.observations) {
+        rec.spark_results.observations.forEach((obs) => {
+          if (obs.confirmed || confirmedObs[rec.step_submission_id]?.includes(obs.id)) {
+            observationTexts.push(`• ${obs.description}`);
+          }
+        });
+      }
+    });
+
+    if (observationTexts.length === 0) {
+      Object.values(aiRecords).forEach((rec) => {
+        if (rec.spark_results?.observations) {
+          rec.spark_results.observations.forEach((obs) => {
+            observationTexts.push(`• ${obs.description}`);
+          });
+        }
+      });
+    }
+
+    if (observationTexts.length > 0) {
+      const formatted = `Video review confirms kinematic detections:\n${observationTexts.join("\n")}`;
+      setSoapObjective((prev) => (prev ? `${prev}\n\n${formatted}` : formatted));
+    }
+  };
+
+  const handleGenerateAiSummary = async () => {
+    if (isAiSummarizing) return;
+    setIsAiSummarizing(true);
+    try {
+      const clientName = submission?.client_id || "Client";
+      const res = await fetch("/api/ai/soap-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetType: "submission_review",
+          targetId: submissionId,
+          subjective: soapSubjective || "",
+          objective: soapObjective || "",
+          assessment: soapAssessment || "",
+          plan: soapPlan || "",
+          clientName,
+          forceRegenerate: true,
+          isDemo,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.summary) {
+        setClientSummary(data.summary);
+      }
+    } catch (err) {
+      console.warn("Could not generate summary:", err);
+    } finally {
+      setIsAiSummarizing(false);
+    }
+  };
+
+  // Determine if feedback is already published/reviewed
+  const isAlreadyReviewed =
+    submission?.state === "reviewed" ||
+    submission?.review?.status === "published" ||
+    Boolean(submission?.review?.overall_feedback) ||
+    Boolean(overallFeedback && isDemo);
+
   // Save Draft Review or Publish Review
   const handleSaveReview = async (action: "save_draft" | "publish") => {
     if (submitting) return;
@@ -464,6 +634,10 @@ function TherapistSubmissionReviewContent({
         note: stepNotes[ss.id] || "",
       }));
 
+      const validLinks = soapAssessmentLinks.filter(
+        (l) => l.title.trim() && l.url.trim()
+      );
+
       const res = await fetch("/api/therapist/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -472,10 +646,13 @@ function TherapistSubmissionReviewContent({
           submissionId,
           stepReviews: stepReviewsPayload,
           overallFeedback,
+          sessionRecordingUrl: soapRecordingUrl.trim() || null,
           subjective: soapSubjective,
           objective: soapObjective,
           assessment: soapAssessment,
+          assessmentLinks: validLinks,
           plan: soapPlan,
+          clientSummary: clientSummary.trim() || null,
         }),
       });
 
@@ -487,10 +664,13 @@ function TherapistSubmissionReviewContent({
       if (action === "publish") {
         setStatusMessage({
           type: "success",
-          text: "Review atomically published! Client can now view your step notes and overall feedback.",
+          text: isAlreadyReviewed
+            ? "Feedback changes successfully updated and saved for the client!"
+            : "Review atomically published! Client can now view your step notes and overall feedback.",
         });
+        const targetPatientId = submission?.patient_id || "33333333-3333-4333-8333-333333333333";
         setTimeout(() => {
-          router.push(`/therapist/clients/33333333-3333-4333-8333-333333333333`);
+          router.push(`/therapist/clients/${targetPatientId}`);
         }, 1800);
       } else {
         setStatusMessage({
@@ -546,13 +726,17 @@ function TherapistSubmissionReviewContent({
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-zinc-100">
               {isPediatric
-                ? "Playful Pincer Grasp & Bilateral Toy Routine"
-                : "Tabletop Grasp & Precision Release Routine"}
+                ? "Playful Pincer Grasp & Bilateral Toy Home Program"
+                : "Tabletop Grasp & Precision Release Home Program"}
             </h1>
-            <Badge variant="teal" statusText="Awaiting Review" />
+            {isAlreadyReviewed ? (
+              <Badge variant="emerald" statusText="Feedback Published • Editable" icon={<CheckCircle2 className="w-3 h-3" />} />
+            ) : (
+              <Badge variant="teal" statusText="Awaiting Review" />
+            )}
           </div>
           <p className="text-xs text-zinc-400 mt-1">
-            Client: <span className="text-zinc-200 font-medium">{clientDisplayName}</span> • Submitted Recently • {steps.length > 0 ? `${steps.length} Steps Total` : "Routine Submission"}
+            Client: <span className="text-zinc-200 font-medium">{clientDisplayName}</span> • {isAlreadyReviewed ? "Feedback Published — You can edit and save changes anytime" : "Submitted Recently"} • {steps.length > 0 ? `${steps.length} Steps Total` : "Home Program Submission"}
           </p>
         </div>
       </div>
@@ -576,12 +760,56 @@ function TherapistSubmissionReviewContent({
 
       {/* Submitted Steps List */}
       <div className="space-y-6">
-        {stepSubmissions.map((stepSub, idx) => {
-          const step = steps.find((s) => s.id === stepSub.program_step_id) || steps[idx];
+        {(steps.length > 0 ? steps : stepSubmissions.map((ss, i) => ({
+          id: ss.program_step_id || `step-${i}`,
+          program_id: "",
+          position: i + 1,
+          title: `Step ${i + 1}`,
+          instructions: "",
+          created_at: "",
+        }))).map((step, idx) => {
+          const stepSub =
+            stepSubmissions.find((s) => s.program_step_id === step.id) ||
+            stepSubmissions[idx] ||
+            ({
+              id: `step-sub-${step.id}`,
+              submission_id: submissionId,
+              program_step_id: step.id,
+              video_path: isDemo
+                ? idx === 0
+                  ? "/demo/cup_grasp_transfer.mp4"
+                  : idx === 1
+                  ? "/demo/block_stacking.mp4"
+                  : "/demo/washcloth_supination.mp4"
+                : null,
+              skipped: false,
+              skip_reason: null,
+              media_meta: {},
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            } as StepSubmission);
+
           const aiRec = aiRecords[stepSub.id];
           const isCollapsed = collapsedAssistants[stepSub.id] ?? false;
           const isAnalyzing = analyzingStepId === stepSub.id;
           const currentConfirmed = confirmedObs[stepSub.id] || [];
+
+          // Resolve and normalize video URL with leading slash
+          const rawVideoPath =
+            stepSub.video_path ||
+            (isDemo
+              ? idx === 0
+                ? "/demo/cup_grasp_transfer.mp4"
+                : idx === 1
+                ? "/demo/block_stacking.mp4"
+                : "/demo/washcloth_supination.mp4"
+              : null);
+
+          const videoSource = rawVideoPath
+            ? rawVideoPath.startsWith("http") || rawVideoPath.startsWith("/") || rawVideoPath.startsWith("blob:")
+              ? rawVideoPath
+              : `/${rawVideoPath}`
+            : null;
 
           return (
             <Card key={stepSub.id} className="border-zinc-800 bg-zinc-900/90 p-5 space-y-4">
@@ -611,19 +839,31 @@ function TherapistSubmissionReviewContent({
                 <p className="leading-relaxed">{step?.instructions}</p>
               </div>
 
-              {/* Video Player or Skipped Reason */}
-              {stepSub.skipped ? (
+              {/* Client Skip Reason if skipped */}
+              {stepSub.skipped && (
                 <div className="rounded-lg bg-amber-950/30 border border-amber-800/60 p-4 text-xs text-amber-200 space-y-1">
                   <span className="font-semibold text-amber-300">Client Skip Explanation:</span>
                   <p className="text-amber-200/90 italic leading-relaxed">
                     &quot;{stepSub.skip_reason}&quot;
                   </p>
                 </div>
-              ) : stepSub.video_path || isDemo ? (
+              )}
+
+              {/* Video Player or No Video Notice */}
+              {videoSource ? (
                 <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs text-zinc-400 px-1">
+                    <span className="flex items-center gap-1.5 text-teal-400 font-medium">
+                      <Video className="w-3.5 h-3.5" /> Uploaded Exercise Video for Step {step?.position || idx + 1}
+                    </span>
+                    <span className="text-[11px] text-zinc-500 font-mono">
+                      SAM 3.1 & Vision AI Enabled
+                    </span>
+                  </div>
+
                   {/* SAM Video Player with Live Tracking Overlays */}
                   <SamOverlay
-                    videoSrc={stepSub.video_path || (isDemo ? "/demo/tabletop_exercise.mp4" : "")}
+                    videoSrc={videoSource}
                     boxes={aiRec?.sam_results?.boxes}
                     svgPaths={aiRec?.sam_results?.svg_paths}
                     objectConcept={aiRec?.sam_results?.object_concept}
@@ -785,93 +1025,314 @@ function TherapistSubmissionReviewContent({
       </div>
 
       {/* Overall Review & Clinical SOAP Notes Section */}
-      <Card className="border-zinc-800 bg-zinc-900/90 p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+      <Card className="border-zinc-800 bg-zinc-900/90 p-5 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
           <div>
             <CardTitle className="text-base text-zinc-100 flex items-center gap-2">
               <FileText className="w-4 h-4 text-teal-400" />
               Home Program Clinical SOAP Documentation
             </CardTitle>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Divided into 4 structured clinical SOAP boxes (Subjective, Objective, Assessment, Plan).
+              Full-width structured clinical SOAP documentation (Subjective, Objective, Assessment, Plan) with session video recording and standardized test links.
             </p>
           </div>
-          <span className="text-[11px] font-medium text-teal-400 bg-teal-950/70 border border-teal-500/30 px-2.5 py-1 rounded-md self-start sm:self-auto">
+          <span className="text-[11px] font-medium text-teal-400 bg-teal-950/70 border border-teal-500/30 px-2.5 py-1 rounded-md self-start sm:self-auto flex items-center gap-1.5 shrink-0">
+            <Clock className="w-3 h-3 text-teal-400" />
             Clinical S.O.A.P. Standard
           </span>
         </div>
 
-        {/* 4 Distinct SOAP Textarea Boxes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* S - Subjective */}
-          <div className="space-y-1.5 rounded-xl border border-sky-900/40 bg-zinc-950/60 p-3.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded-full bg-sky-950 border border-sky-500/40 text-[10px] flex items-center justify-center font-mono">S</span>
-                Subjective
-              </label>
-              <span className="text-[10px] text-zinc-500">Client comments & fatigue/pain</span>
-            </div>
+        {/* Clinical Presets & Quick Fill Bar */}
+        <div className="p-3 rounded-xl bg-zinc-950/80 border border-zinc-800/80 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <Wand2 className="w-3.5 h-3.5 text-teal-400" />
+            <span className="text-xs font-semibold text-zinc-300">Quick Clinical Presets:</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => handleApplyClinicalPreset("pediatric")}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-teal-300 transition-colors"
+            >
+              Pediatric Fine Motor
+            </button>
+            <button
+              type="button"
+              onClick={() => handleApplyClinicalPreset("neuro")}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-teal-300 transition-colors"
+            >
+              Adult Stroke / Neuro
+            </button>
+            <button
+              type="button"
+              onClick={() => handleApplyClinicalPreset("geriatric")}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-teal-300 transition-colors"
+            >
+              Geriatric Balance & TUG
+            </button>
+            <button
+              type="button"
+              onClick={handleAutoFillFromAiObservations}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-teal-950/60 hover:bg-teal-900/60 border border-teal-500/40 text-teal-300 hover:text-teal-200 flex items-center gap-1 transition-colors"
+              title="Populate Objective section with confirmed kinematic detections from Spark and SAM"
+            >
+              <Sparkles className="w-3 h-3 text-teal-400" />
+              Auto-Fill Objective from AI
+            </button>
+          </div>
+        </div>
+
+        {/* 1. SESSION VIDEO RECORDING URL (PLACED BEFORE ACTUAL SOAP NOTES) */}
+        <div className="p-3.5 rounded-xl border border-teal-500/30 bg-teal-950/20 space-y-1.5">
+          <label className="text-xs font-bold text-teal-300 flex items-center gap-2">
+            <Video className="w-4 h-4 text-teal-400" />
+            Session Video Recording URL (Placed Before SOAP Notes)
+          </label>
+          <p className="text-[11px] text-zinc-400">
+            Add the cloud recording link for this synchronous telehealth or live evaluation session (e.g. Google Meet, Zoom, Vimeo, or Google Drive link).
+          </p>
+          <div className="flex items-center gap-2 pt-1">
+            <Input
+              type="url"
+              placeholder="https://meet.google.com/rec/session-id or https://drive.google.com/file/d/..."
+              value={soapRecordingUrl}
+              onChange={(e) => setSoapRecordingUrl(e.target.value)}
+              className="bg-zinc-950 border-zinc-800 text-xs text-zinc-200"
+            />
+            {soapRecordingUrl.trim() && (
+              <a
+                href={soapRecordingUrl.trim()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-2 rounded-md bg-teal-500/20 border border-teal-500/40 text-teal-300 hover:bg-teal-500/30 text-xs font-semibold flex items-center gap-1 shrink-0"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Test Link
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* 2. FULL-WIDTH SOAP DOCUMENTATION BOXES WITH LARGE TEXTAREAS */}
+        <div className="space-y-4">
+          {/* S: Subjective - FULL WIDTH */}
+          <div className="space-y-1.5 rounded-xl border border-sky-900/40 bg-zinc-950/60 p-4">
+            <label className="text-xs font-bold text-sky-400 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-sky-950 border border-sky-500/40 text-[11px] flex items-center justify-center font-mono">
+                S
+              </span>
+              Subjective *
+              <span className="text-[11px] text-zinc-500 font-normal">
+                (Patient symptoms, pain scale, functional complaints, caregiver observations)
+              </span>
+            </label>
             <Textarea
-              rows={3}
-              placeholder="Record client-reported symptoms, pain scale, difficulty noted during routine, or skip explanations..."
+              rows={6}
+              placeholder="Patient's reported feelings, pain levels (0-10), feedback from family/caregiver, daily home program challenges..."
               value={soapSubjective}
               onChange={(e) => setSoapSubjective(e.target.value)}
-              className="text-xs leading-relaxed border-zinc-800 bg-zinc-900/80 focus-visible:ring-sky-500"
+              className="bg-zinc-900/80 border-zinc-800 text-xs leading-relaxed min-h-[150px] resize-y"
             />
           </div>
 
-          {/* O - Objective */}
-          <div className="space-y-1.5 rounded-xl border border-teal-900/40 bg-zinc-950/60 p-3.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-teal-400 flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded-full bg-teal-950 border border-teal-500/40 text-[10px] flex items-center justify-center font-mono">O</span>
-                Objective
+          {/* O: Objective - FULL WIDTH */}
+          <div className="space-y-1.5 rounded-xl border border-teal-900/40 bg-zinc-950/60 p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+              <label className="text-xs font-bold text-teal-400 flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-teal-950 border border-teal-500/40 text-[11px] flex items-center justify-center font-mono">
+                  O
+                </span>
+                Objective *
+                <span className="text-[11px] text-zinc-500 font-normal">
+                  (Measurable clinical data, active ROM degrees, grip strength score, task repetitions)
+                </span>
               </label>
-              <span className="text-[10px] text-zinc-500">Visual evidence & kinematics</span>
+              <button
+                type="button"
+                onClick={handleAutoFillFromAiObservations}
+                className="text-[11px] text-teal-400 hover:text-teal-300 underline underline-offset-2 flex items-center gap-1 self-start sm:self-auto"
+              >
+                <Sparkles className="w-3 h-3" />
+                Append AI Kinematic Detections
+              </button>
             </div>
             <Textarea
-              rows={3}
-              placeholder="Observable metrics, confirmed Spark/SAM kinematic detections, repetitions completed, grasp form..."
+              rows={6}
+              placeholder="Measurable clinical metrics, active ROM degrees, grip strength readings, task trials/repetitions, postural alignment observations, confirmed Spark/SAM kinematic detections..."
               value={soapObjective}
               onChange={(e) => setSoapObjective(e.target.value)}
-              className="text-xs leading-relaxed border-zinc-800 bg-zinc-900/80 focus-visible:ring-teal-500"
+              className="bg-zinc-900/80 border-zinc-800 text-xs leading-relaxed min-h-[150px] resize-y"
             />
           </div>
 
-          {/* A - Assessment */}
-          <div className="space-y-1.5 rounded-xl border border-amber-900/40 bg-zinc-950/60 p-3.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded-full bg-amber-950 border border-amber-500/40 text-[10px] flex items-center justify-center font-mono">A</span>
-                Assessment
+          {/* A: Assessment - FULL WIDTH + MULTIPLE ASSESSMENT DOCUMENT LINKS */}
+          <div className="space-y-3 rounded-xl border border-amber-900/40 bg-zinc-950/60 p-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-amber-400 flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-amber-950 border border-amber-500/40 text-[11px] flex items-center justify-center font-mono">
+                  A
+                </span>
+                Assessment *
+                <span className="text-[11px] text-zinc-500 font-normal">
+                  (Clinical analysis, neuromuscular response, functional progression towards goals)
+                </span>
               </label>
-              <span className="text-[10px] text-zinc-500">Clinical synthesis & progress</span>
+              <Textarea
+                rows={7}
+                placeholder="Clinical synthesis, motor control progress, neuromuscular adaptation, functional limitations, tolerance to therapeutic activities..."
+                value={soapAssessment}
+                onChange={(e) => setSoapAssessment(e.target.value)}
+                className="bg-zinc-900/80 border-zinc-800 text-xs leading-relaxed min-h-[170px] resize-y"
+              />
             </div>
-            <Textarea
-              rows={3}
-              placeholder="Clinical analysis of functional progress, motor re-education, compensatory patterns, tolerance..."
-              value={soapAssessment}
-              onChange={(e) => setSoapAssessment(e.target.value)}
-              className="text-xs leading-relaxed border-zinc-800 bg-zinc-900/80 focus-visible:ring-amber-500"
-            />
+
+            {/* Multiple Assessment Document Links Section */}
+            <div className="pt-2 border-t border-amber-950/60 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-amber-400" />
+                    Assessment Documents & Standardized Test Reports
+                  </label>
+                  <p className="text-[11px] text-zinc-500">
+                    Attach links to standardized assessment PDFs (e.g. PDMS-2, Fugl-Meyer, Sensory Profile, Goniometry sheets).
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddAssessmentLink}
+                  className="h-7 text-xs border-amber-500/30 text-amber-300 hover:bg-amber-950/40 hover:text-amber-200 gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  Add Document Link
+                </Button>
+              </div>
+
+              {soapAssessmentLinks.length === 0 ? (
+                <div className="text-[11px] text-zinc-500 italic bg-zinc-900/40 p-2.5 rounded-lg border border-dashed border-zinc-800">
+                  No assessment documents linked yet. Click &quot;Add Document Link&quot; to attach test reports or scorecards.
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {soapAssessmentLinks.map((link, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-lg bg-zinc-900/80 border border-zinc-800 space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-amber-300 flex items-center gap-1.5">
+                          <span className="w-5 h-5 rounded bg-amber-950/80 border border-amber-500/30 text-amber-400 text-[10px] font-mono font-bold flex items-center justify-center">
+                            {idx + 1}
+                          </span>
+                          Assessment Link #{idx + 1}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {link.url.trim() && (
+                            <a
+                              href={link.url.trim()}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-[11px] text-teal-300 hover:text-teal-200 transition-colors"
+                              title="Open link in new tab"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              <span>Test Link</span>
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAssessmentLink(idx)}
+                            className="p-1 rounded hover:bg-rose-950/40 text-rose-400 hover:text-rose-300 transition-colors"
+                            title="Remove document link"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                            Test Title
+                          </label>
+                          <Input
+                            placeholder="e.g. PDMS-2 Scorecard PDF or Fugl-Meyer UE"
+                            value={link.title}
+                            onChange={(e) => handleUpdateAssessmentLink(idx, "title", e.target.value)}
+                            className="bg-zinc-950 border-zinc-800 text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                            Link (URL)
+                          </label>
+                          <Input
+                            placeholder="https://drive.google.com/... or https://clinic.org/..."
+                            value={link.url}
+                            onChange={(e) => handleUpdateAssessmentLink(idx, "url", e.target.value)}
+                            className="bg-zinc-950 border-zinc-800 text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* P - Plan */}
-          <div className="space-y-1.5 rounded-xl border border-indigo-900/40 bg-zinc-950/60 p-3.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded-full bg-indigo-950 border border-indigo-500/40 text-[10px] flex items-center justify-center font-mono">P</span>
-                Plan
-              </label>
-              <span className="text-[10px] text-zinc-500">Target adjustments & homework</span>
-            </div>
+          {/* P: Plan - FULL WIDTH */}
+          <div className="space-y-1.5 rounded-xl border border-indigo-900/40 bg-zinc-950/60 p-4">
+            <label className="text-xs font-bold text-indigo-400 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-indigo-950 border border-indigo-500/40 text-[11px] flex items-center justify-center font-mono">
+                P
+              </span>
+              Plan *
+              <span className="text-[11px] text-zinc-500 font-normal">
+                (Home program adjustments, repetition targets, next telehealth visit cadence)
+              </span>
+            </label>
             <Textarea
-              rows={3}
-              placeholder="Modifications to sets/reps, program changes, instructions for next upload, tele-rehab target..."
+              rows={6}
+              placeholder="Continuum of care, modifications to home program, frequency and repetitions, precautions, next live appointment date..."
               value={soapPlan}
               onChange={(e) => setSoapPlan(e.target.value)}
-              className="text-xs leading-relaxed border-zinc-800 bg-zinc-900/80 focus-visible:ring-indigo-500"
+              className="bg-zinc-900/80 border-zinc-800 text-xs leading-relaxed min-h-[150px] resize-y"
+            />
+          </div>
+
+          {/* 3. PLAIN-ENGLISH CLIENT & CAREGIVER SUMMARY */}
+          <div className="space-y-2 rounded-xl border border-emerald-900/40 bg-zinc-950/60 p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label className="text-xs font-bold text-emerald-400 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                Plain-English Client & Caregiver Takeaways
+                <span className="text-[11px] text-zinc-500 font-normal">
+                  (Simple summary delivered to client portal)
+                </span>
+              </label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateAiSummary}
+                isLoading={isAiSummarizing}
+                className="h-7 text-xs border-emerald-500/30 text-emerald-300 hover:bg-emerald-950/40 hover:text-emerald-200 gap-1.5 self-start sm:self-auto"
+              >
+                <Sparkles className="w-3 h-3 text-emerald-400" />
+                Generate Summary with AI
+              </Button>
+            </div>
+            <p className="text-[11px] text-zinc-400">
+              Summarizes technical clinical SOAP terms into encouraging, accessible next steps for the client and family.
+            </p>
+            <Textarea
+              rows={4}
+              placeholder="Click 'Generate Summary with AI' or type personalized takeaways for the client..."
+              value={clientSummary}
+              onChange={(e) => setClientSummary(e.target.value)}
+              className="bg-zinc-900/80 border-zinc-800 text-xs leading-relaxed min-h-[120px] resize-y"
             />
           </div>
         </div>
@@ -880,10 +1341,12 @@ function TherapistSubmissionReviewContent({
       {/* Review Actions Bar */}
       <div className="pt-4 border-t border-zinc-800 flex flex-wrap items-center justify-between gap-4">
         <div className="text-[11px] text-zinc-500 max-w-sm">
-          Draft reviews remain private to you. &quot;Publish Feedback&quot; atomically unlocks published notes and overall feedback for the client.
+          {isAlreadyReviewed
+            ? "Feedback is published to the client. Editing feedback updates clinical notes and SOAP evaluation in real-time."
+            : "Draft reviews remain private to you. \"Publish Feedback\" atomically unlocks published notes and overall feedback for the client."}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-row items-center gap-3 whitespace-nowrap">
           <Button
             type="button"
             variant="outline"
@@ -901,8 +1364,17 @@ function TherapistSubmissionReviewContent({
             onClick={() => handleSaveReview("publish")}
             className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold"
           >
-            <Send className="w-4 h-4" />
-            Publish Feedback
+            {isAlreadyReviewed ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 text-zinc-950" />
+                Save Changes to Feedback
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Publish Feedback
+              </>
+            )}
           </Button>
         </div>
       </div>

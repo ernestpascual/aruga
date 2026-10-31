@@ -1,13 +1,13 @@
 # Aruga Relational Database Design & Architecture
 **Document Version:** 2.0  
 **Updated for Commit:** `e5a7bd6` (feaures 50%)  
-**Schema Definition:** PostgreSQL 15+ (Supabase) with Row-Level Security (RLS)  
+**Schema Definition:** PostgreSQL 15+ with Row-Level Security (RLS)  
 
 ---
 
 ## 1. Architectural Overview
 
-Aruga’s data architecture enforces a strict **clinician-directed medical paradigm**. The database balances HIPAA-compliant access controls, relational integrity for multi-step rehabilitation routines, high-resolution video storage metadata, two-way clinician-patient linking handshakes, seamless care transfers, and clinical SOAP documentation.
+Aruga’s data architecture enforces a strict **clinician-directed medical paradigm**. The database balances HIPAA-compliant access controls, relational integrity for multi-step rehabilitation home programs, high-resolution video storage metadata, two-way clinician-patient linking handshakes, seamless care transfers, and clinical SOAP documentation.
 
 ### Core Architecture Tenets:
 1. **Zero-Trust Clinical Governance**: Clients can only view exercise programs explicitly assigned to them, and feedback is strictly concealed while in `draft` state until atomically published by a licensed therapist.
@@ -34,7 +34,7 @@ erDiagram
     PATIENTS ||--o{ MESSAGES : "scoped to"
 
     HOME_PROGRAMS ||--|{ PROGRAM_STEPS : "contains ordered"
-    HOME_PROGRAMS ||--o{ SUBMISSIONS : "routine instance"
+    HOME_PROGRAMS ||--o{ SUBMISSIONS : "program instance"
 
     SUBMISSIONS ||--|{ STEP_SUBMISSIONS : "step attempts"
     SUBMISSIONS ||--o| SUBMISSION_REVIEWS : "clinician review"
@@ -52,7 +52,7 @@ erDiagram
 ## 3. Relational Schema & Table Specifications
 
 ### 3.1 `public.profiles`
-Stores extended user profile metadata for both clinicians and clients, mirroring Supabase `auth.users(id)`.
+Stores extended user profile metadata for both clinicians and clients, mirroring `auth.users(id)`.
 
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
@@ -114,7 +114,7 @@ Multi-box clinical notes authored during or after live in-person or telehealth s
 | `subjective` | `TEXT` | `NOT NULL DEFAULT ''` | **S**: Patient quotes, fatigue, comfort, pain levels |
 | `objective` | `TEXT` | `NOT NULL DEFAULT ''` | **O**: Measured ROM, grip force, reps, completion metrics |
 | `assessment` | `TEXT` | `NOT NULL DEFAULT ''` | **A**: Neuromuscular progression, compensatory patterns |
-| `plan` | `TEXT` | `NOT NULL DEFAULT ''` | **P**: Next steps, routine modifications, assigned drills |
+| `plan` | `TEXT` | `NOT NULL DEFAULT ''` | **P**: Next steps, home program modifications, assigned drills |
 | `client_summary`| `TEXT` | `NOT NULL DEFAULT ''` | Plain-English summary for patient & family (DB-cached) |
 | `created_at` | `TIMESTAMPTZ`| `DEFAULT now()` | Creation timestamp |
 | `updated_at` | `TIMESTAMPTZ`| `DEFAULT now()` | Modification timestamp |
@@ -122,7 +122,7 @@ Multi-box clinical notes authored during or after live in-person or telehealth s
 ---
 
 ### 3.4 `public.home_programs` & `public.program_steps`
-Prescribed rehabilitation routines and their atomic exercise steps.
+Prescribed rehabilitation home programs and their atomic exercise steps.
 
 #### `home_programs`:
 - `id` (`UUID PK`)
@@ -175,10 +175,10 @@ Clinician evaluation and feedback records.
 - `submission_id` (`UUID UNIQUE REFERENCES submissions(id) ON DELETE CASCADE`)
 - `therapist_id` (`UUID REFERENCES profiles(id)`)
 - `overall_feedback` (`TEXT NOT NULL DEFAULT ''`) — Synthesized clinician commentary
-- `subjective` (`TEXT NOT NULL DEFAULT ''`) — **S** box for home routine review
-- `objective` (`TEXT NOT NULL DEFAULT ''`) — **O** box for home routine review
-- `assessment` (`TEXT NOT NULL DEFAULT ''`) — **A** box for home routine review
-- `plan` (`TEXT NOT NULL DEFAULT ''`) — **P** box for home routine review
+- `subjective` (`TEXT NOT NULL DEFAULT ''`) — **S** box for home program review
+- `objective` (`TEXT NOT NULL DEFAULT ''`) — **O** box for home program review
+- `assessment` (`TEXT NOT NULL DEFAULT ''`) — **A** box for home program review
+- `plan` (`TEXT NOT NULL DEFAULT ''`) — **P** box for home program review
 - `client_summary` (`TEXT NOT NULL DEFAULT ''`) — Plain-English patient summary (DB-cached)
 - `status` (`TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published'))`)
 - `published_at` (`TIMESTAMPTZ DEFAULT NULL`)
@@ -201,7 +201,7 @@ Communication channels and event distribution.
 - `sender_id` (`UUID REFERENCES profiles(id)`)
 - `recipient_id` (`UUID REFERENCES profiles(id)`)
 - `content` (`TEXT NOT NULL`)
-- `routine_reference_id` (`UUID REFERENCES home_programs(id) ON DELETE SET NULL`) — Support for `@routine` mention chips
+- `routine_reference_id` (`UUID REFERENCES home_programs(id) ON DELETE SET NULL`) — Support for `@program` mention chips
 - `is_deleted` (`BOOLEAN NOT NULL DEFAULT FALSE`) — Message deletion marker
 - `created_at` (`TIMESTAMPTZ DEFAULT now()`)
 
@@ -231,7 +231,7 @@ Telemetry table recording SAM 3.1 multi-concept performance across the 7 lifespa
 
 ---
 
-## 4. Supabase Storage Architecture: `program-videos`
+## 4. Cloud Storage Architecture: `program-videos`
 
 The `program-videos` storage bucket hosts client tabletop exercise recordings under private medical access rules:
 - **Bucket Visibility**: Private (direct public URLs disabled).

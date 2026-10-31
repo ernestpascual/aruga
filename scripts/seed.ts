@@ -34,7 +34,7 @@ async function main() {
   const serviceKey = process.env.SUPABASE_SECRET_KEY;
 
   if (supabaseUrl && serviceKey && !supabaseUrl.includes("placeholder")) {
-    console.log(`Connecting to Supabase at: ${supabaseUrl}`);
+    console.log(`Connecting to database at: ${supabaseUrl}`);
     const supabase = createClient(supabaseUrl, serviceKey);
 
     // 1. Profiles
@@ -113,9 +113,9 @@ async function main() {
       },
     ]);
 
-    console.log("✓ Supabase cloud seeding completed.");
+    console.log("✓ Cloud database seeding completed.");
   } else {
-    console.log("Note: Supabase credentials are placeholder or unconfigured.");
+    console.log("Note: Database credentials are placeholder or unconfigured.");
     console.log("Verifying built-in memory/mock clinical store...");
     const store = getMockStore();
     console.log(`✓ Verified ${store.profiles.length} profiles.`);

@@ -124,11 +124,11 @@ export function MentionTextarea({
           </div>
         ) : (
           <span className="text-[11px] text-zinc-500">
-            Reference a home program routine below or type <kbd className="px-1 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">@</kbd>
+            Reference a home program below or type <kbd className="px-1 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">@</kbd>
           </span>
         )}
 
-        {/* Explicit Reference Routine Picker Button */}
+        {/* Explicit Reference Home Program Picker Button */}
         {showDirectPickerButton && (
           <div className="relative ml-auto" ref={pickerRef}>
             <button
@@ -145,14 +145,14 @@ export function MentionTextarea({
             {showPickerMenu && (
               <div className="absolute right-0 bottom-full mb-1 w-72 rounded-xl border border-zinc-700 bg-zinc-900 p-1.5 shadow-2xl z-40 animate-in fade-in zoom-in-95">
                 <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 border-b border-zinc-800 flex items-center justify-between">
-                  <span>Available Client Routines</span>
+                  <span>Available Client Home Programs</span>
                   <span className="text-[10px] text-zinc-500">{availablePrograms.length}</span>
                 </div>
 
                 <div className="max-h-48 overflow-y-auto py-1 space-y-0.5">
                   {availablePrograms.length === 0 ? (
                     <div className="p-3 text-center text-xs text-zinc-500">
-                      No active routines assigned to this client yet.
+                      No active home programs assigned to this client yet.
                     </div>
                   ) : (
                     availablePrograms.map((prog) => {
@@ -194,7 +194,7 @@ export function MentionTextarea({
       {showDropdown && filteredPrograms.length > 0 && (
         <div className="absolute bottom-full mb-1 left-0 w-full max-w-sm rounded-lg border border-zinc-700 bg-zinc-900 p-1 shadow-xl z-30">
           <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 border-b border-zinc-800 flex items-center justify-between">
-            <span>Mention Program Routine</span>
+            <span>Mention Home Program</span>
             <span className="text-[10px] text-teal-400">Select to attach</span>
           </div>
           <div className="max-h-40 overflow-y-auto py-1">

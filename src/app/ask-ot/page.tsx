@@ -288,7 +288,7 @@ export default function AskOtPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
-  // Load user conversations from Supabase
+  // Load user conversations from database
   useEffect(() => {
     if (!user?.id) return;
     fetch(`/api/ot-chat/conversations?userId=${user.id}`)
@@ -301,7 +301,7 @@ export default function AskOtPage() {
       .catch(() => {});
   }, [user?.id]);
 
-  // Load active conversation messages from Supabase
+  // Load active conversation messages from database
   useEffect(() => {
     if (!conversationId) return;
     fetch(`/api/ot-chat/conversations?conversationId=${conversationId}`)
@@ -356,7 +356,7 @@ export default function AskOtPage() {
           setConversations((prev) => [data.conversation, ...prev.filter((c) => c.id !== id)]);
         }
       } catch (e) {
-        console.warn("Could not save conversation to Supabase:", e);
+        console.warn("Could not save conversation:", e);
       }
     }
   }

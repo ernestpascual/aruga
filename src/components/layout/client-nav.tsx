@@ -29,7 +29,7 @@ export function ClientNav() {
 
   const navItems = [
     { href: "/client/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/client", label: "Active Routine", icon: Home, exact: true },
+    { href: "/client", label: "Home Program", icon: Home, exact: true },
     { href: "/client/history", label: "History", icon: History },
     { href: "/client/messages", label: "Messages", icon: MessageSquare },
     { href: "/ask-ot", label: "Ask OT", icon: Bot },
@@ -47,8 +47,8 @@ export function ClientNav() {
       ? "Pediatric"
       : category === "adolescent"
       ? "Adolescent"
-      : category === "old_people"
-      ? "Old People (55+)"
+      : category === "geriatric" || category === "old_people"
+      ? "Geriatrics (55+)"
       : "Adult Client";
 
   const CategoryIcon =
@@ -56,7 +56,7 @@ export function ClientNav() {
       ? Baby
       : category === "adolescent"
       ? GraduationCap
-      : category === "old_people"
+      : category === "geriatric" || category === "old_people"
       ? HeartPulse
       : User;
 

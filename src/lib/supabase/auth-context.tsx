@@ -58,13 +58,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setProfile(fallbackProfile);
 
-        // Try upserting to Supabase
+        // Try upserting to database
         try {
           await supabase.from("profiles").upsert(fallbackProfile);
         } catch {}
       }
     } catch (err) {
-      console.warn("Could not fetch user profile from Supabase:", err);
+      console.warn("Could not fetch user profile:", err);
     }
   }, []);
 
@@ -110,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     const supabase = createClient();
-    if (!supabase) return { error: "Supabase client not initialized" };
+    if (!supabase) return { error: "Authentication service not initialized" };
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -222,7 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clientCategory?: ClientCategory;
   }) => {
     const supabase = createClient();
-    if (!supabase) return { error: "Supabase client not initialized" };
+    if (!supabase) return { error: "Authentication service not initialized" };
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -284,7 +284,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user) return { error: "Not authenticated" };
     const supabase = createClient();
-    if (!supabase) return { error: "Supabase client not initialized" };
+    if (!supabase) return { error: "Authentication service not initialized" };
 
     const cleanUpdates = {
       ...updates,
@@ -300,7 +300,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: error.message };
     }
 
-    // Sync demographic changes to linked patients record in Supabase
+    // Sync demographic changes to linked patients record
     try {
       const patientUpdates: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
@@ -325,7 +325,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const changePassword = async (newPassword: string) => {
     if (!user) return { error: "Not authenticated" };
     const supabase = createClient();
-    if (!supabase) return { error: "Supabase client not initialized" };
+    if (!supabase) return { error: "Authentication service not initialized" };
 
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
@@ -351,7 +351,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = async (email: string) => {
     const supabase = createClient();
-    if (!supabase) return { error: "Supabase client not initialized" };
+    if (!supabase) return { error: "Authentication service not initialized" };
 
     const redirectTo =
       typeof window !== "undefined"

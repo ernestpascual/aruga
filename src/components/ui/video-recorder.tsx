@@ -18,12 +18,16 @@ import { siteConfig } from "@/config/site";
 interface VideoRecorderProps {
   onVideoReady: (videoBlob: Blob, metadata: { mime: string; sizeBytes: number; durationSeconds: number; formatSupported: boolean }) => void;
   existingVideoPath?: string | null;
+  onReset?: () => void;
+  isUploading?: boolean;
   className?: string;
 }
 
 export function VideoRecorder({
   onVideoReady,
   existingVideoPath,
+  onReset,
+  isUploading = false,
   className = "",
 }: VideoRecorderProps) {
   const [mode, setMode] = useState<"idle" | "requesting" | "recording" | "recorded" | "uploading">("idle");
@@ -31,6 +35,8 @@ export function VideoRecorder({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isFormatAiReady, setIsFormatAiReady] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
 
   const videoLiveRef = useRef<HTMLVideoElement>(null);
   const videoRecordedRef = useRef<HTMLVideoElement>(null);
@@ -170,6 +176,9 @@ export function VideoRecorder({
     }
   };
 
+  const hasVideo = Boolean(previewUrl || existingVideoPath);
+  const currentVideoSrc = previewUrl || existingVideoPath || "";
+
   const handleRetake = () => {
     if (previewUrl && previewUrl.startsWith("blob:")) {
       URL.revokeObjectURL(previewUrl);
@@ -178,16 +187,25 @@ export function VideoRecorder({
     setRecordTime(0);
     setErrorMsg(null);
     setMode("idle");
+    onReset?.();
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const processVideoFile = (file: File) => {
     setErrorMsg(null);
-    const file = e.target.files?.[0];
-    if (!file) return;
+
+    const isVideo = file.type.startsWith("video/") || /\.(mp4|webm|mov|m4v|avi|mkv)$/i.test(file.name);
+    if (!isVideo) {
+      setErrorMsg("Please select or drop a valid video file (MP4, WebM, or MOV).");
+      return;
+    }
 
     if (file.size > maxBytes) {
       setErrorMsg(`File size (${(file.size / 1024 / 1024).toFixed(1)}MB) exceeds maximum limit of ${maxBytes / 1024 / 1024}MB.`);
       return;
+    }
+
+    if (previewUrl && previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
     }
 
     const isMp4 = file.type === "video/mp4" || file.name.endsWith(".mp4");
@@ -196,6 +214,11 @@ export function VideoRecorder({
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
     setMode("recorded");
+
+    // Reset file input value so choosing another file triggers change cleanly
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
 
     // Extract approximate video duration using temporary video element
     const tempVideo = document.createElement("video");
@@ -211,13 +234,69 @@ export function VideoRecorder({
     };
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processVideoFile(file);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current += 1;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current -= 1;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current = 0;
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      processVideoFile(file);
+    }
+  };
+
   return (
-    <div className={`space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/70 p-4 ${className}`}>
+    <div
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`space-y-4 rounded-xl border transition-all duration-200 p-4 ${
+        isDragging
+          ? "border-teal-400 bg-teal-950/20 shadow-[0_0_30px_rgba(20,184,166,0.25)] ring-1 ring-teal-400/50"
+          : "border-zinc-800 bg-zinc-900/70"
+      } ${className}`}
+    >
       {/* Informative notice */}
       <div className="flex items-center justify-between text-xs text-zinc-400 pb-2 border-b border-zinc-800/80">
         <span className="flex items-center gap-1.5">
           <Clock className="w-3.5 h-3.5 text-teal-400" />
-          Maximum {maxSeconds} seconds per step • MP4/WebM
+          Maximum {maxSeconds} seconds per step • Drag & drop or upload MP4/WebM
         </span>
         {isFormatAiReady ? (
           <span className="text-teal-400 flex items-center gap-1">
@@ -236,7 +315,22 @@ export function VideoRecorder({
       )}
 
       {/* Video Viewport Area */}
-      <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black border border-zinc-800 flex items-center justify-center">
+      <div
+        className={`relative aspect-video w-full overflow-hidden rounded-lg bg-black border transition-all duration-200 flex items-center justify-center ${
+          isDragging ? "border-teal-400 ring-2 ring-teal-400/50" : "border-zinc-800"
+        }`}
+      >
+        {/* Drag & Drop Visual Overlay */}
+        {isDragging && (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-zinc-950/90 backdrop-blur-sm border-2 border-dashed border-teal-400 rounded-lg p-6 text-center animate-in fade-in zoom-in-95 pointer-events-none">
+            <div className="w-14 h-14 rounded-full bg-teal-950/80 border border-teal-500/50 flex items-center justify-center text-teal-300 mb-2.5 animate-bounce shadow-[0_0_20px_rgba(20,184,166,0.3)]">
+              <Upload className="w-7 h-7" />
+            </div>
+            <h4 className="text-sm font-bold text-teal-300">Drop your exercise video here</h4>
+            <p className="text-xs text-zinc-400 mt-1">MP4, WebM, or MOV up to 50MB</p>
+          </div>
+        )}
+
         {mode === "recording" || mode === "requesting" ? (
           <>
             <video
@@ -252,101 +346,120 @@ export function VideoRecorder({
               <span>REC {recordTime}s / {maxSeconds}s</span>
             </div>
           </>
-        ) : previewUrl ? (
+        ) : hasVideo ? (
           <video
             ref={videoRecordedRef}
-            src={previewUrl}
+            src={currentVideoSrc}
             controls
             playsInline
             className="w-full h-full object-contain"
           />
-        ) : existingVideoPath ? (
-          <div className="flex flex-col items-center justify-center p-6 text-center text-zinc-400">
-            <CheckCircle2 className="w-10 h-10 text-teal-400 mb-2" />
-            <p className="text-sm font-medium text-zinc-200">Video saved for this step</p>
-            <p className="text-xs text-zinc-500 mt-1">You can replace or retake this recording below</p>
-          </div>
         ) : (
-          <div className="flex flex-col items-center justify-center p-6 text-center text-zinc-500">
-            <Video className="w-10 h-10 text-zinc-600 mb-2" />
-            <p className="text-sm text-zinc-400">Ready to record activity video</p>
-            <p className="text-xs text-zinc-500 mt-1">
-              Position your camera to show your tabletop movements clearly.
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="flex flex-col items-center justify-center p-6 text-center text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors w-full h-full group"
+          >
+            <div className="w-12 h-12 rounded-full bg-zinc-900/90 border border-zinc-800 group-hover:border-teal-500/50 group-hover:bg-zinc-800 text-zinc-400 group-hover:text-teal-400 flex items-center justify-center mb-2.5 transition-all shadow-sm">
+              <Upload className="w-5 h-5 transition-transform group-hover:-translate-y-0.5" />
+            </div>
+            <p className="text-xs sm:text-sm font-semibold text-zinc-200 group-hover:text-teal-300 transition-colors">
+              Drag &amp; drop video here, or <span className="text-teal-400 underline underline-offset-4">browse file</span>
+            </p>
+            <p className="text-[11px] text-zinc-500 mt-1 max-w-xs">
+              MP4 or WebM (up to {maxSeconds}s) • Or click &ldquo;Start Recording&rdquo; below
             </p>
           </div>
         )}
       </div>
 
-      {/* Action Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-        {mode === "idle" && (
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button
-              type="button"
-              onClick={startCamera}
-              className="flex-1 sm:flex-none gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold"
-            >
-              <Video className="w-4 h-4" />
-              Start Recording
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1 sm:flex-none gap-2 text-zinc-300"
-            >
-              <Upload className="w-4 h-4" />
-              Upload Video
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="video/*"
-              className="hidden"
-              onChange={handleFileUpload}
-            />
-          </div>
-        )}
-
+      {/* Action Controls - Single Row Alignment */}
+      <div className="pt-1">
         {mode === "recording" && (
           <Button
             type="button"
             variant="danger"
             onClick={stopRecording}
-            className="w-full gap-2 font-semibold"
+            className="w-full gap-2 font-semibold text-xs whitespace-nowrap"
           >
             <Square className="w-4 h-4 fill-current" />
             Stop Recording ({recordTime}s)
           </Button>
         )}
 
-        {mode === "recorded" && (
-          <div className="flex items-center justify-between w-full">
-            <span className="text-xs text-teal-400 flex items-center gap-1.5 font-medium">
-              <CheckCircle2 className="w-4 h-4" /> Recording ready
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleRetake}
-                className="gap-1.5 text-xs text-zinc-300"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Retake
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                className="gap-1.5 text-xs text-zinc-300"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                Replace with File
-              </Button>
-            </div>
+        {mode === "requesting" && (
+          <div className="flex flex-row items-center gap-2 text-xs text-teal-400 py-2">
+            <div className="w-3.5 h-3.5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin shrink-0" />
+            <span>Initializing camera...</span>
+          </div>
+        )}
+
+        {mode !== "recording" && mode !== "requesting" && (
+          <>
+            {hasVideo ? (
+              <div className="flex flex-row items-center justify-between gap-3 w-full">
+                <div className="flex flex-row items-center gap-1.5 text-xs font-medium whitespace-nowrap">
+                  {isUploading ? (
+                    <span className="text-amber-400 flex items-center gap-1.5">
+                      <div className="w-3.5 h-3.5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                      Uploading to cloud...
+                    </span>
+                  ) : (
+                    <span className="text-teal-400 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4" />
+                      {previewUrl ? "Recording captured" : "Video uploaded to cloud"}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-row items-center gap-2 whitespace-nowrap">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isUploading}
+                    onClick={handleRetake}
+                    className="gap-1.5 text-xs text-zinc-300 hover:text-red-400 hover:border-red-800/80 whitespace-nowrap"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Reset & Retake
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isUploading}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="gap-1.5 text-xs text-zinc-300 whitespace-nowrap"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    Replace with File
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-row items-center gap-2 w-full whitespace-nowrap">
+                <Button
+                  type="button"
+                  onClick={startCamera}
+                  disabled={isUploading}
+                  className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold text-xs whitespace-nowrap"
+                >
+                  <Video className="w-4 h-4" />
+                  Start Recording
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="gap-2 text-zinc-300 text-xs whitespace-nowrap"
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload Video
+                </Button>
+              </div>
+            )}
+
             <input
               ref={fileInputRef}
               type="file"
@@ -354,7 +467,7 @@ export function VideoRecorder({
               className="hidden"
               onChange={handleFileUpload}
             />
-          </div>
+          </>
         )}
       </div>
     </div>

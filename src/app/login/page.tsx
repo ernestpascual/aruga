@@ -15,7 +15,6 @@ import {
   ArrowRight,
   Shield,
   ArrowLeft,
-  Sparkles,
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
@@ -180,49 +179,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickFill = (
-    targetRole: UserRole,
-    category?: ClientCategory,
-    presetEmail?: string,
-    presetName?: string
-  ) => {
-    setRole(targetRole);
-    if (category) setClientCategory(category);
-    setEmail(presetEmail || (targetRole === "therapist" ? "therapist@aruga.local" : `${category || "adult"}.client@aruga.local`));
-    setPassword("ArugaSecure2026!");
-    setName(presetName || (targetRole === "therapist" ? "Dr. Elena Ramos, OTR/L" : category === "pedia" ? "Leo Chen" : category === "adolescent" ? "Maya Patel" : category === "old_people" ? "Arthur Pendelton" : "Marcus Vance"));
-  };
-
-  const handleDirectBypass = async (
-    targetRole: UserRole,
-    category?: ClientCategory,
-    presetEmail?: string
-  ) => {
-    setLoading(true);
-    setErrorMessage(null);
-    const bypassEmail =
-      presetEmail ||
-      (targetRole === "therapist"
-        ? "therapist@aruga.local"
-        : `${category || "adult"}.client@aruga.local`);
-
-    try {
-      const res = await signIn(bypassEmail, "ArugaSecure2026!");
-      if (res.error) {
-        setErrorMessage(res.error);
-        setLoading(false);
-        return;
-      }
-      if (targetRole === "therapist") {
-        router.push("/therapist/dashboard");
-      } else {
-        router.push("/client/dashboard");
-      }
-    } catch {
-      setLoading(false);
-    }
-  };
-
   if (user) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-zinc-400 space-y-4">
@@ -276,7 +232,7 @@ export default function LoginPage() {
             </h1>
             <p className="text-xs text-zinc-400 max-w-md">
               {mode === "signin"
-                ? "Secure, clinician-directed home rehabilitation platform powered by Supabase."
+                ? "Secure, clinician-directed home rehabilitation platform."
                 : mode === "register"
                 ? "Register a new clinical therapist or client profile to begin."
                 : mode === "forgot"
@@ -423,7 +379,7 @@ export default function LoginPage() {
                           <User className="w-4 h-4 text-teal-400 shrink-0" />
                           <div>
                             <div className="text-xs font-semibold text-zinc-100">Client / Patient</div>
-                            <div className="text-[10px] text-zinc-400">Home Routine Practice</div>
+                            <div className="text-[10px] text-zinc-400">Home Program Practice</div>
                           </div>
                         </button>
                       </div>
@@ -456,15 +412,15 @@ export default function LoginPage() {
 
                           <button
                             type="button"
-                            onClick={() => setClientCategory("old_people")}
+                            onClick={() => setClientCategory("geriatric")}
                             className={`p-2.5 rounded-lg border text-center transition-all flex flex-col items-center gap-1 ${
-                              clientCategory === "old_people"
+                              clientCategory === "geriatric" || clientCategory === "old_people"
                                 ? "bg-amber-950/50 border-amber-500 text-amber-200"
                                 : "bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:border-zinc-700"
                             }`}
                           >
                             <HeartPulse className="w-4 h-4 text-amber-400" />
-                            <span className="text-[11px] font-semibold text-zinc-200">Old People</span>
+                            <span className="text-[11px] font-semibold text-zinc-200">Geriatrics</span>
                             <span className="text-[9px] text-zinc-500">55+ Mobility/Daily</span>
                           </button>
 
@@ -613,90 +569,6 @@ export default function LoginPage() {
                   : "Update Password & Continue"}
               </Button>
             </form>
-
-            {/* Instant Demo Bypass & Testing */}
-            <div className="pt-4 border-t border-zinc-800/80 space-y-3">
-              <div>
-                <div className="text-[11px] font-semibold text-teal-400 mb-1.5 flex items-center justify-between">
-                  <span>⚡ Instant Demo Bypass (Full Data):</span>
-                  <span className="text-[10px] text-zinc-500">1-click login</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleDirectBypass("therapist", undefined, "therapist@aruga.local")}
-                    className="p-2 rounded-xl bg-teal-950/40 border border-teal-500/40 text-xs font-semibold text-teal-300 hover:bg-teal-900/60 hover:border-teal-400 transition-all text-center"
-                  >
-                    Bypass as Therapist
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDirectBypass("client", "adult", "adult.marcus@aruga.local")}
-                    className="p-2 rounded-xl bg-zinc-900 border border-zinc-700/80 text-xs font-semibold text-zinc-200 hover:border-teal-500/50 hover:text-teal-300 transition-all text-center"
-                  >
-                    Bypass as Marcus
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDirectBypass("client", "old_people", "elderly.arthur@aruga.local")}
-                    className="p-2 rounded-xl bg-amber-950/40 border border-amber-500/40 text-xs font-semibold text-amber-300 hover:bg-amber-900/60 hover:border-amber-400 transition-all text-center"
-                  >
-                    Bypass as Arthur (55+)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDirectBypass("client", "pedia", "pedia.leo@aruga.local")}
-                    className="p-2 rounded-xl bg-sky-950/40 border border-sky-500/40 text-xs font-semibold text-sky-300 hover:bg-sky-900/60 hover:border-sky-400 transition-all text-center"
-                  >
-                    Bypass as Leo
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <div className="text-[11px] font-semibold text-zinc-400 mb-1.5 flex items-center justify-between">
-                  <span>Pre-fill login form:</span>
-                  <span className="text-[10px] text-zinc-500">Manual review</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill("therapist", undefined, "therapist@aruga.local", "Dr. Elena Ramos, OTR/L")}
-                    className="px-2 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[10px] font-medium text-zinc-300 hover:border-teal-500/50 hover:text-teal-300 transition-colors"
-                  >
-                    Therapist
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill("client", "adult", "adult.marcus@aruga.local", "Marcus Vance")}
-                    className="px-2 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[10px] font-medium text-zinc-300 hover:border-teal-500/50 hover:text-teal-300 transition-colors"
-                  >
-                    Adult (18-54)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill("client", "old_people", "elderly.arthur@aruga.local", "Arthur Pendelton")}
-                    className="px-2 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[10px] font-medium text-zinc-300 hover:border-amber-500/50 hover:text-amber-300 transition-colors"
-                  >
-                    Old People (55+)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill("client", "adolescent", "teen.maya@aruga.local", "Maya Patel")}
-                    className="px-2 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[10px] font-medium text-zinc-300 hover:border-teal-500/50 hover:text-teal-300 transition-colors"
-                  >
-                    Adolescent
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill("client", "pedia", "pedia.leo@aruga.local", "Leo Chen")}
-                    className="px-2 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[10px] font-medium text-zinc-300 hover:border-teal-500/50 hover:text-teal-300 transition-colors"
-                  >
-                    Pediatric
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </main>

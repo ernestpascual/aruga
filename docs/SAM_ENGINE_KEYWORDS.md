@@ -8,7 +8,7 @@ This guide documents the **lifespan keyword engines** tailored for the four dist
 1. **Pediatric (`pedia`)**: Ages 1–11
 2. **Adolescent (`adolescent`)**: Ages 12–17
 3. **Adult (`adult`)**: Ages 18–54
-4. **Old People (`old_people`)**: Ages 55 and Above
+4. **Geriatrics (`geriatric` / `old_people`)**: Ages 55 and Above
 
 Each engine provides **exactly 100 physical noun-phrase keywords** (totaling 400 unique validated targets) engineered to capture visual artifacts, assistive devices, anatomical landmarks, and therapy tools during rehabilitation routines.
 
@@ -23,7 +23,7 @@ Aruga segments clinical caseloads across the entire human developmental continuu
 | **Pediatric** | **1 – 11 years** | Play-based milestones, fine-motor grasp progression, sensory modulation, oral motor desensitization, and bilateral coordination. | High (Caregiver co-runner assisting exercises and video capture). |
 | **Adolescent** | **12 – 17 years** | School workstation ergonomics, handwriting endurance, sports injury reconditioning, executive dysfunction pacing, and fluency. | Moderate (Parent notification with independent routine execution). |
 | **Adult** | **18 – 54 years** | Post-stroke hemiparesis recovery, traumatic brain injury (TBI), carpal tunnel syndrome, joint preservation, workplace RSI, and aphasia. | Independent / Peer support. |
-| **Old People** | **55+ years** | Fall prevention, joint mobility with osteoarthritis, total joint arthroplasty precautions, Parkinsonian tremor damping, presbyphagia, and ADL independence. | Independent or Family / Home-health caregiver support. |
+| **Geriatrics** | **55+ years** | Fall prevention, joint mobility with osteoarthritis, total joint arthroplasty precautions, Parkinsonian tremor damping, presbyphagia, and ADL independence. | Independent or Family / Home-health caregiver support. |
 
 ---
 
@@ -35,19 +35,19 @@ Every payload encompasses visual indicators for the core conditions treated acro
 - **Pediatric**: Sensory Processing Disorder (SPD), Autism Spectrum Disorder (ASD), Cerebral Palsy (CP), Developmental Coordination Disorder (Dyspraxia), Down Syndrome, and bilateral coordination delays.
 - **Adolescent**: Dysgraphia, executive dysfunction (ADHD), Hypermobility Spectrum Disorder (EDS), post-concussion visual fatigue, and thumb/wrist repetitive strain.
 - **Adult**: Cerebrovascular accident (CVA hemiparesis), Traumatic Brain Injury (TBI), carpal tunnel syndrome, rotator cuff tendinopathy, and spinal cord injuries.
-- **Old People (55+)**: Basal thumb CMC osteoarthritis, rheumatoid joint deformities, post-stroke spasticity/neglect, Parkinson's disease, and mild cognitive decline.
+- **Geriatrics (55+)**: Basal thumb CMC osteoarthritis, rheumatoid joint deformities, post-stroke spasticity/neglect, Parkinson's disease, and mild cognitive decline.
 
 ### B. Physical Therapy (PT)
 - **Pediatric**: Congenital muscular torticollis, idiopathic toe walking, clubfoot, spina bifida, muscular dystrophy, and hypotonia.
 - **Adolescent**: Adolescent idiopathic scoliosis, ACL reconstruction rehab, Osgood-Schlatter disease, inversion ankle sprains, and patellofemoral tracking syndrome.
 - **Adult**: Lumbar radiculopathy/sciatica, rotator cuff repairs, plantar fasciitis, cervical disc herniation, and athletic knee reconditioning.
-- **Old People (55+)**: High fall risk, Parkinsonian freezing of gait, total hip arthroplasty (posterior precautions), total knee replacement (TKA), and spinal stenosis.
+- **Geriatrics (55+)**: High fall risk, Parkinsonian freezing of gait, total hip arthroplasty (posterior precautions), total knee replacement (TKA), and spinal stenosis.
 
 ### C. Speech-Language Pathology (SLP / Speech Therapy)
 - **Pediatric**: Pediatric feeding disorder / dysphagia, Childhood Apraxia of Speech (CAS), phonological articulation disorders, and non-verbal AAC communication.
 - **Adolescent**: Stuttering / fluency pacing, vocal cord nodules / voice projection strain (sports/choir), cognitive-communication post-concussion, and advanced AAC.
 - **Adult**: Post-stroke aphasia (Broca's / Wernicke's), motor speech dysarthria, adult neurogenic dysphagia, and vocal hyperfunction.
-- **Old People (55+)**: Presbyphagia (age-related swallowing changes), thickened liquid consistency monitoring, Parkinsonian hypophonia (LSVT Loud voice elevation), and denture-related speech articulation changes.
+- **Geriatrics (55+)**: Presbyphagia (age-related swallowing changes), thickened liquid consistency monitoring, Parkinsonian hypophonia (LSVT Loud voice elevation), and denture-related speech articulation changes.
 
 ---
 
@@ -430,7 +430,7 @@ universal cuff, adaptive spoon, rocker knife, scooped plate, plate guard, two ha
 
 ---
 
-### 6.4 Old People Engine (`old_people`) — Ages 55 and Above (100 Targets)
+### 6.4 Geriatrics Engine (`geriatric` / `old_people`) — Ages 55 and Above (100 Targets)
 
 ```
 four wheeled rollator, wheeled walker, walker tennis ball, quad cane, single point cane, gait belt, transfer bench, shower chair, bathroom grab bar, raised toilet seat, toilet safety frame, bed assist rail, transfer slide board, reacher grabber tool, sock aid device, long handled shoehorn, dressing stick, button hook tool, zipper loop, elastic shoelace, velcro strap shoe, non skid slipper, built up handle spoon, weighted fork, scoop dish, plate guard ring, two handled cup with lid, weighted mug, straw with valve, nectar thick liquid cup, thickened water glass, dysphagia cup, pureed meal plate, oral swab, denture cleaning cup, denture brush, long handled bath sponge, long handled hairbrush, faucet knob turner, weekly pill organizer, automated pill dispenser, pill blister pack, magnifying glass with light, large print book, reading spectacles, eyeglass cord, hearing aid case, hearing aid battery, medical alert pendant, emergency call button, telephone with large buttons, jar opener gripper, bottle twist opener, can opener with knob, dycem non slip coaster, non slip kitchen mat, lightweight plastic kettle, reach extender pole, shopping cart with wheels, grocery tote bag, key turner aid, door handle lever, theraband exercise loop, light ankle weight, seated pedal exerciser, soft squeeze ball, hand therapy putty, cmc thumb arthritis brace, resting hand orthosis, neoprene knee support, hip abduction pillow, lumbar roll cushion, orthopedic knee spacer pillow, wedge positioning pillow, bedside commode bucket, voice decibel sound meter, speech biofeedback mirror, respiratory incentive spirometer, lsvt voice prompt card, large print playing card, playing card holder stand, jigsaw puzzle with large pieces, bingo dauber marker, domino tile, crochet hook with ergonomic grip, thick knitting needle, yarn ball, watering can with double handle, gardening kneeling pad, prayer bead strand, photo album, hand, tremor hand, finger, wrist, shoulder, knee, foot, lip, throat
@@ -554,9 +554,9 @@ import {
   validateSamKeywords,
 } from "@/lib/meta/sam-engines";
 
-// 1. Retrieve the entire metadata object for Old People (55+)
-const oldPeopleEngine = getSamEngineByCategory("old_people");
-console.log(`Loaded ${oldPeopleEngine.targetCount} keywords for ${oldPeopleEngine.name}`);
+// 1. Retrieve the entire metadata object for Geriatrics (55+)
+const geriatricEngine = getSamEngineByCategory("geriatric");
+console.log(`Loaded ${geriatricEngine.targetCount} keywords for ${geriatricEngine.name}`);
 
 // 2. Obtain the comma-separated payload ready for SAM inference
 const pediaPayload = getSamEnginePayload("pedia");
@@ -597,14 +597,14 @@ The test bench at `/sam-test` provides 1-click loading buttons for all 7 engines
   - **👶 Pediatric (1–11)**: Loads 100 pediatric keywords (Milestones, Sensory & Play).
   - **🎒 Adolescent (12–17)**: Loads 100 adolescent keywords (School & Sports Agility).
   - **💼 Adult (18–54)**: Loads 100 adult keywords (Vocational & Stroke Rehab).
-  - **🧓 Old People (55+)**: Loads 100 geriatric independence keywords (Geriatrics & Fall Prevention).
+  - **🧓 Geriatrics (55+)**: Loads 100 geriatric independence keywords (Geriatrics & Fall Prevention).
 - **Environmental & Contextual Engines**:
   - **🏠 Everyday Objects at Home**: Loads 100 domestic ADL, IADL, and safety targets.
   - **🏫 Everyday Objects at School**: Loads 100 classroom, playground, and academic targets.
   - **🍳 Kitchen Items**: Loads 100 culinary prep, adaptive eating, and dysphagia hydration targets.
 - **Processing Time & Session Reloading**:
   - Automatically measures and records processing latency (`latency_ms` and `processingTimeMs`).
-  - Stores all test runs in Supabase `sam_test_results` and in an in-memory session ring buffer.
+  - Stores all test runs in database `sam_test_results` and in an in-memory session ring buffer.
   - Displays a **Previous Processed Sessions** panel with a **Reload Sessions** button to restore past tracking data, video bounding boxes, and SVG masks.
 
 ---

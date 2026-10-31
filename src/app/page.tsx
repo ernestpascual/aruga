@@ -14,16 +14,22 @@ import {
   Lock,
   MessageSquare,
   Activity,
-  AlertTriangle,
   ChevronDown,
   Baby,
   User,
   HeartHandshake,
+  ShieldCheck,
+  FileText,
+  Stethoscope,
+  HeartPulse,
+  GraduationCap,
+  Clock,
+  Video,
+  FileCheck2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Grainient } from "@/components/ui/grainient";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useTheme } from "@/components/theme-provider";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { siteConfig } from "@/config/site";
@@ -150,20 +156,24 @@ export default function LandingPage() {
               href="#lifespan"
               className="relative py-1 hover:text-zinc-100 transition-colors duration-200 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-teal-400 after:transition-all after:duration-300"
             >
-              Pediatric & Adult
+              Lifespan Care
+            </a>
+            <a
+              href="#soap-notes"
+              className="relative py-1 hover:text-zinc-100 transition-colors duration-200 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-teal-400 after:transition-all after:duration-300"
+            >
+              Clinical Notes (SOAP)
             </a>
             <a
               href="#safety"
               className="relative py-1 hover:text-zinc-100 transition-colors duration-200 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-teal-400 after:transition-all after:duration-300"
             >
-              Safety & AI
+              HIPAA & Safety
             </a>
           </nav>
 
-          {/* Action CTAs & Theme Toggle */}
+          {/* Action CTAs */}
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <ThemeToggle />
-
             {user ? (
               <Link href={dashboardHref}>
                 <Button
@@ -181,7 +191,7 @@ export default function LandingPage() {
                   size="sm"
                   className="text-xs border-zinc-800 text-zinc-300 hover:text-zinc-100 bg-zinc-900/60 hover:bg-zinc-800 backdrop-blur-sm"
                 >
-                  Sign In
+                  Sign In / Register
                 </Button>
               </Link>
             )}
@@ -265,7 +275,7 @@ export default function LandingPage() {
             transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
             className="text-base sm:text-lg text-zinc-300 max-w-2xl leading-relaxed"
           >
-            Prescribe custom routines, record practice clips, and verify progress with computer vision—designed for both pediatric early development and adult neurological recovery, always 100% clinician-reviewed.
+            Prescribe custom home programs, record practice clips, and verify kinematic progress with computer vision—supporting Pediatric early intervention through Geriatric dynamic balance and fall prevention, 100% clinician-reviewed with full clinical progress documentation (SOAP).
           </motion.p>
 
           {/* CTAs */}
@@ -277,19 +287,10 @@ export default function LandingPage() {
           >
             <Link href={user ? dashboardHref : "/login"}>
               <Button className="h-12 px-8 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-base shadow-lg shadow-teal-950/60 gap-2 group">
-                <span>{user ? "Go to Dashboard" : "Sign In to Aruga"}</span>
+                <span>{user ? "Go to Dashboard" : "Start Now"}</span>
                 <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
               </Button>
             </Link>
-
-            <a href="#disciplines">
-              <Button
-                variant="outline"
-                className="h-12 px-6 border-zinc-800 bg-zinc-950/70 text-zinc-200 hover:text-zinc-50 hover:border-zinc-700 text-base backdrop-blur-sm"
-              >
-                See How It Works
-              </Button>
-            </a>
           </motion.div>
         </motion.div>
 
@@ -339,7 +340,7 @@ export default function LandingPage() {
                 <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
                 <span>Human Verified</span>
               </div>
-              <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">Zero unchecked AI decisions</p>
+              <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">Submission lockout & clinician review</p>
             </motion.div>
 
             <motion.div
@@ -349,9 +350,9 @@ export default function LandingPage() {
             >
               <div className="flex items-center gap-2 text-zinc-200 font-semibold text-xs sm:text-sm">
                 <Layers className="w-4 h-4 text-teal-400 shrink-0" />
-                <span>SAM 3.1 Tracking</span>
+                <span>SAM 3.1 & Vision AI</span>
               </div>
-              <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">Precise motion segmentation</p>
+              <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">Kinematic tabletop segmentation</p>
             </motion.div>
 
             <motion.div
@@ -360,10 +361,10 @@ export default function LandingPage() {
               className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-teal-500/50 text-left transition-all cursor-default shadow-sm backdrop-blur-md"
             >
               <div className="flex items-center gap-2 text-zinc-200 font-semibold text-xs sm:text-sm">
-                <Sparkles className="w-4 h-4 text-teal-400 shrink-0" />
-                <span>Muse Spark 1.3</span>
+                <Stethoscope className="w-4 h-4 text-teal-400 shrink-0" />
+                <span>Clinical Notes (SOAP)</span>
               </div>
-              <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">Fast routine drafting</p>
+              <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">Structured documentation, assessments & recordings</p>
             </motion.div>
 
             <motion.div
@@ -372,10 +373,10 @@ export default function LandingPage() {
               className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-teal-500/50 text-left transition-all cursor-default shadow-sm backdrop-blur-md"
             >
               <div className="flex items-center gap-2 text-zinc-200 font-semibold text-xs sm:text-sm">
-                <Lock className="w-4 h-4 text-teal-400 shrink-0" />
-                <span>Private Storage</span>
+                <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0" />
+                <span>HIPAA Compliant</span>
               </div>
-              <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">Direct encrypted video</p>
+              <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">45 CFR § 164.312 safeguards & logs</p>
             </motion.div>
           </motion.div>
 
@@ -526,7 +527,7 @@ export default function LandingPage() {
                   Practice & Record
                 </h4>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Patients complete routines and record up to 30-second clips direct to private storage.
+                  Patients complete home programs and record up to 30-second clips direct to private storage.
                 </p>
               </motion.div>
 
@@ -552,7 +553,7 @@ export default function LandingPage() {
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* SECTION 2.5: LIFESPAN CARE: PEDIATRIC & ADULT WORKFLOWS             */}
+      {/* SECTION 2.5: LIFESPAN CARE: 4 CLINICAL DEMOGRAPHICS               */}
       {/* ------------------------------------------------------------------ */}
       <section
         id="lifespan"
@@ -562,15 +563,15 @@ export default function LandingPage() {
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <Badge variant="teal" statusText="Rehabilitation Across the Lifespan" />
             <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-zinc-100">
-              Tailored for Both Pediatric & Adult Care.
+              Adapted for Every Milestone & Generation.
             </h2>
             <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-2xl mx-auto">
-              Whether helping a child master bilateral coordination through play or guiding an adult recovering hand function after a stroke—Aruga adapts to every clinical age and milestone.
+              From early childhood bilateral play to adolescent posture, adult neuro recovery, and geriatric fall prevention—Aruga standardizes home rehabilitation across all four lifespan stages.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Pediatric Card */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+            {/* 1. Pediatric Card */}
             <motion.div
               whileHover={{ y: -5 }}
               transition={{ type: "spring", stiffness: 350, damping: 25 }}
@@ -583,7 +584,7 @@ export default function LandingPage() {
                   <Baby className="w-6 h-6" />
                 </div>
                 <span className="px-3 py-1 rounded-full text-xs font-semibold bg-sky-950/80 border border-sky-500/40 text-sky-300">
-                  Pediatric (Ages 1–17)
+                  Pediatric (Ages 1–12)
                 </span>
               </div>
 
@@ -592,26 +593,22 @@ export default function LandingPage() {
                   Play-Based Developmental Therapy
                 </h3>
                 <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                  Engineered for pediatric occupational therapy, speech articulation development, and early intervention motor routines.
+                  Early intervention fine motor therapy, pincer grasp opposition, and speech articulation home routines.
                 </p>
               </div>
 
               <div className="space-y-3 pt-2 border-t border-zinc-800">
                 <div className="flex items-start gap-2.5 text-xs text-zinc-300">
                   <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
-                  <span><strong>Engaging Tabletop Play:</strong> Pegboards, modeling dough beads, block towers, and sticker peeling games.</span>
+                  <span><strong>Tabletop Play Activities:</strong> Pegboards, play dough beads, block towers, and twist-off jar games.</span>
                 </div>
                 <div className="flex items-start gap-2.5 text-xs text-zinc-300">
                   <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
-                  <span><strong>Caregiver Co-Participation:</strong> Parents comfortably record short clips without confusing medical interfaces.</span>
+                  <span><strong>Caregiver Co-Participation:</strong> Parents easily capture practice clips with stress-free recording guidance.</span>
                 </div>
                 <div className="flex items-start gap-2.5 text-xs text-zinc-300">
                   <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
-                  <span><strong>Non-Punitive Rest:</strong> Built-in skip handling lets children pause when overstimulated or fatigued.</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
-                  <span><strong>SAM 3.1 Toy Tracking:</strong> Vision models recognize soft blocks, toys, and pegs without invasive sensors.</span>
+                  <span><strong>Peabody (PDMS-2) Alignment:</strong> Direct clinical attachments for standardized fine motor developmental scoring.</span>
                 </div>
               </div>
 
@@ -619,13 +616,64 @@ export default function LandingPage() {
                 <Link href="/login">
                   <Button variant="outline" size="sm" className="w-full gap-2 text-xs border-sky-500/40 text-sky-300 hover:bg-sky-950/40">
                     <Baby className="w-3.5 h-3.5" />
-                    <span>Try Pediatric Demo Account (Leo, 6y)</span>
+                    <span>Explore Pediatric Home Programs</span>
                   </Button>
                 </Link>
               </div>
             </motion.div>
 
-            {/* Adult Card */}
+            {/* 2. Adolescent Card */}
+            <motion.div
+              whileHover={{ y: -5 }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              className="rounded-2xl border border-indigo-500/30 bg-zinc-900/80 p-6 sm:p-8 space-y-6 relative overflow-hidden shadow-lg group hover:border-indigo-500/60 transition-colors"
+            >
+              <div className="absolute top-0 right-0 w-36 h-36 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-xl bg-indigo-950/80 border border-indigo-500/40 text-indigo-400 flex items-center justify-center">
+                  <GraduationCap className="w-6 h-6" />
+                </div>
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-950/80 border border-indigo-500/40 text-indigo-300">
+                  Adolescent (Ages 13–17)
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-zinc-100 group-hover:text-indigo-300 transition-colors">
+                  Youth Coordination, Posture & Sports
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+                  Bilateral fine motor dexterity, athletic injury rehabilitation, posture re-education, and structured compliance.
+                </p>
+              </div>
+
+              <div className="space-y-3 pt-2 border-t border-zinc-800">
+                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
+                  <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                  <span><strong>Kinematic Mechanics:</strong> Vision tracking for forearm supination, joint elevation, and spine neutral alignment.</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
+                  <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                  <span><strong>Independent Logging:</strong> Youth-friendly mobile interface allows autonomous logging without parental friction.</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
+                  <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                  <span><strong>Non-Punitive Rest:</strong> Built-in skip logging protects recovering tendons from overuse fatigue.</span>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Link href="/login">
+                  <Button variant="outline" size="sm" className="w-full gap-2 text-xs border-indigo-500/40 text-indigo-300 hover:bg-indigo-950/40">
+                    <GraduationCap className="w-3.5 h-3.5" />
+                    <span>Explore Adolescent Home Programs</span>
+                  </Button>
+                </Link>
+              </div>
+            </motion.div>
+
+            {/* 3. Adult Card */}
             <motion.div
               whileHover={{ y: -5 }}
               transition={{ type: "spring", stiffness: 350, damping: 25 }}
@@ -638,7 +686,7 @@ export default function LandingPage() {
                   <User className="w-6 h-6" />
                 </div>
                 <span className="px-3 py-1 rounded-full text-xs font-semibold bg-teal-950/80 border border-teal-500/40 text-teal-300">
-                  Adult (Ages 18+)
+                  Adult (Ages 18–64)
                 </span>
               </div>
 
@@ -647,26 +695,22 @@ export default function LandingPage() {
                   Neurological & Orthopedic Recovery
                 </h3>
                 <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                  Tailored for adult post-stroke hemiparesis, traumatic brain injury recovery, and functional daily living independence.
+                  Post-stroke hemiparesis recovery, traumatic brain injury rehabilitation, and activities of daily living (ADL) independence.
                 </p>
               </div>
 
               <div className="space-y-3 pt-2 border-t border-zinc-800">
                 <div className="flex items-start gap-2.5 text-xs text-zinc-300">
                   <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
-                  <span><strong>Activities of Daily Living (ADL):</strong> Cup transfers, pinch-and-release, forearm supination, and utensil grasp.</span>
+                  <span><strong>Activities of Daily Living (ADL):</strong> Cup transfers, cylindrical grasp, wooden block stacking, and washcloth rotations.</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
+                  <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                  <span><strong>Standardized Neuromuscular Scales:</strong> Attached Fugl-Meyer UE & Box and Blocks score sheets directly in clinical reviews.</span>
                 </div>
                 <div className="flex items-start gap-2.5 text-xs text-zinc-300">
                   <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
                   <span><strong>Fatigue-Aware Pacing:</strong> Prevents harmful shoulder hiking compensation by honoring client fatigue logs.</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
-                  <span><strong>Objective Visual Overlays:</strong> SAM 3.1 video segmentation provides therapists with real-time motion bounds.</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
-                  <span><strong>Private 1-on-1 Messaging:</strong> Clinician threads with clickable routine chips for continuous supervision.</span>
                 </div>
               </div>
 
@@ -674,7 +718,58 @@ export default function LandingPage() {
                 <Link href="/login">
                   <Button variant="outline" size="sm" className="w-full gap-2 text-xs border-teal-500/40 text-teal-300 hover:bg-teal-950/40">
                     <User className="w-3.5 h-3.5" />
-                    <span>Try Adult Demo Account (Marcus, 58y)</span>
+                    <span>Explore Adult Home Programs</span>
+                  </Button>
+                </Link>
+              </div>
+            </motion.div>
+
+            {/* 4. Geriatrics Card */}
+            <motion.div
+              whileHover={{ y: -5 }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              className="rounded-2xl border border-amber-500/30 bg-zinc-900/80 p-6 sm:p-8 space-y-6 relative overflow-hidden shadow-lg group hover:border-amber-500/60 transition-colors"
+            >
+              <div className="absolute top-0 right-0 w-36 h-36 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-400 flex items-center justify-center">
+                  <HeartPulse className="w-6 h-6" />
+                </div>
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
+                  Geriatrics (Ages 65+)
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-zinc-100 group-hover:text-amber-300 transition-colors">
+                  Dynamic Balance & Fall Prevention
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+                  Lower extremity strength, functional reach, sit-to-stand power, and home safety routines to preserve aging in place.
+                </p>
+              </div>
+
+              <div className="space-y-3 pt-2 border-t border-zinc-800">
+                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <span><strong>Fall Risk Mitigation:</strong> Tandem stance exercises, counter-supported balance, and safe kitchen transfers.</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <span><strong>Standardized Mobility Metrics:</strong> Integrated Timed Up and Go (TUG) & Berg Balance Scale (BBS) tracking.</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-xs text-zinc-300">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <span><strong>High-Contrast Clinical UI:</strong> Optimized typography and clear instructions tailored for aging vision.</span>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Link href="/login">
+                  <Button variant="outline" size="sm" className="w-full gap-2 text-xs border-amber-500/40 text-amber-300 hover:bg-amber-950/40">
+                    <HeartPulse className="w-3.5 h-3.5" />
+                    <span>View Geriatric Balance Programs</span>
                   </Button>
                 </Link>
               </div>
@@ -684,18 +779,117 @@ export default function LandingPage() {
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* SECTION 3: CLINICAL SAFETY & AI                                    */}
+      {/* SECTION 2.7: CLINICAL SOAP NOTES & FEEDBACK PARITY                */}
+      {/* ------------------------------------------------------------------ */}
+      <section
+        id="soap-notes"
+        className="scroll-mt-24 py-20 md:py-28 border-b border-zinc-800/80 bg-zinc-950"
+      >
+        <div className="container mx-auto px-4 sm:px-6 max-w-7xl space-y-16">
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <Badge variant="teal" statusText="Clinical Documentation Parity" />
+            <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-zinc-100">
+              Structured Clinical Notes (SOAP) with Telehealth & Assessments.
+            </h2>
+            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-2xl mx-auto">
+              Home therapy reviews match the gold standard of live clinical documentation. Seamlessly incorporate standardized assessment documents, video recordings, and plain-English summaries.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* 4 SOAP Boxes Preview Card */}
+            <motion.div
+              whileHover={{ y: -4, borderColor: "rgba(20, 184, 166, 0.5)" }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 space-y-4"
+            >
+              <div className="flex items-center gap-2 text-teal-400">
+                <div className="w-8 h-8 rounded-lg bg-teal-950/80 border border-teal-500/40 flex items-center justify-center">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-bold text-zinc-100">Standardized Progress Notes (SOAP)</h3>
+              </div>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Separate clinical documentation into Subjective, Objective, Assessment, and Plan fields with auto-filled kinematic observations from vision models.
+              </p>
+              <div className="grid grid-cols-2 gap-2 text-[11px] font-mono pt-2 border-t border-zinc-800">
+                <span className="p-2 rounded bg-sky-950/30 border border-sky-500/20 text-sky-300">S: Subjective</span>
+                <span className="p-2 rounded bg-teal-950/30 border border-teal-500/20 text-teal-300">O: Objective</span>
+                <span className="p-2 rounded bg-amber-950/30 border border-amber-500/20 text-amber-300">A: Assessment</span>
+                <span className="p-2 rounded bg-violet-950/30 border border-violet-500/20 text-violet-300">P: Plan</span>
+              </div>
+            </motion.div>
+
+            {/* Assessment Links & Telehealth Recordings */}
+            <motion.div
+              whileHover={{ y: -4, borderColor: "rgba(20, 184, 166, 0.5)" }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 space-y-4"
+            >
+              <div className="flex items-center gap-2 text-sky-400">
+                <div className="w-8 h-8 rounded-lg bg-sky-950/80 border border-sky-500/40 flex items-center justify-center">
+                  <Video className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-bold text-zinc-100">Telehealth & Standardized Tests</h3>
+              </div>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Attach Google Meet / Zoom recordings for asynchronous patient playback, and link validated assessment sheets (PDMS-2, BBS, Fugl-Meyer, TUG).
+              </p>
+              <div className="space-y-2 pt-2 border-t border-zinc-800 text-xs text-zinc-300">
+                <div className="flex items-center gap-2 text-teal-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+                  <span>One-click session video playback</span>
+                </div>
+                <div className="flex items-center gap-2 text-teal-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Attach verified standardized reports</span>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Submission Lock & Clinician Editing */}
+            <motion.div
+              whileHover={{ y: -4, borderColor: "rgba(20, 184, 166, 0.5)" }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 space-y-4"
+            >
+              <div className="flex items-center gap-2 text-amber-400">
+                <div className="w-8 h-8 rounded-lg bg-amber-950/80 border border-amber-500/40 flex items-center justify-center">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-bold text-zinc-100">Record Lock & Feedback Edits</h3>
+              </div>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Once feedback is published, the client submission locks to guarantee medical record integrity. Clinicians can click <strong>&quot;Check and Edit Feedback&quot;</strong> to revise notes at any time.
+              </p>
+              <div className="space-y-2 pt-2 border-t border-zinc-800 text-xs text-zinc-300">
+                <div className="flex items-center gap-2 text-amber-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Client locked out after review</span>
+                </div>
+                <div className="flex items-center gap-2 text-teal-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Clinician feedback updates anytime</span>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* SECTION 3: CLINICAL SAFETY & HIPAA SAFEGUARDS                      */}
       {/* ------------------------------------------------------------------ */}
       <section id="safety" className="scroll-mt-24 py-20 md:py-28 border-b border-zinc-800/80 bg-zinc-950">
         <div className="container mx-auto px-4 sm:px-6 max-w-7xl space-y-16">
           {/* Header */}
           <div className="text-center max-w-2xl mx-auto space-y-3">
-            <Badge variant="amber" statusText="Safety First" />
+            <Badge variant="teal" statusText="Security & Compliance" />
             <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-zinc-100">
-              AI assists. Clinicians decide.
+              HIPAA Compliant. Clinician-Supervised.
             </h2>
             <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              Aruga provides visual tracking and drafting support—never automated medical diagnoses or unsupervised scoring.
+              Engineered from the ground up to satisfy the HIPAA Security Rule (45 CFR § 164.312) and Privacy Rule while providing state-of-the-art visual assistance.
             </p>
           </div>
 
@@ -707,13 +901,13 @@ export default function LandingPage() {
               className="group rounded-xl border border-zinc-800 bg-zinc-900/70 p-6 space-y-2.5 transition-colors cursor-default"
             >
               <div className="flex items-center gap-2.5 text-zinc-200">
-                <Shield className="w-5 h-5 text-teal-400 group-hover:scale-110 transition-transform duration-200" />
+                <Clock className="w-5 h-5 text-teal-400 group-hover:scale-110 transition-transform duration-200" />
                 <h3 className="text-sm font-bold group-hover:text-teal-200 transition-colors">
-                  No Automated Diagnosis
+                  15-Minute Auto-Logoff Protection
                 </h3>
               </div>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Zero autonomous clinical decisions or invented movement grades. Every observation must be confirmed by the therapist.
+                45 CFR § 164.312(a)(2)(iii) compliant: Inactive clinical sessions trigger a 60-second warning countdown and automatically terminate to protect unattended patient records.
               </p>
             </motion.div>
 
@@ -723,13 +917,13 @@ export default function LandingPage() {
               className="group rounded-xl border border-zinc-800 bg-zinc-900/70 p-6 space-y-2.5 transition-colors cursor-default"
             >
               <div className="flex items-center gap-2.5 text-zinc-200">
-                <Layers className="w-5 h-5 text-teal-400 group-hover:scale-110 transition-transform duration-200" />
+                <ShieldCheck className="w-5 h-5 text-teal-400 group-hover:scale-110 transition-transform duration-200" />
                 <h3 className="text-sm font-bold group-hover:text-teal-200 transition-colors">
-                  Official SAM 3.1 Parser
+                  Tamper-Evident Audit Logging
                 </h3>
               </div>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Streams normalized bounding boxes and masks directly through the official <code className="text-teal-300 font-mono text-[11px]">@meta-sam/parser</code> library.
+                45 CFR § 164.312(b) compliant: Centralized audit records log all ePHI viewing, video access, and feedback publication events with timestamps and actor credentials.
               </p>
             </motion.div>
 
@@ -741,11 +935,11 @@ export default function LandingPage() {
               <div className="flex items-center gap-2.5 text-zinc-200">
                 <Lock className="w-5 h-5 text-teal-400 group-hover:scale-110 transition-transform duration-200" />
                 <h3 className="text-sm font-bold group-hover:text-teal-200 transition-colors">
-                  Private Video Storage
+                  Safe Harbor AI De-identification
                 </h3>
               </div>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Recordings upload directly to private, encrypted storage buckets with tamper-proof submission freezes.
+                45 CFR § 164.514(b) compliant: Patient names and direct ePHI identifiers are automatically redacted before clinical data is summarized by AI models.
               </p>
             </motion.div>
 
@@ -755,13 +949,13 @@ export default function LandingPage() {
               className="group rounded-xl border border-zinc-800 bg-zinc-900/70 p-6 space-y-2.5 transition-colors cursor-default"
             >
               <div className="flex items-center gap-2.5 text-zinc-200">
-                <MessageSquare className="w-5 h-5 text-teal-400 group-hover:scale-110 transition-transform duration-200" />
+                <Layers className="w-5 h-5 text-teal-400 group-hover:scale-110 transition-transform duration-200" />
                 <h3 className="text-sm font-bold group-hover:text-teal-200 transition-colors">
-                  Scoped 1-on-1 Messaging
+                  Private Storage & Row-Level Security
                 </h3>
               </div>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Direct therapist-client thread with safety banners and quick links to assigned routines.
+                Patient exercise videos stream through authenticated private buckets. Strict Row-Level Security ensures therapists only see their assigned caseload.
               </p>
             </motion.div>
           </div>
@@ -774,17 +968,17 @@ export default function LandingPage() {
           >
             <div className="max-w-xl mx-auto space-y-1.5">
               <h3 className="text-xl sm:text-2xl font-bold text-zinc-100">
-                Experience Aruga
+                Experience Aruga Across the Lifespan
               </h3>
               <p className="text-xs sm:text-sm text-zinc-400">
-                Try demo accounts for Dr. Elena Ramos (Therapist), Marcus Vance (Adult Client), or Leo Chen (Pediatric Client).
+                Clinician-directed home therapy for pediatric, adolescent, adult, and geriatric rehabilitation—fully hardened with HIPAA compliance.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
               <Link href={user ? dashboardHref : "/login"}>
                 <Button className="h-11 px-7 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-sm shadow-md gap-2 group">
-                  <span>{user ? "Go to Dashboard" : "Sign In to Aruga"}</span>
+                  <span>{user ? "Go to Dashboard" : "Start Now"}</span>
                   <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
                 </Button>
               </Link>
@@ -810,10 +1004,10 @@ export default function LandingPage() {
                 </span>
               </Link>
               <p className="text-xs text-zinc-400 max-w-sm leading-relaxed">
-                Clinician-directed home therapy for OT, SLP, and PT across pediatric and adult rehabilitation with verified visual AI assistance.
+                Clinician-directed home therapy for OT, SLP, and PT across pediatric, adolescent, adult, and geriatric rehabilitation with verified visual AI assistance and HIPAA compliance.
               </p>
               <div className="text-[11px] text-zinc-500">
-                Pediatric & Adult clinical demonstration prototype.
+                Pediatric to Geriatrics clinical rehabilitation platform.
               </div>
             </div>
 
@@ -869,7 +1063,7 @@ export default function LandingPage() {
                     href="/login"
                     className="inline-flex items-center gap-1 hover:text-teal-400 hover:translate-x-1 transition-all duration-200"
                   >
-                    Demo Walkthrough
+                    Clinical Platform Overview
                   </a>
                 </li>
                 <li>
@@ -884,14 +1078,8 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Emergency Disclaimer & Copyright */}
-          <div className="pt-6 border-t border-zinc-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500">
-            <p className="flex items-center gap-1.5 text-center sm:text-left">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-500/80 shrink-0" />
-              <span>
-                Not an emergency service. In an emergency, dial 911.
-              </span>
-            </p>
+          {/* Copyright */}
+          <div className="pt-6 border-t border-zinc-800/80 flex items-center justify-center text-xs text-zinc-500">
             <p className="shrink-0 font-mono text-[11px]">
               © 2026 {siteConfig.name} • All rights reserved.
             </p>

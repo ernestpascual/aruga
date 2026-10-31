@@ -1,6 +1,6 @@
 /**
  * Database Types for Aruga
- * Maps directly to PostgreSQL / Supabase Schema
+ * Maps directly to PostgreSQL Database Schema
  */
 
 export type UserRole = "therapist" | "client";
@@ -19,7 +19,7 @@ export type AiAnalysisStatus = "pending" | "processing" | "completed" | "failed"
 
 export type AiAnalysisKind = "spark_observation" | "sam_segmentation" | "full_review";
 
-export type ClientCategory = "adult" | "adolescent" | "pedia" | "old_people";
+export type ClientCategory = "adult" | "adolescent" | "pedia" | "geriatric" | "old_people";
 
 export interface Profile {
   id: string;
@@ -150,12 +150,15 @@ export interface HomeProgram {
   title: string;
   main_instructions: string;
   status: ProgramStatus;
+  scheduled_dates?: string[]; // Up to 10 dates specified by therapist (each date is one submission)
   assigned_at: string | null;
   created_at: string;
   updated_at: string;
   // Joined fields
   steps?: ProgramStep[];
   patient?: Patient;
+  submissions?: Submission[];
+  latest_submission?: Submission | null;
 }
 
 export interface StepSubmission {
@@ -174,7 +177,7 @@ export interface StepSubmission {
     bucket?: string;
     freeTierCompliant?: boolean;
     uploadedAt?: string;
-    uploadedToSupabaseStorage?: boolean;
+    uploadedToCloudStorage?: boolean;
   };
   client_comment: string | null;
   skipped: boolean;
@@ -192,6 +195,7 @@ export interface Submission {
   patient_id: string;
   client_id: string;
   state: SubmissionState;
+  scheduled_date?: string | null; // Date (YYYY-MM-DD) this submission is for
   consent_therapist: boolean;
   consent_meta_ai: boolean;
   submitted_at: string | null;
@@ -218,9 +222,11 @@ export interface SubmissionReview {
   submission_id: string;
   therapist_id: string;
   overall_feedback: string | null;
+  session_recording_url?: string | null;
   subjective?: string | null;
   objective?: string | null;
   assessment?: string | null;
+  assessment_links?: SoapNoteAssessmentLink[] | null;
   plan?: string | null;
   client_summary?: string | null;
   status: ReviewStatus;
@@ -230,21 +236,29 @@ export interface SubmissionReview {
   step_reviews?: StepReview[];
 }
 
+export interface SoapNoteAssessmentLink {
+  title: string;
+  url: string;
+}
+
 export interface SoapNote {
   id: string;
   patient_id: string;
   therapist_id: string;
   session_date: string;
   session_title: string;
+  session_recording_url?: string | null;
   subjective: string;
   objective: string;
   assessment: string;
+  assessment_links?: SoapNoteAssessmentLink[] | null;
   plan: string;
   client_summary: string;
   created_at: string;
   updated_at: string;
   // Joined
   therapist_profile?: Profile;
+  patient?: Patient;
 }
 
 export interface Message {

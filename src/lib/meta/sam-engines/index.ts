@@ -6,7 +6,7 @@
  * 1. Pediatric (1-11)
  * 2. Adolescent (12-17)
  * 3. Adult (18-54)
- * 4. Old People (55+)
+ * 4. Geriatrics (55+)
  *
  * Each engine:
  * - Contains EXACTLY 100 distinct physical noun-phrase keywords.
@@ -375,7 +375,7 @@ const ADULT_ITEMS: SamKeywordItem[] = [
 ];
 
 // -----------------------------------------------------------------------------
-// 4. OLD PEOPLE ENGINE (Ages 55 and Above)
+// 4. GERIATRICS ENGINE (Ages 55 and Above)
 // -----------------------------------------------------------------------------
 const OLD_PEOPLE_ITEMS: SamKeywordItem[] = [
   { keyword: "four wheeled rollator", discipline: "PT", otpfCategory: "Health Management", clinicalContext: "Community ambulation with seat and hand brakes" },
@@ -609,7 +609,7 @@ export const SAM_ADULT_ENGINE: SamEngineMetadata = buildEngine(
 
 export const SAM_OLD_PEOPLE_ENGINE: SamEngineMetadata = buildEngine(
   "old_people",
-  "Old People (55+) SAM Engine",
+  "Geriatrics (55+) SAM Engine",
   "Ages 55 and Above",
   {
     occupationalTherapy: [
@@ -638,6 +638,8 @@ export const SAM_OLD_PEOPLE_ENGINE: SamEngineMetadata = buildEngine(
   },
   OLD_PEOPLE_ITEMS
 );
+
+export const SAM_GERIATRIC_ENGINE = SAM_OLD_PEOPLE_ENGINE;
 
 // -----------------------------------------------------------------------------
 // 5. EVERYDAY OBJECTS AT HOME ENGINE (All Ages / Domestic Living)
@@ -1062,7 +1064,8 @@ export function getSamEngineByCategory(category?: string | null): SamEngineMetad
     normalized === "old_people" ||
     normalized === "elderly" ||
     normalized === "senior" ||
-    normalized === "geriatric"
+    normalized === "geriatric" ||
+    normalized === "geriatrics"
   ) {
     return SAM_OLD_PEOPLE_ENGINE;
   }

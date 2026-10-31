@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
           .maybeSingle();
 
         if (!error && patient) {
-          // Fetch real counts from Supabase
+          // Fetch real counts from database
           const { count: activeCount } = await admin
             .from("home_programs")
             .select("id", { count: "exact", head: true })
@@ -195,7 +195,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // In-memory fallback (only when Supabase credentials are not populated)
+    // In-memory fallback (only when database credentials are not populated)
     const store = getMockStore();
     if (requestedId) {
       const found = store.patients.find((p) => p.id === requestedId);
@@ -505,7 +505,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // No existing patient row: provision Auth user in Supabase
+      // No existing patient row: provision Auth user
       const tempPassword = `Aruga-${Math.floor(100000 + Math.random() * 900000)}!`;
       let clientAuthUserId: string | null = null;
       let isNewUser = true;
@@ -569,7 +569,7 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch (authErr) {
-        console.warn("Could not provision Supabase auth user:", authErr);
+        console.warn("Could not provision auth user:", authErr);
       }
 
       // Check if handle_new_user trigger already inserted the row in public.patients
@@ -637,7 +637,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (finalError) {
-        console.error("Supabase patient write error:", finalError);
+        console.error("Database patient write error:", finalError);
         return NextResponse.json({ error: finalError.message || "Failed to save client in database." }, { status: 500 });
       }
 

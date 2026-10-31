@@ -55,7 +55,7 @@ export default function AcceptInvitationPage() {
           <CardHeader>
             <CardTitle className="text-lg">Set Your Password</CardTitle>
             <CardDescription className="text-xs">
-              Welcome to Aruga! Your therapist has invited you to access your home exercise routines.
+              Welcome to Aruga! Your therapist has invited you to access your home programs.
             </CardDescription>
           </CardHeader>
 

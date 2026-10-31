@@ -192,7 +192,7 @@ export default function ClientProfilePage() {
       setDisplayName(profile.display_name || "");
       const cat = profile.client_category || "adult";
       setClientCategory(cat);
-      setAge(profile.age ?? (isDemo ? (cat === "pedia" ? 6 : cat === "adolescent" ? 14 : cat === "old_people" ? 68 : 38) : ""));
+      setAge(profile.age ?? (isDemo ? (cat === "pedia" ? 6 : cat === "adolescent" ? 14 : (cat === "geriatric" || cat === "old_people") ? 68 : 38) : ""));
       setDateOfBirth(
         profile.date_of_birth ||
           (isDemo
@@ -200,7 +200,7 @@ export default function ClientProfilePage() {
               ? "2020-05-14"
               : cat === "adolescent"
               ? "2012-08-20"
-              : cat === "old_people"
+              : (cat === "geriatric" || cat === "old_people")
               ? "1958-04-18"
               : "1988-03-12"
             : "")
@@ -212,7 +212,7 @@ export default function ClientProfilePage() {
               ? "Developmental Fine Motor & Bilateral Integration Delay"
               : cat === "adolescent"
               ? "Fine Motor Coordination & Postural Ergonomic Fatigue"
-              : cat === "old_people"
+              : (cat === "geriatric" || cat === "old_people")
               ? "Osteoarthritis, Presbyphagia & Fall Prevention Post-Arthroplasty"
               : "Post-Stroke Upper Extremity Hemiparesis (Right-Sided)"
             : "")
@@ -227,7 +227,7 @@ export default function ClientProfilePage() {
               ? "Pincer grasp toy picking, unassisted buttoning, bilateral container twisting."
               : cat === "adolescent"
               ? "Handwriting stamina for 20 minutes, keyboard ergonomics, bilateral sports grip."
-              : cat === "old_people"
+              : (cat === "geriatric" || cat === "old_people")
               ? "Safe feeding with weighted utensils, independent dressing with sock aid, and steady unassisted sit-to-stand."
               : "Independent cup grasping, controlled tabletop block stacking, and functional door opening."
             : "")
@@ -272,16 +272,16 @@ export default function ClientProfilePage() {
     if (res.error) {
       setMessage({ type: "error", text: `Failed to save profile: ${res.error}` });
     } else {
-      setMessage({ type: "success", text: "Client care profile saved successfully in Supabase!" });
+      setMessage({ type: "success", text: "Client care profile saved successfully!" });
       setTimeout(() => setMessage(null), 4000);
     }
   };
 
   const isPedia = clientCategory === "pedia";
   const isAdolescent = clientCategory === "adolescent";
-  const isOldPeople = clientCategory === "old_people";
+  const isGeriatric = clientCategory === "geriatric" || clientCategory === "old_people";
 
-  const CategoryIcon = isPedia ? Baby : isAdolescent ? GraduationCap : isOldPeople ? HeartPulse : User;
+  const CategoryIcon = isPedia ? Baby : isAdolescent ? GraduationCap : isGeriatric ? HeartPulse : User;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
@@ -303,8 +303,8 @@ export default function ClientProfilePage() {
                     ? "Pediatric Care"
                     : isAdolescent
                     ? "Adolescent Care"
-                    : isOldPeople
-                    ? "Old People (55+) Care"
+                    : isGeriatric
+                    ? "Geriatrics (55+) Care"
                     : "Adult Rehabilitation"
                 }
               />
@@ -373,12 +373,12 @@ export default function ClientProfilePage() {
                   Care Demographic Category
                 </label>
                 <select
-                  value={clientCategory}
+                  value={clientCategory === "old_people" ? "geriatric" : clientCategory}
                   onChange={(e) => setClientCategory(e.target.value as ClientCategory)}
                   className="w-full h-9 rounded-md bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100 focus:outline-none focus:border-teal-500"
                 >
                   <option value="adult">Adult (18-54 Neuro/Ortho Functional Rehab)</option>
-                  <option value="old_people">Old People (55+ Geriatric Mobility & Independent Living)</option>
+                  <option value="geriatric">Geriatrics (55+ Mobility & Independent Living)</option>
                   <option value="adolescent">Adolescent (12-17 School & Motor Coordination)</option>
                   <option value="pedia">Pediatric (1-11 Play-Based Milestones & Caregiver)</option>
                 </select>
@@ -463,7 +463,7 @@ export default function ClientProfilePage() {
               {/* School or Workplace */}
               <div>
                 <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                  {isPedia ? "Daycare / Kindergarten" : isAdolescent ? "School & Grade" : "Workplace / Daily Routine"}
+                  {isPedia ? "Daycare / Kindergarten" : isAdolescent ? "School & Grade" : "Workplace / Daily Schedule"}
                 </label>
                 <div className="relative">
                   <School className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500" />

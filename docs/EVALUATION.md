@@ -21,9 +21,9 @@ Latency benchmarks measured across local test execution and live endpoints:
 | **SAM 3.1 Object Tracking** | SAM 3.1 (streaming Responses) | Live | ~3,400 – 5,100 ms | Chunk-by-chunk stream parsed with `@meta-sam/parser` |
 | **Step Note Feedback** | Muse Spark 1.3 | Mock | ~440 ms | Synthesizes clinician notes + confirmed evidence |
 | **Plain-English SOAP Summary** | Muse Spark 1.3 (`/api/ai/soap-summary`)| Mock | ~380 ms | Synthesizes 4 SOAP boxes into 2–3 plain-English sentences |
-| **Plain-English SOAP Summary** | Muse Spark 1.3 (`/api/ai/soap-summary`)| Live | ~1,600 – 2,100 ms | Generates and immediately caches to Supabase database |
+| **Plain-English SOAP Summary** | Muse Spark 1.3 (`/api/ai/soap-summary`)| Live | ~1,600 – 2,100 ms | Generates and immediately caches to database |
 | **Database-Cached Summary View**| Direct PostgreSQL Cache Hit | **Live DB** | **< 15 ms** | **Zero AI inference; zero credits consumed** |
-| **Direct Video Storage Upload**| Supabase Storage (`program-videos`)| Live | ~800 – 1,400 ms | 15–25MB `.mp4` tabletop video upload via signed URL |
+| **Direct Video Storage Upload**| Cloud Storage (`program-videos`)| Live | ~800 – 1,400 ms | 15–25MB `.mp4` tabletop video upload via signed URL |
 
 ---
 
@@ -73,7 +73,7 @@ The platform is backed by **80 automated tests** passing across 5 dedicated test
    - Multi-box live session SOAP notes (`POST`, `GET`, `PATCH`, `DELETE`).
    - Two-Way Handshake client-therapist invitations.
    - Care Transfer Service with handover note propagation.
-   - Real-time 1-on-1 messaging, deletion, and `@routine` mentions.
+   - Real-time 1-on-1 messaging, deletion, and `@program` mentions.
    - Database-cached plain-English summary endpoint.
 3. **`tests/sam-engine.test.ts` (9 tests)**:
    - Validates rejection of compound prompts (`INVALID_SAM_PROMPT`).
@@ -99,6 +99,6 @@ The platform is backed by **80 automated tests** passing across 5 dedicated test
 3. **Unintended AI Credit Consumption**:
    - Addressed via on-demand "See Summary" button. If `client_summary` already exists in PostgreSQL, the interface bypasses Meta AI entirely and loads from database cache in `<15 ms` with zero AI credits used.
 4. **Large Video File Sizes**:
-   - Client recordings up to 50MB bypass Next.js API route body limits by uploading directly to private Supabase Storage buckets using pre-signed upload URLs.
+   - Client recordings up to 50MB bypass Next.js API route body limits by uploading directly to private Cloud Storage buckets using pre-signed upload URLs.
 5. **Caregiver Continuity in Transitions**:
    - When care is transferred between therapists, patient records retain `previous_therapist_id` and mandatory `handover_notes` to prevent gaps in treatment history.

@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
         .order("created_at", { ascending: true });
 
       if (mError) {
-        console.warn("Could not load ot_messages from Supabase:", mError);
+        console.warn("Could not load ot_messages from database:", mError);
         return NextResponse.json({ messages: [] });
       }
       return NextResponse.json({ messages: messages || [] });
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
         .order("updated_at", { ascending: false });
 
       if (cError) {
-        console.warn("Could not load ot_conversations from Supabase:", cError);
+        console.warn("Could not load ot_conversations from database:", cError);
         return NextResponse.json({ conversations: [] });
       }
       return NextResponse.json({ conversations: convs || [] });
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient();
 
     if (!admin) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+      return NextResponse.json({ error: "Database not configured" }, { status: 500 });
     }
 
     if (action === "create_conversation") {
