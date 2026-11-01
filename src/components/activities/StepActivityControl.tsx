@@ -3,8 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { ActivityTemplate } from "@/types/database";
 import { ActivityGeneratorModal } from "./ActivityGeneratorModal";
+import { CustomActivityCreatorModal } from "./CustomActivityCreatorModal";
 import { Button } from "@/components/ui/button";
-import { Palette, X, Sparkles, Loader2, Image as ImageIcon } from "lucide-react";
+import { Palette, X, Sparkles, Loader2, Image as ImageIcon, PenLine } from "lucide-react";
 
 type StepItem = {
   id: string;
@@ -58,6 +59,7 @@ export function StepActivityControl({
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<ActivityTemplate | null>(null);
+  const [customOpen, setCustomOpen] = useState(false);
   const [pickerFilter, setPickerFilter] = useState("");
 
   // Derive ageBand from patient client_category
@@ -165,7 +167,10 @@ export function StepActivityControl({
         <Palette className="w-3.5 h-3.5" />
         Generate activity
       </Button>
-      <span className="text-[11px] text-zinc-500">Theme auto-filled from step • {ageBand ? `${ageBand}` : "detecting age band…"}</span>
+      <Button type="button" variant="outline" size="sm" onClick={() => setCustomOpen(true)} className="h-8 gap-1.5 text-xs border-zinc-700 text-zinc-300 hover:bg-zinc-800">
+        <PenLine className="w-3.5 h-3.5" /> Custom prompt
+      </Button>
+      <span className="text-[11px] text-zinc-500">Templates or your own prompt • {ageBand ? `${ageBand}` : "detecting age band…"}</span>
 
       {/* Template picker modal for this step */}
       {pickerOpen && !selectedTemplate && (
@@ -197,14 +202,22 @@ export function StepActivityControl({
               </span>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <button type="button" onClick={() => { setPickerOpen(false); setCustomOpen(true); }} className="w-full p-3 rounded-xl border border-dashed border-teal-500/40 bg-teal-950/20 hover:bg-teal-950/30 flex items-center gap-3 text-left transition-colors">
+                <span className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-700 grid place-items-center shrink-0"><PenLine className="w-4 h-4 text-teal-400" /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-zinc-100">Create from scratch — your own prompt</p>
+                  <p className="text-[11px] text-zinc-500">Skip templates. Write a Spark brief directly, choose image on/off.</p>
+                </div>
+                <span className="text-xs font-medium text-teal-300 shrink-0">Custom →</span>
+              </button>
               {templatesLoading ? (
                 <div className="py-12 flex flex-col items-center gap-2 text-xs text-zinc-500">
                   <Loader2 className="w-6 h-6 animate-spin text-teal-400" /> Loading Activity Studio templates…
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="py-10 text-center text-xs text-zinc-500 border border-dashed border-zinc-700 rounded-xl">
-                  No templates for this filter. Clear search or generate from Activity Studio directly.
+                  No templates for this filter. Clear search or create from scratch above.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -248,7 +261,6 @@ export function StepActivityControl({
         <ActivityGeneratorModal
           template={{
             ...selectedTemplate,
-            // Prefill theme from step if template has no theme yet
             default_params: {
               ...selectedTemplate.default_params,
               theme: selectedTemplate.default_params?.theme || deriveTheme(step),
@@ -259,6 +271,16 @@ export function StepActivityControl({
           patientId={patientId}
           onClose={() => setSelectedTemplate(null)}
           onGenerated={handleGenerated}
+        />
+      )}
+      {customOpen && (
+        <CustomActivityCreatorModal
+          defaultAgeBand={ageBand || "adult"}
+          defaultTitle={step.title ? `${step.title} — Activity` : deriveTheme(step) || ""}
+          creatorId={creatorId}
+          patientId={patientId}
+          onClose={() => setCustomOpen(false)}
+          onGenerated={(a) => { setCustomOpen(false); handleGenerated(a); }}
         />
       )}
     </div>

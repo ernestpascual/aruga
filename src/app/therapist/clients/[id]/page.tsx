@@ -369,7 +369,7 @@ function TherapistClientDetailContent({
   const handleOpenNewSoapModal = () => {
     setEditingSoapId(null);
     setSoapDate(new Date().toISOString().slice(0, 10));
-    setSoapTitle(`Live Tele-Rehab Session #${soapNotes.length + 1}`);
+    setSoapTitle(`Session Clinical Documentation #${soapNotes.length + 1}`);
     setSoapRecordingUrl("");
     setSoapSubjective("");
     setSoapObjective("");
@@ -751,7 +751,7 @@ function TherapistClientDetailContent({
   return (
     <div className="space-y-6">
       {/* Back button */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Link
           href="/therapist/clients"
           className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
@@ -761,57 +761,57 @@ function TherapistClientDetailContent({
 
         {/* Global Feedback Messages */}
         {successMsg && (
-          <div className="text-xs font-medium text-emerald-400 bg-emerald-950/70 border border-emerald-800/80 px-3 py-1 rounded-md flex items-center gap-1.5 animate-fadeIn">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            {successMsg}
+          <div className="text-xs font-medium text-emerald-400 bg-emerald-950/70 border border-emerald-800/80 px-3 py-2 rounded-lg flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="line-clamp-2">{successMsg}</span>
           </div>
         )}
         {errorMsg && (
-          <div className="text-xs font-medium text-rose-400 bg-rose-950/70 border border-rose-800/80 px-3 py-1 rounded-md flex items-center gap-1.5 animate-fadeIn">
-            <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
-            {errorMsg}
+          <div className="text-xs font-medium text-rose-400 bg-rose-950/70 border border-rose-800/80 px-3 py-2 rounded-lg flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+            <span className="line-clamp-2">{errorMsg}</span>
           </div>
         )}
       </div>
 
       {/* Client Header Card */}
-      <Card className="border-zinc-800 bg-zinc-900/90 p-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-xl font-bold text-zinc-100">
+      <Card className="border-zinc-800 bg-zinc-900/90 p-4 sm:p-5 overflow-hidden">
+        <div className="flex flex-col gap-4">
+          <div className="space-y-2 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+              <h1 className="text-lg sm:text-xl font-bold text-zinc-100 leading-tight">
                 {client?.name || "Client Details"}
               </h1>
 
               {isPediatric ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-950/80 border border-sky-500/40 text-sky-300">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-950/80 border border-sky-500/40 text-sky-300 shrink-0">
                   <Baby className="w-3 h-3 text-sky-400" />
                   Pediatric ({client?.age}y)
                 </span>
               ) : isAdolescent ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-950/80 border border-indigo-500/40 text-indigo-300">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-950/80 border border-indigo-500/40 text-indigo-300 shrink-0">
                   <GraduationCap className="w-3 h-3 text-indigo-400" />
                   Adolescent ({client?.age}y)
                 </span>
               ) : isGeriatric ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300 shrink-0">
                   <HeartPulse className="w-3 h-3 text-amber-400" />
                   Geriatrics ({client?.age}y)
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-800 border border-zinc-700/60 text-zinc-300">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-800 border border-zinc-700/60 text-zinc-300 shrink-0">
                   <User className="w-3 h-3 text-zinc-400" />
                   Adult ({client?.age}y)
                 </span>
               )}
 
-              <span className="text-xs text-zinc-400">
+              <span className="text-xs text-zinc-400 hidden sm:inline">
                 • {client?.gender || "Not specified"}
               </span>
             </div>
 
-            <div className="text-xs text-zinc-400 space-y-0.5">
-              <p>
+            <div className="text-xs text-zinc-400 space-y-1">
+              <p className="break-words">
                 <span className="text-zinc-500 font-medium">Condition:</span>{" "}
                 <span className="text-zinc-300 font-mono text-[11px]">
                   {client?.condition || "Occupational Rehabilitation"}
@@ -823,7 +823,7 @@ function TherapistClientDetailContent({
                   <span className="text-sky-300 font-medium">{client.caregiver_name}</span>
                 </p>
               )}
-              <p>
+              <p className="break-all">
                 <span className="text-zinc-500 font-medium">Email:</span>{" "}
                 <span className="text-zinc-300">{client?.email || "No email"}</span>
               </p>
@@ -839,8 +839,8 @@ function TherapistClientDetailContent({
             </div>
           </div>
 
-          {/* Quick Actions (CRUD Controls) */}
-          <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto pb-1">
+          {/* Quick Actions — grid on mobile, flex scroll on desktop */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2 pt-1 border-t border-zinc-800/50 sm:border-0 sm:pt-0">
             <Button
               variant="outline"
               size="sm"
@@ -872,15 +872,15 @@ function TherapistClientDetailContent({
               Delete Client
             </Button>
 
-            <Link href={`/therapist/messages?patientId=${clientId}`}>
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs whitespace-nowrap">
+            <Link href={`/therapist/messages?patientId=${clientId}`} className="w-full sm:w-auto">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto gap-1.5 text-xs whitespace-nowrap h-9">
                 <MessageSquare className="w-3.5 h-3.5 text-teal-400" />
                 Message
               </Button>
             </Link>
 
-            <Link href={`/therapist/clients/${clientId}/programs/new`}>
-              <Button size="sm" className="gap-1.5 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold text-xs whitespace-nowrap">
+            <Link href={`/therapist/clients/${clientId}/programs/new`} className="col-span-2 sm:col-span-1 sm:w-auto">
+              <Button size="sm" className="w-full gap-1.5 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold text-xs whitespace-nowrap h-9">
                 <Plus className="w-4 h-4" />
                 Create Program
               </Button>
@@ -889,20 +889,21 @@ function TherapistClientDetailContent({
         </div>
       </Card>
 
-      {/* Content Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
+      {/* Content Navigation Tabs — scrollable on mobile */}
+      <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 overflow-x-auto scrollbar-none snap-x -mx-3 px-3 sm:mx-0 sm:px-0">
+
         <button
           type="button"
           onClick={() => setActiveTab("programs")}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+          className={`snap-start shrink-0 flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-3.5 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors whitespace-nowrap ${
             activeTab === "programs"
               ? "bg-teal-950/80 border border-teal-500/40 text-teal-300"
               : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60"
           }`}
         >
-          <Layers className="w-3.5 h-3.5 text-teal-400" />
-          <span>Assigned Home Programs</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-800 text-zinc-300">
+          <Layers className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+          <span className="hidden sm:inline">Assigned Home Programs</span><span className="sm:hidden">Programs</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300">
             {programs.length}
           </span>
         </button>
@@ -910,15 +911,15 @@ function TherapistClientDetailContent({
         <button
           type="button"
           onClick={() => setActiveTab("soap")}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+          className={`snap-start shrink-0 flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-3.5 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors whitespace-nowrap ${
             activeTab === "soap"
               ? "bg-teal-950/80 border border-teal-500/40 text-teal-300"
               : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60"
           }`}
         >
-          <FileText className="w-3.5 h-3.5 text-teal-400" />
-          <span>Live Session SOAP Notes</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-800 text-zinc-300">
+          <FileText className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+          <span className="hidden sm:inline">Session Clinical Documentation</span><span className="sm:hidden">Sessions</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300">
             {soapNotes.length}
           </span>
         </button>
@@ -926,15 +927,15 @@ function TherapistClientDetailContent({
         <button
           type="button"
           onClick={() => setActiveTab("assessments")}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+          className={`snap-start shrink-0 flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-3.5 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors whitespace-nowrap ${
             activeTab === "assessments"
               ? "bg-teal-950/80 border border-teal-500/40 text-teal-300"
               : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60"
           }`}
         >
-          <ClipboardList className="w-3.5 h-3.5 text-teal-400" />
-          <span>Created Assessments</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-800 text-zinc-300">
+          <ClipboardList className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+          <span className="hidden sm:inline">Created Assessments</span><span className="sm:hidden">Assessments</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300">
             {allClientAssessments.length}
           </span>
         </button>
@@ -959,27 +960,30 @@ function TherapistClientDetailContent({
 
         return (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-zinc-900/60 p-4 rounded-xl border border-zinc-800">
-              <div>
-                <h2 className="text-base font-semibold text-zinc-200 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-teal-400" />
-                  Prescribed Home Programs ({programs.length})
-                </h2>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Monitor patient compliance, view client exercise submissions marked as done, and provide clinical feedback.
-                </p>
-              </div>
+            <div className="flex flex-col gap-3 bg-zinc-900/60 p-3 sm:p-4 rounded-xl border border-zinc-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-sm sm:text-base font-semibold text-zinc-200 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-teal-400 shrink-0" />
+                    Prescribed Home Programs ({programs.length})
+                  </h2>
+                  <p className="text-xs text-zinc-400 mt-0.5 hidden sm:block">
+                    Monitor patient compliance, view submissions marked as done, and provide feedback.
+                  </p>
+                </div>
 
-              <Link href={`/therapist/clients/${clientId}/programs/new`}>
-                <Button size="sm" className="bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold text-xs gap-1.5 shrink-0">
-                  <Plus className="w-4 h-4" />
-                  New Home Program
-                </Button>
-              </Link>
+                <Link href={`/therapist/clients/${clientId}/programs/new`} className="w-full sm:w-auto">
+                  <Button size="sm" className="w-full sm:w-auto bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold text-xs gap-1.5 h-10 sm:h-8 justify-center">
+                    <Plus className="w-4 h-4" />
+                    New Home Program
+                  </Button>
+                </Link>
+              </div>
             </div>
 
-            {/* Quick Filter Pills */}
-            <div className="flex items-center gap-2 flex-nowrap overflow-x-auto pb-1">
+            {/* Quick Filter Pills — scrollable */}
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-none snap-x -mx-3 px-3 sm:mx-0 sm:px-0 pb-1">
+
               <button
                 type="button"
                 onClick={() => setProgramFilter("all")}
@@ -1075,7 +1079,7 @@ function TherapistClientDetailContent({
                   return (
                     <Card
                       key={prog.id}
-                      className={`border p-5 transition-all shadow-sm ${
+                      className={`border p-3 sm:p-5 transition-all shadow-sm overflow-hidden ${
                         isMarkedDone
                           ? "border-amber-500/50 bg-gradient-to-b from-amber-950/20 to-zinc-900/90 hover:border-amber-500/70"
                           : isReviewed
@@ -1083,47 +1087,49 @@ function TherapistClientDetailContent({
                           : "border-zinc-800 bg-zinc-900/80 hover:border-zinc-700"
                       }`}
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                        <div className="space-y-2 max-w-2xl">
-                          <div className="flex items-center gap-2.5 flex-wrap">
-                            <h3 className="text-base font-semibold text-zinc-100">
+                      <div className="flex flex-col gap-3">
+                        <div className="space-y-2 min-w-0">
+                          <div className="flex items-start gap-2 flex-wrap">
+                            <h3 className="text-sm sm:text-base font-semibold text-zinc-100 leading-tight flex-1 min-w-0">
                               {prog.title}
                             </h3>
-                            {isAssigned && <Badge variant="teal" statusText="Assigned" />}
-                            {isDraft && <Badge variant="amber" statusText="Draft" />}
-                            {isArchived && <Badge variant="outline" statusText="Archived" />}
-
-                            {isMarkedDone && (
-                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
-                                <Clock className="w-3 h-3 text-amber-400" />
-                                Marked Done by Client
-                              </span>
-                            )}
-                            {isReviewed && (
-                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                                Feedback Sent
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                              {isAssigned && <Badge variant="teal" statusText="Assigned" />}
+                              {isDraft && <Badge variant="amber" statusText="Draft" />}
+                              {isArchived && <Badge variant="outline" statusText="Archived" />}
+                            </div>
                           </div>
+                          {isMarkedDone && (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                              <Clock className="w-3 h-3 text-amber-400" />
+                              Marked Done by Client
+                            </span>
+                          )}
+                          {isReviewed && (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                              Feedback Sent
+                            </span>
+                          )}
 
                           <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">
                             {prog.main_instructions}
                           </p>
 
-                          <div className="flex items-center gap-4 text-[11px] text-zinc-500 pt-1">
+                          <div className="flex items-center gap-3 text-[11px] text-zinc-500 pt-1">
                             <span className="flex items-center gap-1">
                               <Layers className="w-3 h-3 text-zinc-400" /> {stepCount} Steps
                             </span>
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3 h-3 text-zinc-400" />
-                              Created: {new Date(prog.created_at).toLocaleDateString()}
+                              {new Date(prog.created_at).toLocaleDateString()}
                             </span>
                           </div>
                         </div>
 
-                        {/* Program Actions - Strictly all in one horizontal row */}
-                        <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto">
+                        {/* Program Actions — wrap on mobile, no horizontal overflow */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-zinc-800/50 sm:border-0 sm:pt-0">
+
                           {isDraft && (
                             <Button
                               size="sm"
@@ -1392,17 +1398,17 @@ function TherapistClientDetailContent({
         );
       })()}
 
-      {/* Tab 2: Live Session SOAP Notes Section */}
+      {/* Tab 2: Session Clinical Documentation Section */}
       {activeTab === "soap" && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-zinc-900/60 p-4 rounded-xl border border-zinc-800">
             <div>
               <h2 className="text-base font-bold text-zinc-100 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-teal-400" />
-                Live Session Clinical Documentation (SOAP Notes)
+                Session Clinical Documentation
               </h2>
               <p className="text-xs text-zinc-400 mt-0.5">
-                Record structured live therapy sessions with 4 distinct clinical boxes (Subjective, Objective, Assessment, Plan) and plain-English client summaries.
+                Record structured therapy sessions with 4 distinct clinical boxes (Subjective, Objective, Assessment, Plan) and plain-English client summaries.
               </p>
             </div>
             <Button
@@ -1411,7 +1417,7 @@ function TherapistClientDetailContent({
               className="gap-1.5 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold text-xs shrink-0 self-start sm:self-auto"
             >
               <Plus className="w-4 h-4" />
-              New Session SOAP Note
+              New Session Note
             </Button>
           </div>
 
@@ -2075,7 +2081,7 @@ function TherapistClientDetailContent({
               <div>
                 <CardTitle className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-teal-400" />
-                  {editingSoapId ? "Edit Live Session SOAP Note" : "New Live Session SOAP Note"}
+                  {editingSoapId ? "Edit Session Clinical Documentation" : "New Session Clinical Documentation"}
                 </CardTitle>
                 <p className="text-xs text-zinc-400 mt-0.5">
                   Client: <span className="font-semibold text-zinc-200">{client?.name}</span> • Full-Width Clinical SOAP Documentation
@@ -2108,7 +2114,7 @@ function TherapistClientDetailContent({
                     <Input
                       value={soapTitle}
                       onChange={(e) => setSoapTitle(e.target.value)}
-                      placeholder="e.g., Live Tele-Rehab Session #4: Midline Crossing"
+                      placeholder="e.g., Session #4: Midline Crossing"
                       required
                       className="bg-zinc-950 border-zinc-800 text-xs"
                     />
@@ -2347,7 +2353,7 @@ function TherapistClientDetailContent({
                     className="bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold text-xs gap-1.5"
                   >
                     <Check className="w-3.5 h-3.5" />
-                    {editingSoapId ? "Save SOAP Note Changes" : "Save Live Session SOAP Note"}
+                    {editingSoapId ? "Save SOAP Note Changes" : "Create SOAP Note"}
                   </Button>
                 </div>
               </form>

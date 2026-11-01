@@ -263,7 +263,7 @@ function NewHomeProgramContent({
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-12">
+    <div className="space-y-5 sm:space-y-6 max-w-4xl mx-auto pb-12 px-0">
       {/* Back button */}
       <div>
         <Link
@@ -275,14 +275,16 @@ function NewHomeProgramContent({
       </div>
 
       {/* Editor Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
-            <Layers className="w-5 h-5 text-teal-400" />
+      <div className="flex flex-col gap-3 border-b border-zinc-800 pb-4">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
+            <span className="w-9 h-9 rounded-xl bg-teal-950/40 border border-teal-500/20 grid place-items-center shrink-0">
+              <Layers className="w-5 h-5 text-teal-400" />
+            </span>
             Create Home Program
           </h1>
-          <p className="text-xs text-zinc-400 mt-1">
-            Build ordered exercise steps. Freeze upon assignment to publish instructions to your client.
+          <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+            Build ordered exercise steps. Freeze upon assignment to publish instructions.
           </p>
         </div>
 
@@ -291,7 +293,7 @@ function NewHomeProgramContent({
           type="button"
           variant="outline"
           onClick={handleRefineWithMeta}
-          className="gap-2 border-teal-500/50 bg-teal-950/40 text-teal-300 hover:bg-teal-900/60 shadow-sm self-start sm:self-auto"
+          className="w-full sm:w-auto gap-2 border-teal-500/50 bg-teal-950/40 text-teal-300 hover:bg-teal-900/60 shadow-sm h-10 sm:h-8 justify-center text-xs"
         >
           <Sparkles className="w-4 h-4 text-teal-400" />
           <span>Refine with Meta</span>
@@ -306,15 +308,16 @@ function NewHomeProgramContent({
       )}
 
       {/* Program Details Card */}
-      <Card className="border-zinc-800 bg-zinc-900/90 p-5 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="sm:col-span-2 space-y-1.5">
+      <Card className="border-zinc-800 bg-zinc-900/90 p-4 sm:p-5 space-y-4">
+        <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-1.5">
             <label className="text-xs font-semibold text-zinc-300">Program Title *</label>
             <Input
               required
               placeholder="e.g. Tabletop Grasp & Precision Release Home Program"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              className="text-sm"
             />
           </div>
 
@@ -340,52 +343,55 @@ function NewHomeProgramContent({
             placeholder="Explain the home program context, posture recommendations, and repetition pacing..."
             value={mainInstructions}
             onChange={(e) => setMainInstructions(e.target.value)}
+            className="text-sm"
           />
         </div>
       </Card>
 
       {/* Practice Schedule (Up to 10 Dates) */}
-      <Card className="border-zinc-800 bg-zinc-900/90 p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
-          <div>
+      <Card className="border-zinc-800 bg-zinc-900/90 p-4 sm:p-5 space-y-4 overflow-hidden">
+        <div className="flex flex-col gap-2 border-b border-zinc-800/80 pb-3">
+          <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
               <Calendar className="w-4 h-4 text-teal-400" />
-              Practice Schedule Dates (Up to 10 Dates)
+              Practice Schedule
             </h3>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Specify dates on when the client should do this home program (up to 10 dates). Each date is one submission.
-            </p>
+            <Badge
+              variant={scheduledDates.length >= 10 ? "amber" : "teal"}
+              statusText={`${scheduledDates.length}/10`}
+            />
           </div>
-          <Badge
-            variant={scheduledDates.length >= 10 ? "amber" : "teal"}
-            statusText={`${scheduledDates.length} of 10 dates`}
-          />
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            Specify dates for this home program (up to 10). Each date = 1 submission.
+          </p>
         </div>
 
         {/* Date Input & Quick Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            type="date"
-            value={newDateInput}
-            onChange={(e) => setNewDateInput(e.target.value)}
-            className="w-44 bg-zinc-950 border-zinc-800 text-xs h-9 text-zinc-200"
-            disabled={scheduledDates.length >= 10}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handleAddDate()}
-            disabled={!newDateInput || scheduledDates.length >= 10}
-            className="h-9 gap-1 text-xs border-teal-500/40 text-teal-300 hover:bg-teal-950/30"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add Date
-          </Button>
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              type="date"
+              value={newDateInput}
+              onChange={(e) => setNewDateInput(e.target.value)}
+              className="flex-1 bg-zinc-950 border-zinc-800 text-xs h-10 sm:h-9 text-zinc-200"
+              disabled={scheduledDates.length >= 10}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleAddDate()}
+              disabled={!newDateInput || scheduledDates.length >= 10}
+              className="shrink-0 h-10 sm:h-9 gap-1 text-xs border-teal-500/40 text-teal-300 hover:bg-teal-950/30 px-4"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add
+            </Button>
+          </div>
 
-          {/* Quick Date Presets */}
-          <div className="flex items-center gap-1.5 ml-auto">
-            <span className="text-[11px] text-zinc-500 mr-1">Quick Add:</span>
+          {/* Quick Date Presets — scrollable row */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none snap-x -mx-1 px-1 pb-1">
+            <span className="text-[11px] text-zinc-500 shrink-0 mr-1">Quick:</span>
             {[
               { label: "Today", days: 0 },
               { label: "+1 Day", days: 1 },
@@ -403,7 +409,7 @@ function NewHomeProgramContent({
                   type="button"
                   disabled={alreadyAdded || scheduledDates.length >= 10}
                   onClick={() => handleAddDate(dateStr)}
-                  className={`px-2 py-1 rounded text-[11px] font-mono border transition-colors ${
+                  className={`snap-start shrink-0 px-2.5 py-2 sm:py-1.5 rounded-lg text-[11px] font-mono border transition-colors whitespace-nowrap ${
                     alreadyAdded
                       ? "opacity-40 border-zinc-800 text-zinc-600 cursor-not-allowed"
                       : "border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-teal-500/50 hover:text-teal-300"
@@ -464,10 +470,10 @@ function NewHomeProgramContent({
 
         <div className="space-y-3">
           {steps.map((step, index) => (
-            <Card key={step.id} className="border-zinc-800 bg-zinc-900/80 p-4 relative space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-zinc-800 text-teal-400 text-xs font-bold flex items-center justify-center">
+            <Card key={step.id} className="border-zinc-800 bg-zinc-900/80 p-3 sm:p-4 relative space-y-3 overflow-hidden">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-zinc-800 text-teal-400 text-xs font-bold flex items-center justify-center shrink-0">
                     {step.position}
                   </span>
                   <Input
@@ -478,17 +484,17 @@ function NewHomeProgramContent({
                       updated[index].title = e.target.value;
                       setSteps(updated);
                     }}
-                    className="h-8 max-w-xs text-xs font-medium"
+                    className="h-9 sm:h-8 flex-1 min-w-0 text-sm sm:text-xs font-medium"
                   />
                 </div>
 
                 {/* Move & Remove Controls */}
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5 shrink-0">
                   <button
                     type="button"
                     disabled={index === 0}
                     onClick={() => handleMoveUp(index)}
-                    className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none"
+                    className="w-8 h-8 sm:w-7 sm:h-7 grid place-items-center rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none"
                     title="Move up"
                   >
                     <ArrowUp className="w-4 h-4" />
@@ -497,7 +503,7 @@ function NewHomeProgramContent({
                     type="button"
                     disabled={index === steps.length - 1}
                     onClick={() => handleMoveDown(index)}
-                    className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none"
+                    className="w-8 h-8 sm:w-7 sm:h-7 grid place-items-center rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none"
                     title="Move down"
                   >
                     <ArrowDown className="w-4 h-4" />
@@ -506,7 +512,7 @@ function NewHomeProgramContent({
                     type="button"
                     disabled={steps.length <= 1}
                     onClick={() => handleRemoveStep(step.id)}
-                    className="p-1 rounded text-zinc-400 hover:text-red-400 hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none ml-1"
+                    className="w-8 h-8 sm:w-7 sm:h-7 grid place-items-center rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none ml-1"
                     title="Remove step"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -542,18 +548,18 @@ function NewHomeProgramContent({
       </div>
 
       {/* Footer Submission Actions */}
-      <div className="pt-4 border-t border-zinc-800 flex flex-wrap items-center justify-between gap-3">
-        <span className="text-[11px] text-zinc-500">
-          Assignment locks title and steps and creates a client video submission shell.
+      <div className="pt-4 border-t border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <span className="text-[11px] text-zinc-500 order-2 sm:order-1 text-center sm:text-left">
+          Assignment locks title and steps and creates a client submission.
         </span>
 
-        <div className="flex items-center gap-3">
+        <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-3 order-1 sm:order-2 w-full sm:w-auto">
           <Button
             type="button"
             variant="outline"
             isLoading={submitting}
             onClick={() => handleSave("draft")}
-            className="gap-2 text-zinc-200"
+            className="gap-2 text-zinc-200 h-10 sm:h-9 text-xs justify-center"
           >
             <Save className="w-4 h-4" />
             Save Draft
@@ -563,7 +569,7 @@ function NewHomeProgramContent({
             type="button"
             isLoading={submitting}
             onClick={() => handleSave("assign")}
-            className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold"
+            className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold h-10 sm:h-9 text-xs justify-center"
           >
             <Send className="w-4 h-4" />
             Assign to Client

@@ -107,7 +107,7 @@ export default function ClientActivityPage() {
   if (!activity) return <div className="p-8 text-center text-xs text-zinc-500">Activity not found.</div>;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-12 px-4">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
       <Link href="/client" className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200"><ArrowLeft className="w-3.5 h-3.5"/> Back to Dashboard</Link>
 
       <div className="border-b border-zinc-800 pb-4 space-y-2">
@@ -134,7 +134,7 @@ export default function ClientActivityPage() {
       <Card className="border-zinc-800 bg-zinc-900/80 p-4 space-y-3">
         <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2"><Upload className="w-4 h-4 text-teal-400"/> Or print and upload a photo</h3>
         <p className="text-xs text-zinc-500">After printing and completing on paper, take a clear photo and upload it here. It will be saved to your home program submission for your therapist to review.</p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <Input type="file" accept="image/*" onChange={(e)=> setPhotoFile(e.target.files?.[0] || null)} className="text-xs" />
           <Button type="button" onClick={handleUploadPhoto} disabled={!photoFile} className="bg-teal-600 hover:bg-teal-500 text-white text-xs">Upload photo</Button>
         </div>

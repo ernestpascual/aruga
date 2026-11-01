@@ -137,7 +137,7 @@ export default function TherapistProfilePage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
+    <div className="w-full max-w-4xl mx-auto px-0 sm:px-0 py-4 sm:py-8 space-y-4 sm:space-y-6">
       {/* Top Header Card */}
       <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">

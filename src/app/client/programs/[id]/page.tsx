@@ -859,13 +859,13 @@ function ClientProgramRunnerContent({
           </div>
 
           {/* Bottom Actions */}
-          <div className="pt-4 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800">
+          <div className="pt-4 flex flex-col sm:flex-row flex-wrap items-center justify-between gap-3 border-t border-zinc-800">
             <Link href="/client">
               <Button variant="outline" className="text-zinc-300 text-xs">
                 Back to Dashboard
               </Button>
             </Link>
-            <div className="flex flex-row items-center gap-2 whitespace-nowrap">
+            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2">
               <span className="text-[11px] text-zinc-500 hidden sm:inline">
                 Submission finalized • Locked from edits
               </span>
@@ -943,7 +943,7 @@ function ClientProgramRunnerContent({
           </div>
         )}
 
-        <div className="pt-4 flex flex-row items-center justify-center gap-3 whitespace-nowrap">
+        <div className="pt-4 flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3">
           <Link href="/client">
             <Button className="bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-xs">
               Return to Dashboard
@@ -1239,7 +1239,7 @@ function ClientProgramRunnerContent({
           </Card>
 
           {/* Navigation and Save Progress */}
-          <div className="flex flex-row items-center justify-between gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
             <Button
               type="button"
               variant="outline"

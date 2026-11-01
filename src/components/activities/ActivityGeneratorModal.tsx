@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ActivityTemplate } from "@/types/database";
 import { ReferenceInputs } from "./ReferenceInputs";
-import { X, Sparkles, Save, Loader2, AlertCircle, Check } from "lucide-react";
+import { X, Sparkles, Save, Loader2, AlertCircle, Check, ImageIcon } from "lucide-react";
 
 export function ActivityGeneratorModal({
   template,
@@ -30,6 +30,7 @@ export function ActivityGeneratorModal({
   const [customImage, setCustomImage] = useState(template.image_prompt);
   const [referenceLinks, setReferenceLinks] = useState<string[]>([]);
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
+  const [generateImage, setGenerateImage] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -52,6 +53,7 @@ export function ActivityGeneratorModal({
           templateId: template.id,
           customSparkPrompt: customSpark,
           customImagePrompt: customImage,
+          generateImage,
           referenceLinks: referenceLinks.length ? referenceLinks : undefined,
           referenceImages: referenceImages.length ? referenceImages : undefined,
           patientId,
@@ -161,6 +163,13 @@ export function ActivityGeneratorModal({
 
           <ReferenceInputs links={referenceLinks} onLinksChange={setReferenceLinks} images={referenceImages} onImagesChange={setReferenceImages} />
 
+          <label className="flex items-center gap-2 p-3 rounded-xl border border-zinc-800 bg-zinc-950 cursor-pointer">
+            <input type="checkbox" checked={generateImage} onChange={(e) => setGenerateImage(e.target.checked)} className="accent-teal-500 rounded w-4 h-4" />
+            <ImageIcon className="w-4 h-4 text-teal-400" />
+            <span className="text-xs font-medium text-zinc-200">Create image with Muse Image</span>
+            <span className="text-[11px] text-zinc-500 ml-auto">{generateImage ? "Line-art illustration will be generated" : "Skip image — text-only worksheet"}</span>
+          </label>
+
           <div className="flex items-center gap-2 pt-2">
             <Button type="button" variant="outline" onClick={handleSaveMyPrompt} isLoading={savingTemplate} className="gap-1.5 text-xs h-9">
               <Save className="w-3.5 h-3.5" /> Save as My Prompt
@@ -170,11 +179,11 @@ export function ActivityGeneratorModal({
               <Button type="button" variant="ghost" onClick={onClose} className="h-9 text-xs">Cancel</Button>
               <Button type="button" onClick={handleGenerate} disabled={loading} className="h-9 gap-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                {loading ? "Generating (Spark + Image)..." : "Generate Worksheet"}
+                {loading ? (generateImage ? "Generating (Spark + Image)..." : "Generating (Spark)...") : "Generate Worksheet"}
               </Button>
             </div>
           </div>
-          <p className="text-[11px] text-zinc-500 text-center">Generation may take 10–20s for Muse Image. A mock SVG is shown when no API key is configured — fully functional for testing.</p>
+          <p className="text-[11px] text-zinc-500 text-center">{generateImage ? "Generation may take 10–20s for Muse Image. A mock SVG is shown when no API key is configured." : "Text-only mode — Spark spec only, no image generation."} </p>
         </CardContent>
       </Card>
     </div>

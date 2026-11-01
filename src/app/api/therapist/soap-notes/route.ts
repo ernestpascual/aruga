@@ -35,12 +35,30 @@ export async function GET(req: NextRequest) {
         }
       }
 
+      // Resolve requester from session cookie when not supplied (therapist UI fetch without header)
+      let effectiveRequesterId = requesterId as string | null;
+      if (!effectiveRequesterId) {
+        try {
+          const sc = await createServerClient();
+          if (sc) {
+            const { data: { user } } = await sc.auth.getUser();
+            if (user?.id) effectiveRequesterId = user.id;
+          }
+        } catch {}
+      }
+      // Also accept demo header as requester
+      if (!effectiveRequesterId) {
+        const demoHeader = req.headers.get("x-demo-mode");
+        if (demoHeader === "true" || isDemo) effectiveRequesterId = DEMO_THERAPIST_ID;
+      }
+
       if (all) return NextResponse.json({ error: "Forbidden: unscoped list not allowed" }, { status: 403 });
-      if (patientId && requesterId) {
-        const ok = await ownsPatientCheck(admin, patientId, requesterId);
+      if (patientId && effectiveRequesterId) {
+        const ok = await ownsPatientCheck(admin, patientId, effectiveRequesterId);
         if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      } else if (patientId && !requesterId) {
-        return NextResponse.json({ error: "requesterId required" }, { status: 403 });
+      } else if (patientId && !effectiveRequesterId) {
+        // No identity and not demo — block, but allow demo/mock fallback instead of hard 403
+        if (!isDemo) return NextResponse.json({ error: "requesterId required" }, { status: 403 });
       }
 
       if (all || patientId || noteId) {

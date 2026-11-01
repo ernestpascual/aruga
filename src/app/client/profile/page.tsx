@@ -284,9 +284,9 @@ export default function ClientProfilePage() {
   const CategoryIcon = isPedia ? Baby : isAdolescent ? GraduationCap : isGeriatric ? HeartPulse : User;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
+    <div className="space-y-6 min-w-0">
       {/* Header Card */}
-      <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-4 sm:p-6 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-teal-950/80 border border-teal-500/40 text-teal-400 flex items-center justify-center">
             <CategoryIcon className="w-7 h-7" />

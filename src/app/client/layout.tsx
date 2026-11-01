@@ -11,7 +11,7 @@ export default function ClientLayout({
       <Suspense fallback={<div className="h-16 border-b border-zinc-800 bg-zinc-950" />}>
         <ClientNav />
       </Suspense>
-      <main className="flex-1 container mx-auto px-4 sm:px-6 py-6 max-w-5xl">
+      <main className="flex-1 min-w-0 w-full container mx-auto px-4 sm:px-6 py-4 sm:py-6 max-w-5xl">
         <Suspense fallback={<div className="p-8 text-center text-zinc-500">Loading...</div>}>
           {children}
         </Suspense>

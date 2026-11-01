@@ -734,7 +734,8 @@ function TherapistSubmissionReviewContent({
     : "/therapist/clients";
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-16">
+    <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto pb-16 px-0">
+
       {/* Back button */}
       <div>
         <Link
@@ -746,22 +747,26 @@ function TherapistSubmissionReviewContent({
       </div>
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-zinc-100">
-              {isPediatric
-                ? "Playful Pincer Grasp & Bilateral Toy Home Program"
-                : "Tabletop Grasp & Precision Release Home Program"}
-            </h1>
+      <div className="flex flex-col gap-3 border-b border-zinc-800 pb-4">
+        <div className="min-w-0">
+          <h1 className="text-base sm:text-xl font-bold tracking-tight text-zinc-100 leading-tight">
+            {isPediatric
+              ? "Playful Pincer Grasp & Bilateral Toy Home Program"
+              : "Tabletop Grasp & Precision Release Home Program"}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
             {isAlreadyReviewed ? (
               <Badge variant="emerald" statusText="Feedback Published • Editable" icon={<CheckCircle2 className="w-3 h-3" />} />
             ) : (
               <Badge variant="teal" statusText="Awaiting Review" />
             )}
+            <span className="text-[11px] text-zinc-500">•</span>
+            <span className="text-xs text-zinc-400">
+              Client: <span className="text-zinc-200 font-medium">{clientDisplayName}</span>
+            </span>
           </div>
           <p className="text-xs text-zinc-400 mt-1">
-            Client: <span className="text-zinc-200 font-medium">{clientDisplayName}</span> • {isAlreadyReviewed ? "Feedback Published — You can edit and save changes anytime" : "Submitted Recently"} • {steps.length > 0 ? `${steps.length} Steps Total` : "Home Program Submission"}
+            {isAlreadyReviewed ? "Feedback Published — editable anytime" : "Submitted Recently"} • {steps.length > 0 ? `${steps.length} Steps Total` : "Home Program Submission"}
           </p>
         </div>
       </div>

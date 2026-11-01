@@ -134,36 +134,36 @@ export default function TherapistDashboardPage() {
   const pendingRequests = clients.filter((c) => c.invitation_status === "pending");
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
+    <div className="w-full max-w-7xl mx-auto px-0 sm:px-0 py-2 sm:py-4 space-y-6 sm:space-y-8">
       {/* Welcome Hero Banner */}
-      <div className="p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-zinc-900 via-zinc-900 to-teal-950/40 border border-zinc-800 shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
+      <div className="p-4 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl bg-gradient-to-r from-zinc-900 via-zinc-900 to-teal-950/40 border border-zinc-800 shadow-xl relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-48 sm:w-96 h-48 sm:h-96 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 relative z-10">
+          <div className="space-y-2 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="teal" icon={<Stethoscope className="w-3.5 h-3.5" />} statusText={profile?.discipline || "OTR/L"} />
               <span className="text-xs text-zinc-400">Clinical Dashboard</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-100">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-zinc-100 leading-tight">
               Welcome, {profile?.display_name || "Doctor / Clinician"}
             </h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Link href="/therapist/clients?action=link">
-              <Button variant="outline" className="gap-2 border-teal-500/40 text-teal-300 hover:bg-teal-950/50 hover:text-teal-200 font-semibold shadow-md">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex lg:flex-wrap items-stretch sm:items-center gap-2 sm:gap-2.5 w-full lg:w-auto">
+            <Link href="/therapist/clients?action=link" className="w-full lg:w-auto">
+              <Button variant="outline" className="w-full gap-2 border-teal-500/40 text-teal-300 hover:bg-teal-950/50 hover:text-teal-200 font-semibold shadow-md h-10 sm:h-9 text-xs justify-center">
                 <Link2 className="w-4 h-4" />
                 Link Client by Email
               </Button>
             </Link>
-            <Link href="/therapist/clients">
-              <Button className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold shadow-md">
+            <Link href="/therapist/clients" className="w-full lg:w-auto">
+              <Button className="w-full gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold shadow-md h-10 sm:h-9 text-xs justify-center">
                 <Users className="w-4 h-4" />
                 Manage Caseload
               </Button>
             </Link>
-            <Link href="/aruga-guide">
-              <Button variant="secondary" className="gap-2 border-zinc-700 hover:border-teal-500/40">
+            <Link href="/aruga-guide" className="w-full lg:w-auto">
+              <Button variant="secondary" className="w-full gap-2 border-zinc-700 hover:border-teal-500/40 h-10 sm:h-9 text-xs justify-center">
                 <Bot className="w-4 h-4 text-teal-400" />
                 Ask OT Assistant
               </Button>
@@ -172,108 +172,7 @@ export default function TherapistDashboardPage() {
         </div>
       </div>
 
-      {/* Pending Client Connection Requests Dedicated Section */}
-      {pendingRequests.length > 0 && (
-        <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/30 via-zinc-900/90 to-zinc-950 p-5 sm:p-6 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-900/40 pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0">
-                <UserPlus className="w-4 h-4 text-amber-400" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm sm:text-base font-semibold text-zinc-100">
-                    Pending Client Connection Requests ({pendingRequests.length})
-                  </h2>
-                  <Badge variant="amber" statusText="Action Required" icon={<Clock className="w-3 h-3" />} />
-                </div>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Clients who requested to link with your care caseload or awaiting confirmation. Approve to grant access to prescribed home programs, video uploads, and therapist feedback.
-                </p>
-              </div>
-            </div>
-            <Link
-              href="/therapist/clients?filter=pending"
-              className="text-xs text-amber-400 hover:text-amber-300 font-medium self-end sm:self-auto transition-colors"
-            >
-              View in Caseload →
-            </Link>
-          </div>
-
-          <div className="divide-y divide-zinc-800/80">
-            {pendingRequests.map((req) => {
-              const isProcessing = approvingId === req.id;
-              const feedback = actionFeedback?.id === req.id ? actionFeedback : null;
-
-              return (
-                <div
-                  key={req.id}
-                  className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-zinc-100">{req.name}</span>
-                      <span className="text-xs text-zinc-400">({req.email})</span>
-                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-800 text-teal-300 border border-teal-500/30 font-medium">
-                        Age {req.age} • {req.client_category || "Adult"}
-                      </span>
-                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-950/60 text-amber-300 border border-amber-500/30 font-medium">
-                        {req.invitation_initiated_by === "client" ? "Client Requested" : "Awaiting Confirmation"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-300">
-                      Primary Condition: <strong className="text-zinc-200">{req.condition}</strong>
-                      {req.caregiver_name && (
-                        <span className="text-zinc-400"> • Caregiver: {req.caregiver_name}</span>
-                      )}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {feedback ? (
-                      <span
-                        className={`text-xs px-3 py-1.5 rounded-lg border flex items-center gap-1.5 ${
-                          feedback.type === "success"
-                            ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
-                            : "bg-rose-950/40 border-rose-500/40 text-rose-300"
-                        }`}
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        {feedback.message}
-                      </span>
-                    ) : (
-                      <>
-                        <Button
-                          size="sm"
-                          onClick={() => handleLinkAction(req.id, "confirm")}
-                          disabled={isProcessing}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-semibold gap-1.5 h-8 text-xs shadow-sm"
-                        >
-                          {isProcessing ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                          )}
-                          Approve & Connect
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleLinkAction(req.id, "decline")}
-                          disabled={isProcessing}
-                          className="border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 h-8 text-xs"
-                        >
-                          Decline
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Pending requests now auto-activate on first login — no approve/decline UI. See "Pending Activation" pill in caseload. */}
 
       {/* Overview Stat Cards — even height + extra padding */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-fr">
@@ -290,7 +189,7 @@ export default function TherapistDashboardPage() {
 
         <Card className="bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 transition-colors flex flex-col h-full">
           <CardHeader className="flex flex-row items-center justify-between p-6 pb-4">
-            <CardTitle className="text-xs font-medium text-zinc-400">Pending Requests</CardTitle>
+            <CardTitle className="text-xs font-medium text-zinc-400">Pending Activation</CardTitle>
             <UserPlus className={`w-4 h-4 ${pendingRequests.length > 0 ? "text-amber-400" : "text-zinc-500"}`} />
           </CardHeader>
           <CardContent className="p-6 pt-0 flex-1 flex flex-col justify-center">
@@ -298,7 +197,7 @@ export default function TherapistDashboardPage() {
               {pendingRequests.length}
             </div>
             <p className="text-[11px] text-zinc-500 mt-1.5">
-              {pendingRequests.length > 0 ? "Awaiting clinician approval" : "No pending link requests"}
+              {pendingRequests.length > 0 ? "Awaiting first login" : "No pending activations"}
             </p>
           </CardContent>
         </Card>

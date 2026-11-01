@@ -24,7 +24,7 @@ export default function ClientActivitiesGalleryPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
       <div className="border-b border-zinc-800 pb-4">
-        <h1 className="text-xl font-bold text-zinc-100 flex items-center gap-2"><Palette className="w-5 h-5 text-teal-400"/> My Activities</h1>
+        <h1 className="text-xl font-bold text-zinc-100 flex flex-wrap items-center gap-2"><Palette className="w-5 h-5 text-teal-400"/> My Activities</h1>
         <p className="text-xs text-zinc-400 mt-1">Worksheets your therapist created for you. Draw directly on them or print and upload a photo.</p>
       </div>
       {activities.length === 0 ? (
@@ -43,7 +43,7 @@ export default function ClientActivitiesGalleryPage() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={String(a.base_image_url)} alt={String(a.title)} className="w-full rounded-lg border border-zinc-700 bg-white" />
               )}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Link href={`/client/activities/${String(a.id)}`}><Button size="sm" className="bg-teal-600 hover:bg-teal-500 text-white text-xs">Open & Draw</Button></Link>
                 <Badge variant="outline" statusText={String((a as { age_band?: string }).age_band || "")} />
               </div>

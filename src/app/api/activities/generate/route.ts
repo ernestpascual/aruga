@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
       referenceImages,
       patientId,
       creatorId,
+      generateImage,
       // legacy aliases from UI
       customSpark,
       customImage,
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
       referenceLinks: Array.isArray(referenceLinks) ? referenceLinks.filter(Boolean).slice(0, 6) : undefined,
       referenceImages: Array.isArray(referenceImages) ? referenceImages.filter(Boolean).slice(0, 4) : undefined,
       patientId,
+      generateImage: generateImage === false || generateImage === "false" ? false : true,
     });
 
     // Persist to generated_activities if we have DB

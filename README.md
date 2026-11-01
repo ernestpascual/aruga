@@ -55,6 +55,9 @@
   - Genuine empty states for newly registered therapist caseloads. Synthetic demo accounts are strictly isolated.
 - **Automated Credential Privacy Lifecycle**:
   - Temporary passwords generated during onboarding are permanently wiped from clinician visibility (`temporary_password = NULL`) the moment the client logs in.
+- **Therapist-Created Client Auto-Link on First Login**:
+  - When a therapist creates a client (email + temp password), the client row is `invitation_status = 'pending'`; on first `signIn` the API (`src/app/api/auth/clear-temp-credentials/route.ts:40`) auto-flips to `accepted`, sets `first_login_at`/`client_user_id`, and clears the temp credential — enforced by DB trigger `supabase/RUN_ONCE_AUTO_LINK_ON_FIRST_LOGIN.sql:1`. No manual accept required.
+- **Live Session SOAP Note UX**: Create flow now shows **"Create SOAP Note"** on the modal CTA (`src/app/therapist/clients/[id]/page.tsx:2350`, edit still "Save SOAP Note Changes").
 
 ---
 
@@ -77,8 +80,12 @@
 - [x] **Full Relational CRUD Architecture**: 100% relational coverage across patients, programs, steps, submissions, reviews, SOAP notes, and messages.
 - [x] **Zero Dummy Data for Clinicians**: Clean empty states; synthetic demo data restricted strictly to demo bypass accounts.
 - [x] **Credential Privacy Lifecycle**: Temporary passwords automatically purged from clinician view upon first client login.
+- [x] **Therapist-Created Client Auto-Link on First Login**: Pending therapist-invited clients auto-accept on first `signIn` via `src/app/api/auth/clear-temp-credentials/route.ts:40` + DB trigger `supabase/RUN_ONCE_AUTO_LINK_ON_FIRST_LOGIN.sql:1` (sets `invitation_status='accepted'` + `first_login_at`, wipes temp password).
+- [x] **Live Session SOAP UX Polish**: Create modal CTA now reads **"Create SOAP Note"** (edit = "Save SOAP Note Changes") at `src/app/therapist/clients/[id]/page.tsx:2350`.
 - [x] **Ask OT Assistant (`/ask-ot`)**: Multi-chat clinical assistant with conversation management and database persistence.
 - [x] **Idempotent Database Migrations**: 6 clean sequential migrations + `all_in_one_setup.sql`.
+- [x] **Privacy Hardening (C1–C3/H1–H4)**: RLS/API owner gates, random storage paths, short-lived signed URLs, EXIF strip — see [Security & Privacy Hardening](#security--privacy-hardening-c1c3--h1h4--nov-2026) and `supabase/RUN_ONCE_PRIVACY_FIX*.sql`.
+- [x] **Encryption Roadmap**: Column-level `pgsodium` + Vault and client-side E2E envelope planned in [`docs/FUTURE_PLANS.md`](docs/FUTURE_PLANS.md).
 
 ### Roadmap & Next Milestones
 - [ ] **Realtime Push Subscriptions**: Live WebSocket push updates for messages and review publications without page reload.
@@ -122,11 +129,11 @@ For a full intensive 60-minute video rehabilitation workload, total direct AI co
 
 - **Framework**: Next.js 16 (App Router) with React 19 and TypeScript (Strict Mode)
 - **Styling**: Tailwind CSS v4 & custom clinical theme tokens
-- **Backend & Auth**: Database Authentication, PostgreSQL, Private Cloud Storage, and Row-Level Security (RLS)
+- **Backend & Auth**: Database Authentication, PostgreSQL, Private Cloud Storage, Row-Level Security (RLS), and first-login auto-link trigger (`supabase/RUN_ONCE_AUTO_LINK_ON_FIRST_LOGIN.sql`)
 - **AI Models**: Meta Muse Spark 1.3 & SAM 3.1 (`https://api.meta.ai/v1`)
 - **Parsers & Validation**: `@meta-sam/parser`, Zod, React Hook Form
 - **Icons**: Lucide Icons
-- **Testing**: Vitest (**`80/80 tests passing`** across 5 suites), Playwright
+- **Testing**: Vitest (**`93/93 tests passing`** across 5 suites), Playwright
 - **Coding Assistant**: [Muse Spark Open 1026](https://www.llama.com/docs/model-cards-and-prompt-formats/muse-spark/) used to assist in coding tasks — scaffolding components, writing migrations, and generating tests under human review
 
 ---
@@ -197,7 +204,7 @@ MAX_VIDEO_SECONDS=30
 > **Security Note**: Never expose or commit `.env.local` or service keys to version control.
 
 ### 3. Database Setup & Migrations
-- **Fresh Setup**: Execute [`supabase/all_in_one_setup.sql`](supabase/all_in_one_setup.sql) directly in your PostgreSQL SQL Editor.
+- **Fresh Setup**: Execute [`supabase/all_in_one_setup.sql`](supabase/all_in_one_setup.sql) directly in your PostgreSQL SQL Editor, then apply [`supabase/RUN_ONCE_PRIVACY_FIX.sql`](supabase/RUN_ONCE_PRIVACY_FIX.sql), [`supabase/RUN_ONCE_AUTO_LINK_ON_FIRST_LOGIN.sql`](supabase/RUN_ONCE_AUTO_LINK_ON_FIRST_LOGIN.sql) (auto-accepts therapist-created pending invites on first login), and (if upgrading a legacy DB with permissive policies) [`supabase/RUN_ONCE_PRIVACY_FIX_C3_DROP_OPEN_POLICIES.sql`](supabase/RUN_ONCE_PRIVACY_FIX_C3_DROP_OPEN_POLICIES.sql) — all idempotent. Verify with [`scripts/verify-rls.sql`](scripts/verify-rls.sql).
 - **Incremental Migrations**: If your database is already initialized, run the migrations sequentially:
   1. [`supabase/migrations/20261030000001_add_old_people_category.sql`](supabase/migrations/20261030000001_add_old_people_category.sql) — adds `'old_people'` category.
   2. [`supabase/migrations/20261031000001_link_therapist_in_new_user_trigger.sql`](supabase/migrations/20261031000001_link_therapist_in_new_user_trigger.sql) — automatic client-therapist email linking on client signup.
@@ -221,7 +228,7 @@ Run the Vitest test suite:
 ```bash
 npm test
 ```
-Runs **80 unit and integration tests** across 5 suites:
+Runs **93 unit and integration tests** across 5 suites:
 - `tests/authorization.test.ts`: Role-based isolation, draft concealment, frozen protocol checks.
 - `tests/supabase-crud.test.ts`: Complete CRUD operations for clients, home programs, step video uploads (Cloud Storage), therapist per-step feedback and overall reviews, real-time messaging, **Two-Way Handshake Confirmations**, **Care Transfer Service**, and **Live Session SOAP Notes**.
 - `tests/sam-engine.test.ts`: SAM 3.1 concept handling, deduplication, caching, and multi-concept segmentation.
@@ -236,14 +243,55 @@ npm run build
 
 ---
 
+## Security & Privacy Hardening (C1–C3 / H1–H4 — Nov 2026)
+
+> **Current posture:** TLS in-transit + Supabase AES-256 at-rest + strict RLS/API owner checks. No column-level or E2E ciphertext yet — tracked in [Future Encryption Roadmap](docs/FUTURE_PLANS.md). Full before/after with file:line proofs: [`docs/PRIVACY_HARDENING_LATEST.md`](docs/PRIVACY_HARDENING_LATEST.md) (detailed: `docs/PRIVACY_HARDENING_C1-H4_1101260315.md`).
+
+**What was fixed (build `56/56`, tests `93/93`):**
+
+| ID | Issue | Fix | Key files |
+|---|---|---|---|
+| **C1** | Cross-tenant writes via `patientId`/`creatorId` from body | `auth.uid()`-derived creator + `therapist_owns_patient(patient_id)` gate on every insert | `src/app/api/activities/generate/route.ts:42`, `src/app/api/therapist/soap-notes/route.ts:140`, `src/app/api/therapist/programs/route.ts:359`, `src/lib/supabase/owner.ts:1` |
+| **C2** | 7-day predictable bearer URLs (`submissions/{id}/{step}_ts.mp4`) | Random `nanoid(12)` prefix + per-view `15m` (videos) / `60m` (chat) `createSignedUrl`; storage-path-only persisted | `src/app/api/client/submissions/upload/route.ts:105,158`, `src/app/api/messages/route.ts:308`, `src/app/api/client/submissions/route.ts:70` |
+| **C3** | 42 permissive `USING (true)` RLS policies — direct `anon`-key exfiltration | Dropped permissive set, re-applied restrictive `supabase/01_schema.sql:322` baseline | `supabase/RUN_ONCE_PRIVACY_FIX_C3_DROP_OPEN_POLICIES.sql:1`, verified via `scripts/verify-rls.sql:1` |
+| **H1** | Silent `DEMO_*` fallback bypass | Gated behind `isDemo` header, else `401` | `src/app/api/therapist/clients/route.ts:314`, `src/app/api/therapist/programs/route.ts:184` |
+| **H2** | Invitation/oracle enumeration (`403` vs `404`) | Normalized to `404` | `src/app/api/therapist/clients/route.ts:39,835,930` |
+| **H3** | Notification email over-disclosure | `maskEmail()` (`j***@domain`) + ownership check | `src/app/api/notifications/route.ts:6,152` |
+| **H4** | EXIF GPS leak on uploads | `sharp.rotate().withMetadata({})` strip before `storage.upload` | `src/app/api/client/submissions/upload/route.ts:110`, `src/app/api/messages/route.ts:311` |
+
+**Storage:** All buckets now `public=false` (no public read) — `program-videos`, `chat-attachments`, `activity-assets` — with `authenticated`-only `storage.objects` policies.
+
+**Therapist → Client Auto-Link on First Login:** Therapist-created rows start `pending`; on client `signIn`, `src/app/api/auth/clear-temp-credentials/route.ts:40` (triggered from `src/lib/supabase/auth-context.tsx:193`) sets `invitation_status='accepted'`, `first_login_at=NOW()`, `client_user_id` self-heal, and `temporary_password=NULL`. DB trigger `supabase/RUN_ONCE_AUTO_LINK_ON_FIRST_LOGIN.sql:6` enforces the same for `first_login_at`/`client_user_id` transitions + backfills already-logged-in pendings. Result: created clients auto-appear in therapist caseload after first login, no manual accept.
+
+**Apply the fix (one file, idempotent):**
+
+```bash
+# In Supabase SQL Editor — run once (or re-run safely):
+supabase/RUN_ONCE_PRIVACY_FIX.sql
+supabase/RUN_ONCE_AUTO_LINK_ON_FIRST_LOGIN.sql          # auto-accepts therapist pending invites on first login + backfill
+supabase/RUN_ONCE_PRIVACY_FIX_C3_DROP_OPEN_POLICIES.sql  # if your DB had legacy "Allow all" policies
+
+# Verify:
+scripts/verify-rls.sql  # expect: buckets public=false, qual=true → 0 rows, RLS enabled, therapist_owns_patient exists
+```
+
+**Encryption today vs next:**
+
+- **Today:** Platform-managed (TLS + AES-256 volumes + SSE-S3). App fields are plaintext behind RLS/API — snapshot with `service_role` can read.
+- **Next (Track A, Q1 2027):** Column-level `pgsodium` + Vault — `soap_notes`, `reviews`, `messages.body`, `patients.email` as `BYTEA` ciphertext; snapshot without Vault keys is opaque. See [`docs/FUTURE_PLANS.md#2-track-a`](docs/FUTURE_PLANS.md#2-track-a--column-level-encryption-pgsodium--vault).
+- **Next (Track B, Q2 2027 pilot):** Client-side E2E envelope (WebCrypto AES-GCM + ECDH) — server never sees plaintext; per-patient opt-in, AI requires explicit consent. See [`docs/FUTURE_PLANS.md#3-track-b`](docs/FUTURE_PLANS.md#3-track-b--client-side-end-to-end-encryption-webcrypto-envelope).
+
+---
+
 ## Documentation & Audits
 
 - [Allied Health Pitch Presentation (10 Slides)](docs/PITCH_PRESENTATION.html) | [Markdown Version](docs/PITCH_PRESENTATION.md)
 - [Database Design & Entity Relationships](docs/DATABASE_DESIGN.md)
 - [SAM Engine Keywords & Clinical Classifications](docs/SAM_ENGINE_KEYWORDS.md)
-- [Progress & AI Cost Audit (Latest: 1101260247, Commit 6073ec5)](audit/audit_report_1101260247.md) | [Interactive HTML](audit/audit_report_1101260247.html) | [Stable Copy (docs/)](docs/AUDIT_REPORT_LATEST.md) — Previous versions in [audit/old/](audit/old/)
-- [HIPAA Security & Privacy Compliance Audit (Latest: 1101260247, IDOR-Hardened)](audit/HIPAA_COMPLIANCE_AUDIT_1101260247.md) | [Interactive HTML](audit/HIPAA_COMPLIANCE_AUDIT_1101260247.html) | [Stable Copy (docs/)](docs/HIPAA_AUDIT_LATEST.md)
-- [Business Model Canvas V3 (Privacy-Hardened, 1101260247)](audit/BUSINESS_MODEL_CANVAS_V3_1101260247.md) | [Interactive HTML](audit/BUSINESS_MODEL_CANVAS_V3_1101260247.html) | [Stable Copy (docs/)](docs/BUSINESS_MODEL_CANVAS_LATEST.md) — Archived V1/V2 in [audit/old/](audit/old/) / [docs/old/](docs/old/)
+- [Progress & AI Cost Audit (Latest: 1101260315, Commit f77e45e)](audit/audit_report_1101260315.md) | [Interactive HTML](audit/audit_report_1101260315.html) | [Stable Copy (docs/)](docs/AUDIT_REPORT_LATEST.md) — Previous versions in [audit/old/](audit/old/)
+- [HIPAA Security & Privacy Compliance Audit (Latest: 1101260315, C1–H4 Hardened)](audit/HIPAA_COMPLIANCE_AUDIT_1101260315.md) | [Interactive HTML](audit/HIPAA_COMPLIANCE_AUDIT_1101260315.html) | [Stable Copy (docs/)](docs/HIPAA_AUDIT_LATEST.md) — Privacy Outline: [PRIVACY_HARDENING_LATEST.md](docs/PRIVACY_HARDENING_LATEST.md)
+- [Business Model Canvas V4 (C1–H4 BAA-Ready, 1101260315)](audit/BUSINESS_MODEL_CANVAS_V4_1101260315.md) | [Interactive HTML](audit/BUSINESS_MODEL_CANVAS_V4_1101260315.html) | [Stable Copy (docs/)](docs/BUSINESS_MODEL_CANVAS_LATEST.md) — Archived in [audit/old/](audit/old/) / [docs/old/](docs/old/)
 - [Meta AI Integration Details](docs/META_INTEGRATION.md)
 - [Hackathon Demo Walkthrough](docs/DEMO.md)
 - [Clinical Evaluation & Latencies](docs/EVALUATION.md)
+- [Future Plans — Column-Level & E2E Encryption Roadmap](docs/FUTURE_PLANS.md)

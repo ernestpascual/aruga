@@ -16,6 +16,8 @@ import {
   Wrench,
   ChevronDown,
   BookOpen,
+  Menu,
+  X,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { NotificationsDropdown } from "@/components/ui/notifications-dropdown";
@@ -53,6 +55,7 @@ export function TherapistNav() {
   ];
 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileOpenGroup, setMobileOpenGroup] = useState<string | null>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -87,13 +90,22 @@ export function TherapistNav() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 gap-4">
-        <div className="flex items-center shrink-0">
+    <header className="sticky top-0 z-40 w-full border-b border-zinc-800/80 bg-zinc-950/95 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/80">
+      <div className="mx-auto flex h-14 sm:h-16 items-center justify-between px-3 sm:px-6 gap-2 sm:gap-4 max-w-7xl">
+        {/* Left: Logo + Hamburger */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileOpen((v) => !v)}
+            aria-label="Toggle navigation menu"
+            className="md:hidden p-2 -ml-1 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800 active:scale-95 transition-colors"
+          >
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
           <Logo href="/therapist/dashboard" />
         </div>
 
-        {/* Desktop Navigation - centered, evenly spaced — matches client-nav */}
+        {/* Desktop Navigation - centered */}
         <nav className="hidden md:flex flex-1 justify-center items-center gap-6 lg:gap-8">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -120,7 +132,7 @@ export function TherapistNav() {
                   </button>
                   {isOpen && (
                     <div className="absolute left-0 top-full pt-2 z-50">
-                      <div className="min-w-[180px] rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl py-1.5">
+                      <div className="min-w-[190px] rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl py-1.5">
                         {item.children.map((child) => {
                           const ChildIcon = child.icon;
                           const childActive = isChildActive(child.href);
@@ -129,11 +141,11 @@ export function TherapistNav() {
                               key={child.href + child.label}
                               href={child.href}
                               onClick={() => setOpenDropdown(null)}
-                              className={`flex items-center gap-2 px-3.5 py-2 text-xs font-medium transition-colors ${
+                              className={`flex items-center gap-2 px-3.5 py-2.5 text-sm font-medium transition-colors ${
                                 childActive ? "bg-zinc-800 text-teal-400" : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/70"
                               }`}
                             >
-                              <ChildIcon className="w-3.5 h-3.5" />
+                              <ChildIcon className="w-4 h-4" />
                               {child.label}
                             </Link>
                           );
@@ -160,18 +172,27 @@ export function TherapistNav() {
           })}
         </nav>
 
-        {/* Right side status, profile, and role */}
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        {/* Right side */}
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <Link
             href="/therapist/profile"
-            className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-colors ${
+            className={`hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${
               pathname === "/therapist/profile"
                 ? "bg-teal-950/80 border-teal-500 text-teal-300"
                 : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700"
             }`}
           >
             <Stethoscope className="w-3.5 h-3.5 text-teal-400" />
-            <span className="max-w-[120px] truncate hidden sm:inline">{profile?.display_name || "Profile"}</span>
+            <span className="max-w-[120px] truncate">{profile?.display_name || "Profile"}</span>
+          </Link>
+
+          {/* Mobile profile icon */}
+          <Link
+            href="/therapist/profile"
+            className={`sm:hidden w-9 h-9 grid place-items-center rounded-lg border ${pathname === "/therapist/profile" ? "bg-teal-950/80 border-teal-500/40 text-teal-300" : "bg-zinc-900 border-zinc-800 text-zinc-400"}`}
+            aria-label="Profile"
+          >
+            <Stethoscope className="w-4 h-4" />
           </Link>
 
           <NotificationsDropdown role="therapist" />
@@ -179,83 +200,123 @@ export function TherapistNav() {
           <button
             type="button"
             onClick={handleSignOut}
-            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 px-2 py-1 rounded hover:bg-zinc-900 transition-colors cursor-pointer"
+            className="hidden sm:flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 px-2 py-1 rounded hover:bg-zinc-900 transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Sign out</span>
+            <span>Sign out</span>
+          </button>
+          {/* Mobile sign out icon */}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="sm:hidden w-9 h-9 grid place-items-center rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+            aria-label="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Mobile Nav — matches client-nav */}
-      <div className="flex md:hidden border-t border-zinc-800/60 bg-zinc-900/50 px-2 py-2 gap-1 overflow-x-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = isActiveItem(item);
+      {/* Mobile Drawer Overlay */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-40" aria-hidden="true">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+          <div className="absolute top-14 left-0 bottom-0 w-[300px] max-w-[85vw] bg-zinc-950 border-r border-zinc-800 shadow-2xl overflow-y-auto animate-in slide-in-from-left duration-200">
+            <nav className="p-3 space-y-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const active = isActiveItem(item);
+                if (item.children) {
+                  const expanded = mobileOpenGroup === item.label;
+                  return (
+                    <div key={item.label} className="rounded-xl overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setMobileOpenGroup(expanded ? null : item.label)}
+                        className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium transition-colors ${
+                          active ? "bg-zinc-800 text-teal-300" : "text-zinc-300 hover:bg-zinc-900"
+                        }`}
+                      >
+                        <span className="flex items-center gap-3">
+                          <span className={`w-8 h-8 rounded-lg grid place-items-center border ${active ? "bg-teal-950/60 border-teal-500/30 text-teal-400" : "bg-zinc-900 border-zinc-800 text-zinc-400"}`}>
+                            <Icon className="w-4 h-4" />
+                          </span>
+                          {item.label}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                      </button>
+                      {expanded && (
+                        <div className="mt-1 ml-3 pl-3 border-l border-zinc-800 space-y-1 py-1">
+                          {item.children.map((child) => {
+                            const ChildIcon = child.icon;
+                            const childActive = isChildActive(child.href);
+                            return (
+                              <Link
+                                key={child.href + child.label}
+                                href={child.href}
+                                onClick={() => {
+                                  setMobileOpen(false);
+                                  setMobileOpenGroup(null);
+                                }}
+                                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                                  childActive ? "bg-zinc-800 text-teal-400 font-medium" : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
+                                }`}
+                              >
+                                <ChildIcon className="w-4 h-4" />
+                                {child.label}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href!}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-colors ${
+                      active ? "bg-zinc-800 text-teal-400" : "text-zinc-300 hover:bg-zinc-900"
+                    }`}
+                  >
+                    <span className={`w-8 h-8 rounded-lg grid place-items-center border ${active ? "bg-teal-950/60 border-teal-500/30 text-teal-400" : "bg-zinc-900 border-zinc-800 text-zinc-400"}`}>
+                      <Icon className="w-4 h-4" />
+                    </span>
+                    {item.label}
+                  </Link>
+                );
+              })}
 
-          if (item.children) {
-            const expanded = mobileOpenGroup === item.label;
-            return (
-              <div key={item.label} className="flex flex-col shrink-0">
+              <div className="pt-3 mt-3 border-t border-zinc-800 space-y-1">
+                <Link
+                  href="/therapist/profile"
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium ${pathname === "/therapist/profile" ? "bg-teal-950/40 border border-teal-500/30 text-teal-300" : "text-zinc-300 hover:bg-zinc-900"}`}
+                >
+                  <span className="w-8 h-8 rounded-lg grid place-items-center bg-zinc-900 border border-zinc-800 text-teal-400">
+                    <Stethoscope className="w-4 h-4" />
+                  </span>
+                  Profile
+                </Link>
                 <button
                   type="button"
-                  onClick={() => setMobileOpenGroup(expanded ? null : item.label)}
-                  className={`flex items-center gap-1 text-xs font-medium py-1.5 px-2.5 rounded-md transition-colors shrink-0 ${
-                    active ? "text-teal-400 bg-zinc-800" : "text-zinc-400 hover:text-zinc-200"
-                  }`}
+                  onClick={handleSignOut}
+                  className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
                 >
-                  <Icon className="w-3.5 h-3.5" />
-                  {item.label}
-                  <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                  <span className="w-8 h-8 rounded-lg grid place-items-center bg-zinc-900 border border-zinc-800">
+                    <LogOut className="w-4 h-4" />
+                  </span>
+                  Sign out
                 </button>
-                {expanded && (
-                  <div className="mt-1 ml-1 flex flex-col gap-0.5 border-l border-zinc-800 pl-2">
-                    {item.children.map((child) => {
-                      const ChildIcon = child.icon;
-                      const childActive = isChildActive(child.href);
-                      return (
-                        <Link
-                          key={child.href + child.label}
-                          href={child.href}
-                          onClick={() => setMobileOpenGroup(null)}
-                          className={`flex items-center gap-1.5 text-xs font-medium py-1 px-2 rounded-md transition-colors ${
-                            childActive ? "text-teal-400 bg-zinc-800" : "text-zinc-400"
-                          }`}
-                        >
-                          <ChildIcon className="w-3 h-3" />
-                          {child.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
-            );
-          }
 
-          return (
-            <Link
-              key={item.label}
-              href={item.href!}
-              className={`flex items-center gap-1 text-xs font-medium py-1 px-2.5 rounded-md transition-colors shrink-0 whitespace-nowrap ${
-                active ? "text-teal-400 bg-zinc-800" : "text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {item.label}
-            </Link>
-          );
-        })}
-        <Link
-          href="/therapist/profile"
-          className={`flex items-center gap-1 text-xs font-medium py-1 px-2.5 rounded-md transition-colors shrink-0 whitespace-nowrap ${
-            pathname === "/therapist/profile" ? "text-teal-400 bg-zinc-800" : "text-zinc-400 hover:text-zinc-200"
-          }`}
-        >
-          <Stethoscope className="w-3.5 h-3.5" />
-          Profile
-        </Link>
-      </div>
+              <p className="px-3 pt-4 text-[11px] text-zinc-500 text-center">Aruga Therapist Portal • v2</p>
+            </nav>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

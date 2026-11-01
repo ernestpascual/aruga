@@ -60,6 +60,15 @@ body {
   outline-offset: 2px;
 }
 
+/* Hide scrollbar but keep scrollability — for filter/tab pills on mobile */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* ------------------------------------------------------------------ */
 /* LIGHT MODE DESIGN SYSTEM (Clean Clinical Hospital / Clinic Light)  */
 /* ------------------------------------------------------------------ */

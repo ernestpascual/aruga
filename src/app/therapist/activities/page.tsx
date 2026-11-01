@@ -44,31 +44,31 @@ export default function TherapistActivitiesPage() {
   if (loading) return <div className="p-8 text-center text-zinc-500 text-xs">Loading activities library...</div>;
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-4">
-        <div>
-          <h1 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
-            <Palette className="w-5 h-5 text-teal-400" /> Activity Studio
+    <div className="space-y-4 sm:space-y-6 max-w-6xl mx-auto pb-12">
+      <div className="flex flex-col gap-3 border-b border-zinc-800 pb-4">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-xl font-bold text-zinc-100 flex items-center gap-2">
+            <span className="w-8 h-8 rounded-lg bg-teal-950/40 border border-teal-500/20 grid place-items-center shrink-0"><Palette className="w-4 h-4 text-teal-400" /></span>
+            Activity Studio
           </h1>
-          <p className="text-xs text-zinc-400 mt-1">Generate printable + interactive worksheets with Muse Spark + Muse Image. Each activity is saved and attachable to Home Programs.</p>
+          <p className="text-xs text-zinc-400 mt-1 leading-relaxed">Generate printable + interactive worksheets with Muse Spark + Muse Image.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="teal" statusText={`${templates.length} templates`} icon={<Library className="w-3 h-3" />} />
           <Badge variant="amber" statusText={`${recentActivities.length} generated`} />
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={() => setTab("browse")} className={`px-4 py-1.5 rounded-full text-xs font-semibold border ${tab === "browse" ? "bg-teal-600 border-teal-500 text-white" : "bg-zinc-900 border-zinc-700 text-zinc-400"}`}>
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none snap-x -mx-3 px-3 sm:mx-0 sm:px-0 pb-1">
+        <button type="button" onClick={() => setTab("browse")} className={`snap-start shrink-0 px-4 py-2 sm:py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap ${tab === "browse" ? "bg-teal-600 border-teal-500 text-white" : "bg-zinc-900 border-zinc-700 text-zinc-400"}`}>
           Browse Library
         </button>
-        <button type="button" onClick={() => setTab("mine")} className={`px-4 py-1.5 rounded-full text-xs font-semibold border ${tab === "mine" ? "bg-teal-600 border-teal-500 text-white" : "bg-zinc-900 border-zinc-700 text-zinc-400"}`}>
+        <button type="button" onClick={() => setTab("mine")} className={`snap-start shrink-0 px-4 py-2 sm:py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap ${tab === "mine" ? "bg-teal-600 border-teal-500 text-white" : "bg-zinc-900 border-zinc-700 text-zinc-400"}`}>
           My Prompts ({myPromptCount})
         </button>
-        <button type="button" onClick={() => setTab("recent")} className={`px-4 py-1.5 rounded-full text-xs font-semibold border ${tab === "recent" ? "bg-teal-600 border-teal-500 text-white" : "bg-zinc-900 border-zinc-700 text-zinc-400"}`}>
+        <button type="button" onClick={() => setTab("recent")} className={`snap-start shrink-0 px-4 py-2 sm:py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap ${tab === "recent" ? "bg-teal-600 border-teal-500 text-white" : "bg-zinc-900 border-zinc-700 text-zinc-400"}`}>
           Recent Generated
         </button>
-        <span className="text-[11px] text-zinc-500 ml-auto hidden sm:inline">Tip: Save any customization as &quot;My Prompt&quot; for one-click reuse.</span>
       </div>
 
       {tab === "browse" && (

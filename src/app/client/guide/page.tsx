@@ -64,9 +64,9 @@ const steps = [
 
 export default function ClientGuidePage() {
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl space-y-6">
+    <div className="space-y-6 min-w-0">
       {/* Header */}
-      <div className="p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-zinc-900 via-zinc-900 to-teal-950/40 border border-zinc-800 shadow-xl relative overflow-hidden">
+      <div className="p-4 sm:p-8 rounded-2xl bg-gradient-to-r from-zinc-900 via-zinc-900 to-teal-950/40 border border-zinc-800 shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-2">

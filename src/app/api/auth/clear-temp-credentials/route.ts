@@ -20,8 +20,10 @@ export async function POST(req: NextRequest) {
 
     const admin = createAdminClient();
     if (admin) {
-      // Find matching patient by client_user_id or email
-      let query = admin.from("patients").select("id, temporary_password, first_login_at");
+      // Find matching patient by client_user_id or email (include linkage columns for auto-accept)
+      let query = admin
+        .from("patients")
+        .select("id, temporary_password, first_login_at, invitation_status, therapist_id, invitation_initiated_by, client_user_id, email");
       if (userId && normalizedEmail) {
         query = query.or(`client_user_id.eq.${userId},email.ilike.${normalizedEmail}`);
       } else if (userId) {
@@ -45,10 +47,47 @@ export async function POST(req: NextRequest) {
           updateData.first_login_at = nowIso;
         }
 
+        // Auto-link: therapist-created client (pending) becomes accepted on first login
+        const isPendingTherapistInvite =
+          patient.invitation_status === "pending" &&
+          !!patient.therapist_id &&
+          (patient.invitation_initiated_by === "therapist" || !patient.invitation_initiated_by || patient.invitation_initiated_by === null);
+        // Also accept any pending with therapist_id on first credential clear (covers invite-before-signup)
+        const shouldAutoAccept =
+          patient.invitation_status === "pending" && !!patient.therapist_id;
+        if (shouldAutoAccept || isPendingTherapistInvite) {
+          updateData.invitation_status = "accepted";
+        }
+
+        // Self-heal: ensure client_user_id is set to the logging-in user
+        if (userId && !patient.client_user_id) {
+          updateData.client_user_id = userId;
+        }
+
         await admin
           .from("patients")
           .update(updateData)
           .eq("id", patient.id);
+      } else if (!patient && userId && normalizedEmail) {
+        // Fallback: patient exists by email but client_user_id not yet linked — heal by email
+        const { data: byEmail } = await admin
+          .from("patients")
+          .select("id, invitation_status, therapist_id, invitation_initiated_by, client_user_id")
+          .ilike("email", normalizedEmail)
+          .maybeSingle();
+        if (byEmail && byEmail.therapist_id) {
+          const healUpdate: Record<string, unknown> = {
+            client_user_id: userId,
+            temporary_password: null,
+            credentials_cleared_at: nowIso,
+            first_login_at: nowIso,
+            updated_at: nowIso,
+          };
+          if (byEmail.invitation_status === "pending") {
+            healUpdate.invitation_status = "accepted";
+          }
+          await admin.from("patients").update(healUpdate).eq("id", byEmail.id);
+        }
       }
     }
 
@@ -66,6 +105,13 @@ export async function POST(req: NextRequest) {
       mockPatient.credentials_cleared_at = nowIso;
       if (!mockPatient.first_login_at) {
         mockPatient.first_login_at = nowIso;
+      }
+      // Auto-link in mock store as well
+      if (mockPatient.invitation_status === "pending" && (mockPatient as any).therapist_id) {
+        mockPatient.invitation_status = "accepted";
+      }
+      if (userId && !(mockPatient as any).client_user_id) {
+        (mockPatient as any).client_user_id = userId;
       }
       mockPatient.updated_at = nowIso;
     }

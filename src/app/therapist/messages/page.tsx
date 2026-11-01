@@ -261,9 +261,10 @@ function TherapistMessagesContent() {
   }
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto h-[calc(100vh-8rem)] flex flex-col">
+    <div className="space-y-3 max-w-7xl mx-auto h-[calc(100dvh-7rem)] sm:h-[calc(100vh-8rem)] flex flex-col">
       {/* Top Bar with Caseload Summary & Global Client Selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3 shrink-0">
+      <div className="flex flex-col gap-3 border-b border-zinc-800 pb-3 shrink-0">
+
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-teal-950/80 border border-teal-500/40 text-teal-400 flex items-center justify-center shrink-0">
             <MessageSquare className="w-4 h-4" />
@@ -726,7 +727,7 @@ function TherapistMessagesContent() {
               <div className="flex items-center gap-2 p-2 rounded-lg bg-zinc-900 border border-zinc-800">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={previewUrl} alt="preview" className="h-16 w-16 object-cover rounded border border-zinc-700" />
-                <span className="text-xs text-zinc-400 flex-1 truncate">{pendingFile?.name} • {(pendingFile!.size / 1024).toFixed(0)} KB (compressed)</span>
+                <span className="text-xs text-zinc-400 flex-1 truncate">{pendingFile?.name} • {(pendingFile!.size / 1024).toFixed(0)} KB</span>
                 <button type="button" onClick={clearPending} className="p-1 rounded hover:bg-zinc-800 text-zinc-400"><X className="w-4 h-4" /></button>
               </div>
             )}

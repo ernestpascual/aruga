@@ -206,6 +206,7 @@ export interface GenerateActivityInput {
   referenceLinks?: string[];
   referenceImages?: string[]; // data URLs or http URLs
   patientId?: string;
+  generateImage?: boolean; // when false, skip Muse Image (text-only worksheet)
 }
 
 export interface GenerateActivityOutput {

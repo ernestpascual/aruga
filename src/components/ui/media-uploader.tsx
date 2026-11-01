@@ -333,7 +333,7 @@ export function MediaUploader({ onMediaReady, existingMediaPath, existingMediaMe
         {mode !== "recording" && mode !== "requesting" && (
           <>
             {hasMedia ? (
-              <div className="flex flex-row items-center justify-between gap-3 w-full">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
                 <div className="flex items-center gap-1.5 text-xs font-medium">
                   {isUploading ? <span className="text-amber-400 flex items-center gap-1.5"><div className="w-3.5 h-3.5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />Uploading to Supabase...</span> : <span className="text-teal-400 flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" />{isPhotoPreview ? "Photo in Supabase" : "Video in Supabase"}</span>}
                 </div>
@@ -347,7 +347,7 @@ export function MediaUploader({ onMediaReady, existingMediaPath, existingMediaMe
                 </div>
               </div>
             ) : activeTab === "photo" ? (
-              <div className="flex flex-row items-center gap-2 w-full">
+              <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
                 <Button type="button" onClick={startCameraPhoto} disabled={isUploading} className="gap-2 bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs">
                   <Camera className="w-4 h-4" /> Take Photo
                 </Button>
@@ -356,7 +356,7 @@ export function MediaUploader({ onMediaReady, existingMediaPath, existingMediaMe
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-row items-center gap-2 w-full">
+              <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
                 <Button type="button" onClick={startCameraVideo} disabled={isUploading} className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold text-xs">
                   <Video className="w-4 h-4" /> Start Recording
                 </Button>

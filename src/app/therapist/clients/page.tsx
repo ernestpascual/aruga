@@ -352,29 +352,31 @@ Note: For client privacy and safety, temporary credentials are automatically del
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2.5">
-            <Users className="w-6 h-6 text-teal-400" />
+      <div className="flex flex-col gap-4 border-b border-zinc-800/80 pb-4 sm:pb-5">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2.5">
+            <span className="w-9 h-9 rounded-xl bg-teal-950/50 border border-teal-500/20 grid place-items-center shrink-0">
+              <Users className="w-5 h-5 text-teal-400" />
+            </span>
             Clients
           </h1>
-          <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-            Manage your caseload across pediatric and adult care, assign home programs, and review tabletop submissions.
+          <p className="text-xs sm:text-sm text-zinc-400 mt-1.5 leading-relaxed">
+            Manage your caseload across pediatric and adult care, assign home programs, and review submissions.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2 sm:self-auto">
           <Button
             onClick={() => openAddModal("link_email")}
             variant="outline"
-            className="gap-2 border-teal-500/40 text-teal-300 hover:bg-teal-950/50 hover:text-teal-200 font-semibold shadow-sm"
+            className="gap-2 border-teal-500/40 text-teal-300 hover:bg-teal-950/50 hover:text-teal-200 font-semibold shadow-sm h-10 sm:h-9 text-xs justify-center"
           >
             <Link2 className="w-4 h-4" />
-            Link Client by Email
+            <span className="hidden xs:inline">Link</span> by Email
           </Button>
           <Button
             onClick={() => openAddModal("intake")}
-            className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold shadow-sm"
+            className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold shadow-sm h-10 sm:h-9 text-xs justify-center"
           >
             <UserPlus className="w-4 h-4" />
             Add Client
@@ -382,94 +384,27 @@ Note: For client privacy and safety, temporary credentials are automatically del
         </div>
       </div>
 
-      {/* Pending Connection Confirmations Banner */}
-      {pendingConfirmations.length > 0 && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-950/20 p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-amber-400" />
-              <h3 className="text-sm font-semibold text-amber-200">
-                Pending Link Confirmations ({pendingConfirmations.length})
-              </h3>
-            </div>
-            <span className="text-xs text-amber-400/80">
-              Confirm link or wait for client acceptance
-            </span>
-          </div>
-
-          {confirmError && (
-            <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-xs text-rose-200 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-              <span className="leading-relaxed">{confirmError}</span>
-            </div>
-          )}
-
-          <div className="divide-y divide-amber-900/40">
-            {pendingConfirmations.map((pendingClient) => (
-              <div
-                key={pendingClient.id}
-                className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-zinc-100">{pendingClient.name}</p>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-900/50 text-amber-300 border border-amber-500/30">
-                      {pendingClient.invitation_initiated_by === "client"
-                        ? "Requested by Client"
-                        : "Awaiting Client Acceptance"}
-                    </span>
-                  </div>
-                  <p className="text-xs text-zinc-400 mt-0.5">
-                    {pendingClient.email} • {pendingClient.condition}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    onClick={(e) => handleConfirmClientLink(pendingClient.id, "accept", e)}
-                    disabled={confirmingId === pendingClient.id}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-semibold h-8 text-xs gap-1.5 shadow-sm"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Confirm Link
-                  </Button>
-                  {pendingClient.invitation_initiated_by === "client" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => handleConfirmClientLink(pendingClient.id, "decline", e)}
-                      disabled={confirmingId === pendingClient.id}
-                      className="border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 h-8 text-xs"
-                    >
-                      Decline
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Pending activation is now just a pill in the client list — no banner or confirm actions. Auto-activates on first login via clear-temp-credentials + DB trigger. */}
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
-        <div className="relative w-full max-w-md">
+      <div className="space-y-3">
+        <div className="relative w-full">
           <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <Input
             type="text"
             placeholder="Search by client name, condition, or caregiver..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-zinc-900/90 border-zinc-800"
+            className="pl-9 bg-zinc-900/90 border-zinc-800 h-10 sm:h-9 text-sm"
           />
         </div>
 
-        {/* Population Filter Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-lg bg-zinc-900/80 border border-zinc-800 self-start sm:self-auto">
+        {/* Population Filter Tabs — horizontally scrollable on mobile */}
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-900/80 border border-zinc-800 overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-1 px-1 sm:mx-0">
           <button
             type="button"
             onClick={() => setPopulationFilter("all")}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+            className={`snap-start shrink-0 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
               populationFilter === "all"
                 ? "bg-zinc-800 text-zinc-100 shadow-sm"
                 : "text-zinc-400 hover:text-zinc-200"
@@ -480,7 +415,7 @@ Note: For client privacy and safety, temporary credentials are automatically del
           <button
             type="button"
             onClick={() => setPopulationFilter("pending")}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+            className={`snap-start shrink-0 flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
               populationFilter === "pending"
                 ? "bg-amber-950/80 text-amber-300 border border-amber-500/40 font-semibold shadow-sm"
                 : pendingConfirmations.length > 0
@@ -488,56 +423,56 @@ Note: For client privacy and safety, temporary credentials are automatically del
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            <Clock className="w-3 h-3 text-amber-400" />
-            Pending Requests ({pendingConfirmations.length})
+            <Clock className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-amber-400" />
+            Pending ({pendingConfirmations.length})
           </button>
           <button
             type="button"
             onClick={() => setPopulationFilter("pedia")}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+            className={`snap-start shrink-0 flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
               populationFilter === "pedia"
                 ? "bg-sky-950/80 text-sky-300 border border-sky-500/40 font-semibold shadow-sm"
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            <Baby className="w-3 h-3 text-sky-400" />
-            Pediatric ({pediaCount})
+            <Baby className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-sky-400" />
+            Pedia ({pediaCount})
           </button>
           <button
             type="button"
             onClick={() => setPopulationFilter("adolescent")}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+            className={`snap-start shrink-0 flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
               populationFilter === "adolescent"
                 ? "bg-indigo-950/80 text-indigo-300 border border-indigo-500/40 font-semibold shadow-sm"
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            <GraduationCap className="w-3 h-3 text-indigo-400" />
-            Adolescent ({adolescentCount})
+            <GraduationCap className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-indigo-400" />
+            Teen ({adolescentCount})
           </button>
           <button
             type="button"
             onClick={() => setPopulationFilter("adult")}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+            className={`snap-start shrink-0 flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
               populationFilter === "adult"
                 ? "bg-zinc-800 text-teal-300 font-semibold shadow-sm"
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            <User className="w-3 h-3" />
+            <User className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
             Adult ({adultCount})
           </button>
           <button
             type="button"
             onClick={() => setPopulationFilter("geriatric")}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+            className={`snap-start shrink-0 flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
               populationFilter === "geriatric" || populationFilter === "old_people"
                 ? "bg-amber-950/80 text-amber-300 border border-amber-500/40 font-semibold shadow-sm"
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            <HeartPulse className="w-3 h-3 text-amber-400" />
-            Geriatrics (55+) ({geriatricCount})
+            <HeartPulse className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-amber-400" />
+            55+ ({geriatricCount})
           </button>
         </div>
       </div>
@@ -595,12 +530,12 @@ Note: For client privacy and safety, temporary credentials are automatically del
                 href={`/therapist/clients/${client.id}`}
                 className="group block"
               >
-                <Card className="hover:border-teal-500/50 hover:bg-zinc-900 transition-all duration-200 p-4 sm:p-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    {/* Left: Info */}
-                    <div className="space-y-1.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-base font-semibold text-zinc-100 group-hover:text-teal-400 transition-colors">
+                <Card className="hover:border-teal-500/50 hover:bg-zinc-900 transition-all duration-200 p-3 sm:p-5 overflow-hidden">
+                  <div className="flex flex-col gap-3">
+                    {/* Top row: name + pills */}
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <span className="text-[15px] sm:text-base font-semibold text-zinc-100 group-hover:text-teal-400 transition-colors">
                           {client.name}
                         </span>
 
@@ -627,7 +562,7 @@ Note: For client privacy and safety, temporary credentials are automatically del
                           </span>
                         )}
 
-                        <span className="text-xs text-zinc-400">
+                        <span className="text-xs text-zinc-400 hidden sm:inline">
                           • {client.gender}
                         </span>
 
@@ -639,7 +574,7 @@ Note: For client privacy and safety, temporary credentials are automatically del
                         ) : (
                           <Badge
                             variant="amber"
-                            statusText={client.invitation_initiated_by === "client" ? "Client Requested Link" : "Invite Pending"}
+                            statusText="Pending Activation"
                             icon={<Clock className="w-3 h-3" />}
                           />
                         )}
@@ -651,60 +586,30 @@ Note: For client privacy and safety, temporary credentials are automatically del
                             title="Temporary password is active until client logs in or changes password"
                           >
                             <Key className="w-3 h-3 text-amber-400" />
-                            Temp Creds Active
+                            Temp Creds
                           </span>
                         ) : (
                           <span
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-teal-950/80 border border-teal-500/40 text-teal-300"
-                            title="Client has logged in and claimed account. Credentials deleted from therapist control."
+                            title="Client has logged in and activated account. Credentials deleted from therapist control."
                           >
                             <Shield className="w-3 h-3 text-teal-400" />
-                            Account Claimed
+                            Active
                           </span>
                         )}
                       </div>
 
-                      <p className="text-xs text-zinc-400 flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span>
-                          <span className="text-zinc-500">Condition:</span> {client.condition}
-                        </span>
+                      <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">
+                        <span className="text-zinc-500">Condition:</span> {client.condition}
                         {client.caregiver_name && (
-                          <span className="text-sky-400/90 font-medium">
-                            • Caregiver: {client.caregiver_name}
-                          </span>
+                          <span className="text-sky-400/90 font-medium"> • Caregiver: {client.caregiver_name}</span>
                         )}
                       </p>
                     </div>
 
-                    {/* Right: Stats & Chevron */}
-                    <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-zinc-800">
-                      <div className="flex items-center gap-3 text-xs">
-                        {/* Quick Confirm/Decline Link Buttons if Pending */}
-                        {client.invitation_status === "pending" && (
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={(e) => handleConfirmClientLink(client.id, "accept", e)}
-                              disabled={confirmingId === client.id}
-                              className="px-2.5 py-1 rounded-md border border-emerald-500/50 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 font-semibold flex items-center gap-1.5 text-[11px] transition-colors shadow-sm"
-                              title="Confirm and immediately activate this client in your caseload"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Confirm Link</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => handleConfirmClientLink(client.id, "decline", e)}
-                              disabled={confirmingId === client.id}
-                              className="px-2 py-1 rounded-md border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-[11px] transition-colors"
-                              title="Decline this client connection request"
-                            >
-                              <span>Decline</span>
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Copy Access Info / Temp Creds Button */}
+                    {/* Bottom row: stats + actions */}
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/60">
+                      <div className="flex items-center gap-2 text-xs overflow-x-auto scrollbar-none">
                         <button
                           type="button"
                           onClick={(e) => copyRowAccessInfo(client, e)}
@@ -713,7 +618,7 @@ Note: For client privacy and safety, temporary credentials are automatically del
                               ? "Copy active temporary credentials"
                               : "Client has claimed account. Copy portal login details"
                           }
-                          className={`px-2.5 py-1 rounded-md border transition-colors flex items-center gap-1.5 text-[11px] font-medium ${
+                          className={`shrink-0 px-2.5 py-1.5 sm:py-1 rounded-lg border transition-colors flex items-center gap-1.5 text-[11px] font-medium h-8 sm:h-auto ${
                             client.temporary_password
                               ? "border-amber-500/40 bg-amber-950/40 hover:bg-amber-900/60 text-amber-300"
                               : "border-zinc-800 bg-zinc-950/70 hover:bg-zinc-800 text-zinc-300 hover:text-teal-300"
@@ -722,44 +627,41 @@ Note: For client privacy and safety, temporary credentials are automatically del
                           {copiedRowId === client.id ? (
                             <>
                               <Check className="w-3.5 h-3.5 text-teal-400" />
-                              <span className="text-teal-400 font-medium">
-                                {client.temporary_password ? "Copied Creds!" : "Copied Portal Link!"}
-                              </span>
+                              <span className="text-teal-400 hidden sm:inline">{client.temporary_password ? "Copied!" : "Copied!"}</span>
+                              <span className="text-teal-400 sm:hidden">Copied</span>
                             </>
                           ) : (
                             <>
                               {client.temporary_password ? (
                                 <>
                                   <Key className="w-3.5 h-3.5 text-amber-400" />
-                                  <span>Copy Temp Creds</span>
+                                  <span className="hidden sm:inline">Copy Temp Creds</span><span className="sm:hidden">Creds</span>
                                 </>
                               ) : (
                                 <>
                                   <Copy className="w-3.5 h-3.5 text-zinc-400" />
-                                  <span>Copy Portal Link</span>
+                                  <span className="hidden sm:inline">Copy Portal Link</span><span className="sm:hidden">Link</span>
                                 </>
                               )}
                             </>
                           )}
                         </button>
 
-                        {/* Active programs count */}
-                        <div className="flex items-center gap-1.5 text-zinc-300">
+                        <span className="hidden sm:flex items-center gap-1.5 text-zinc-300 shrink-0">
                           <FileText className="w-3.5 h-3.5 text-zinc-500" />
-                          <span>{activePrograms} Active</span>
-                        </div>
+                          {activePrograms} Active
+                        </span>
 
-                        {/* Awaiting Review Badge */}
                         {awaitingCount > 0 ? (
-                          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-950/80 border border-teal-500/50 text-teal-300 font-medium">
-                            <span>{awaitingCount} Awaiting Review</span>
-                          </div>
+                          <span className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-950/80 border border-teal-500/50 text-teal-300 font-medium text-xs">
+                            {awaitingCount} Awaiting
+                          </span>
                         ) : (
-                          <span className="text-zinc-500">0 Submissions</span>
+                          <span className="text-zinc-500 shrink-0 hidden sm:inline text-xs">0 Submissions</span>
                         )}
                       </div>
 
-                      <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-teal-400 group-hover:translate-x-1 transition-all" />
+                      <ChevronRight className="w-5 h-5 sm:w-4 sm:h-4 text-zinc-600 group-hover:text-teal-400 group-hover:translate-x-0.5 transition-all shrink-0" />
                     </div>
                   </div>
                 </Card>

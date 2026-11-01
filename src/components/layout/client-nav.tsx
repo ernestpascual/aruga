@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -18,6 +18,8 @@ import {
   FolderArchive,
   Wrench,
   BookOpen,
+  Menu as MenuIcon,
+  X,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { NotificationsDropdown } from "@/components/ui/notifications-dropdown";
@@ -61,8 +63,26 @@ export function ClientNav() {
   ];
 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileOpenGroup, setMobileOpenGroup] = useState<string | null>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Close mobile menu on route change + lock scroll
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setMobileOpenGroup(null);
+  }, [pathname]);
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+      const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileMenuOpen(false); };
+      window.addEventListener("keydown", onEsc);
+      return () => { document.body.style.overflow = ""; window.removeEventListener("keydown", onEsc); };
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileMenuOpen]);
 
   function handleEnter(label: string) {
     if (closeTimeoutRef.current) {
@@ -95,8 +115,8 @@ export function ClientNav() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 gap-4">
+    <header className="sticky top-0 z-40 w-full border-b border-zinc-800/80 bg-zinc-950/95 backdrop-blur-md">
+      <div className="flex h-14 sm:h-16 items-center justify-between gap-3 px-4 sm:px-6">
         <div className="flex items-center shrink-0">
           <Logo href="/client/dashboard" />
         </div>
@@ -106,7 +126,6 @@ export function ClientNav() {
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isActiveItem(item);
-
               if (item.children) {
                 const isOpen = openDropdown === item.label;
                 return (
@@ -152,8 +171,6 @@ export function ClientNav() {
                   </div>
                 );
               }
-
-              // plain link
               return (
                 <Link
                   key={item.label}
@@ -167,101 +184,151 @@ export function ClientNav() {
                 </Link>
               );
             })}
-          </nav>
+        </nav>
 
-        {/* Right side */}
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        {/* Right side — visible on all sizes, compact on mobile */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <Link
             href="/client/profile"
-            className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-colors ${
-              pathname === "/client/profile" ? "bg-teal-950/80 border-teal-500 text-teal-300" : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700"
+            className={`hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors min-h-[36px] ${
+              pathname === "/client/profile" ? "bg-teal-950/80 border-teal-500/60 text-teal-300" : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700"
             }`}
           >
-            <User className="w-3.5 h-3.5 text-teal-400" />
-            <span className="max-w-[120px] truncate hidden sm:inline">{profile?.display_name || "Profile"}</span>
+            <User className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+            <span className="max-w-[120px] truncate">{profile?.display_name || "Profile"}</span>
           </Link>
-
+          {/* Mobile: icon-only profile */}
+          <Link
+            href="/client/profile"
+            aria-label="Profile"
+            className={`sm:hidden flex items-center justify-center w-9 h-9 rounded-lg border shrink-0 ${
+              pathname === "/client/profile" ? "bg-teal-950/80 border-teal-500/60 text-teal-300" : "bg-zinc-900 border-zinc-800 text-zinc-300"
+            }`}
+          >
+            <User className="w-4 h-4 text-teal-400" />
+          </Link>
           <NotificationsDropdown role="client" />
           <button
             type="button"
             onClick={handleSignOut}
-            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 px-2 py-1 rounded hover:bg-zinc-900 transition-colors cursor-pointer"
+            className="hidden sm:flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 px-2 py-1.5 rounded min-h-[36px] hover:bg-zinc-900 transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Sign out</span>
+            <span>Sign out</span>
+          </button>
+          {/* Mobile hamburger */}
+          <button
+            type="button"
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors shrink-0"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <MenuIcon className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Nav */}
-      <div className="flex md:hidden border-t border-zinc-800/60 bg-zinc-900/50 px-2 py-2 gap-1 overflow-x-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = isActiveItem(item);
-
-          if (item.children) {
-            const expanded = mobileOpenGroup === item.label;
-            return (
-              <div key={item.label} className="flex flex-col shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setMobileOpenGroup(expanded ? null : item.label)}
-                  className={`flex items-center gap-1 text-xs font-medium py-1.5 px-2.5 rounded-md transition-colors shrink-0 ${
-                    active ? "text-teal-400 bg-zinc-800" : "text-zinc-400 hover:text-zinc-200"
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {item.label}
-                  <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
-                </button>
-                {expanded && (
-                  <div className="mt-1 ml-1 flex flex-col gap-0.5 border-l border-zinc-800 pl-2">
-                    {item.children.map((child) => {
-                      const ChildIcon = child.icon;
-                      const childActive = isChildActive(child.href);
-                      return (
-                        <Link
-                          key={child.href + child.label}
-                          href={child.href}
-                          onClick={() => setMobileOpenGroup(null)}
-                          className={`flex items-center gap-1.5 text-xs font-medium py-1 px-2 rounded-md transition-colors ${
-                            childActive ? "text-teal-400 bg-zinc-800" : "text-zinc-400"
-                          }`}
-                        >
-                          <ChildIcon className="w-3 h-3" />
-                          {child.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          }
-
-          return (
-            <Link
-              key={item.label}
-              href={item.href!}
-              className={`flex items-center gap-1 text-xs font-medium py-1 px-2.5 rounded-md transition-colors shrink-0 whitespace-nowrap ${
-                active ? "text-teal-400 bg-zinc-800" : "text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {item.label}
-            </Link>
-          );
-        })}
-        <Link
-          href="/client/profile"
-          className={`flex items-center gap-1 text-xs font-medium py-1 px-2.5 rounded-md transition-colors shrink-0 whitespace-nowrap ${
-            pathname === "/client/profile" ? "text-teal-400 bg-zinc-800" : "text-zinc-400 hover:text-zinc-200"
-          }`}
-        >
-          <User className="w-3.5 h-3.5" />
-          Profile
-        </Link>
-      </div>
+      {/* Mobile Drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden">
+          {/* Backdrop */}
+          <button
+            type="button"
+            aria-label="Close menu"
+            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 top-14 bg-zinc-950/60 backdrop-blur-sm z-40"
+          />
+          {/* Panel */}
+          <div className="fixed inset-x-0 top-14 bottom-0 z-50 flex flex-col bg-zinc-950 border-t border-zinc-800 overflow-hidden">
+            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 overscroll-contain">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const active = isActiveItem(item);
+                if (item.children) {
+                  const expanded = mobileOpenGroup === item.label;
+                  return (
+                    <div key={item.label} className="rounded-xl border border-transparent data-[expanded=true]:border-zinc-800 data-[expanded=true]:bg-zinc-900/60" data-expanded={expanded}>
+                      <button
+                        type="button"
+                        onClick={() => setMobileOpenGroup(expanded ? null : item.label)}
+                        className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-colors min-h-[48px] ${
+                          active ? "text-teal-400 bg-zinc-900" : "text-zinc-300 hover:bg-zinc-900"
+                        }`}
+                      >
+                        <span className="flex items-center gap-3">
+                          <span className={`w-8 h-8 rounded-lg flex items-center justify-center border shrink-0 ${active ? "bg-teal-950/60 border-teal-500/30 text-teal-400" : "bg-zinc-900 border-zinc-800 text-zinc-400"}`}>
+                            <Icon className="w-4 h-4" />
+                          </span>
+                          {item.label}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform shrink-0 ${expanded ? "rotate-180" : ""}`} />
+                      </button>
+                      {expanded && (
+                        <div className="px-3 pb-3 pt-1 space-y-1">
+                          {item.children.map((child) => {
+                            const ChildIcon = child.icon;
+                            const childActive = isChildActive(child.href);
+                            return (
+                              <Link
+                                key={child.href + child.label}
+                                href={child.href}
+                                className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium min-h-[44px] transition-colors ${
+                                  childActive ? "bg-zinc-800 text-teal-400" : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
+                                }`}
+                              >
+                                <ChildIcon className="w-4 h-4 shrink-0" />
+                                {child.label}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href!}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium min-h-[48px] transition-colors ${
+                      active ? "bg-zinc-800 text-teal-400" : "text-zinc-300 hover:bg-zinc-900"
+                    }`}
+                  >
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center border shrink-0 ${active ? "bg-teal-950/60 border-teal-500/30 text-teal-400" : "bg-zinc-900 border-zinc-800 text-zinc-400"}`}>
+                      <Icon className="w-4 h-4" />
+                    </span>
+                    {item.label}
+                  </Link>
+                );
+              })}
+              <Link
+                href="/client/profile"
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium min-h-[48px] transition-colors ${
+                  pathname === "/client/profile" ? "bg-zinc-800 text-teal-400" : "text-zinc-300 hover:bg-zinc-900"
+                }`}
+              >
+                <span className={`w-8 h-8 rounded-lg flex items-center justify-center border shrink-0 ${pathname === "/client/profile" ? "bg-teal-950/60 border-teal-500/30 text-teal-400" : "bg-zinc-900 border-zinc-800 text-zinc-400"}`}>
+                  <User className="w-4 h-4" />
+                </span>
+                Profile
+                {profile?.display_name ? <span className="ml-auto text-xs text-zinc-500 truncate max-w-[140px]">{profile.display_name}</span> : null}
+              </Link>
+            </nav>
+            <div className="shrink-0 p-4 border-t border-zinc-800 bg-zinc-950 space-y-3">
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm font-medium min-h-[48px] hover:bg-zinc-800 hover:text-zinc-100 active:scale-[0.98] transition-all"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign out
+              </button>
+              <p className="text-center text-[11px] text-zinc-600">Aruga • Clinician-directed home programs</p>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

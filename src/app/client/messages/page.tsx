@@ -178,7 +178,7 @@ function ClientMessagesContent() {
   };
 
   return (
-    <div className="space-y-4 max-w-3xl mx-auto h-[calc(100vh-8rem)] flex flex-col">
+    <div className="space-y-4 max-w-3xl mx-auto h-[calc(100dvh-10rem)] sm:h-[calc(100vh-8rem)] min-h-0 flex flex-col">
       {/* Header with Persona Switcher (Demo Only) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3 shrink-0">
         <div className="flex items-center gap-2">
@@ -292,7 +292,7 @@ function ClientMessagesContent() {
               </div>
 
               <div
-                className={`max-w-md rounded-xl p-3.5 text-xs leading-relaxed space-y-2 ${
+                className={`max-w-[85%] sm:max-w-md rounded-xl p-3.5 text-xs leading-relaxed space-y-2 ${
                   isMe
                     ? "bg-teal-950/80 border border-teal-500/40 text-teal-100"
                     : "bg-zinc-800/90 border border-zinc-700/60 text-zinc-100"
@@ -313,7 +313,7 @@ function ClientMessagesContent() {
                 {(msg as any).attachment_url && (
                   <a href={(msg as any).attachment_url} target="_blank" rel="noopener noreferrer" className="block mt-1">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={(msg as any).attachment_url} alt="attachment" className="rounded-lg border border-zinc-700 max-h-64 w-auto object-contain bg-zinc-950" loading="lazy" />
+                    <img src={(msg as any).attachment_url} alt="attachment" className="rounded-lg border border-zinc-700 max-h-64 w-auto max-w-full object-contain bg-zinc-950" loading="lazy" />
                   </a>
                 )}
                 {msg.body === "📷 Photo" && !(msg as any).attachment_url && <p>{msg.body}</p>}
@@ -330,7 +330,7 @@ function ClientMessagesContent() {
           <div className="flex items-center gap-2 p-2 rounded-lg bg-zinc-900 border border-zinc-800">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={previewUrl} alt="preview" className="h-16 w-16 object-cover rounded border border-zinc-700" />
-            <span className="text-xs text-zinc-400 flex-1 truncate">{pendingFile?.name} • {(pendingFile!.size / 1024).toFixed(0)} KB (compressed for free tier)</span>
+            <span className="text-xs text-zinc-400 flex-1 truncate">{pendingFile?.name} • {(pendingFile!.size / 1024).toFixed(0)} KB</span>
             <button type="button" onClick={clearPending} className="p-1 rounded hover:bg-zinc-800 text-zinc-400"><X className="w-4 h-4" /></button>
           </div>
         )}
@@ -351,10 +351,10 @@ function ClientMessagesContent() {
 
         <div className="flex items-center justify-between text-xs text-zinc-500 gap-2">
           <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="h-7 px-2 border-zinc-700 text-zinc-300 gap-1"><ImagePlus className="w-3.5 h-3.5" />Photo</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="h-8 min-h-[32px] px-2 border-zinc-700 text-zinc-300 gap-1"><ImagePlus className="w-3.5 h-3.5" />Photo</Button>
             <span className="hidden sm:inline">Drag & drop photo • <kbd className="px-1 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">@</kbd> to cite program</span>
           </div>
-          <Button type="submit" isLoading={sending} disabled={!inputText.trim() && !pendingFile} className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold">
+          <Button type="submit" isLoading={sending} disabled={!inputText.trim() && !pendingFile} className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold min-h-[36px]">
             <Send className="w-3.5 h-3.5" />Send
           </Button>
         </div>

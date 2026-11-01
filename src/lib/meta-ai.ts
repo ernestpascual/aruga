@@ -333,16 +333,20 @@ export async function generateActivity(
     referenceImages: input.referenceImages,
   });
 
-  // Live: image gen — try, fallback to mock SVG on failure to keep UX alive
+  // Live: image gen — checklist flag; skip when generateImage === false
   let baseImageUrl: string | null = null;
   let baseImagePath: string | null = null;
   let imageModelId = process.env.MUSE_IMAGE_MODEL_ID || process.env.IMAGE_MODEL_ID || "muse-image-1.0";
   let imageLatency = 0;
-  const size = sparkSpec.layoutSpec.orientation === "landscape" ? "1536x1024" : "1024x1536";
-  const imgRes = await runMuseImage(sparkSpec.refinedImagePrompt, { size, model: imageModelId });
-  baseImageUrl = imgRes.imageUrl;
-  imageModelId = imgRes.modelId;
-  imageLatency = imgRes.latencyMs;
+  if (input.generateImage === false) {
+    imageModelId = "none";
+  } else {
+    const size = sparkSpec.layoutSpec.orientation === "landscape" ? "1536x1024" : "1024x1536";
+    const imgRes = await runMuseImage(sparkSpec.refinedImagePrompt, { size, model: imageModelId });
+    baseImageUrl = imgRes.imageUrl;
+    imageModelId = imgRes.modelId;
+    imageLatency = imgRes.latencyMs;
+  }
 
   return {
     activityId: `live-${Date.now()}`,

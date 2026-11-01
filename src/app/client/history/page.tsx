@@ -259,7 +259,7 @@ export default function ClientHistoryPage() {
       .finally(() => setLoading(false));
   }, [user?.id, isDemo, profile?.clinician_name]);
 
-  // Fetch Live Session SOAP Notes
+  // Fetch Session Clinical Documentation
   useEffect(() => {
     const params = new URLSearchParams();
     if (user?.id) params.set("clientUserId", user.id);
@@ -300,10 +300,10 @@ export default function ClientHistoryPage() {
       </div>
 
       {/* Primary Tab Switcher */}
-      <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
+      <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0 flex-nowrap">
         <button
           onClick={() => setPrimaryTab("programs")}
-          className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
+          className={`shrink-0 whitespace-nowrap px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
             primaryTab === "programs"
               ? "bg-teal-500/10 text-teal-400 border border-teal-500/30 shadow-sm"
               : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
@@ -318,14 +318,14 @@ export default function ClientHistoryPage() {
 
         <button
           onClick={() => setPrimaryTab("live_sessions")}
-          className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
+          className={`shrink-0 whitespace-nowrap px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
             primaryTab === "live_sessions"
               ? "bg-teal-500/10 text-teal-400 border border-teal-500/30 shadow-sm"
               : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
           }`}
         >
           <Stethoscope className="w-4 h-4 text-teal-400" />
-          Live Session SOAP Notes
+          Session Clinical Documentation
           {soapNotes.length > 0 && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-mono font-bold">
               {soapNotes.length}
@@ -340,7 +340,7 @@ export default function ClientHistoryPage() {
       {primaryTab === "programs" && (
         <div className="space-y-6">
           {/* Sub-Filter Tabs */}
-          <div className="flex items-center gap-1.5 border-b border-zinc-800/80 pb-2">
+          <div className="flex items-center gap-1.5 border-b border-zinc-800/80 pb-2 overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0 flex-nowrap snap-x">
             {(
               [
                 { id: "reviewed", label: "Reviewed by Therapist" },
@@ -352,7 +352,7 @@ export default function ClientHistoryPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`shrink-0 whitespace-nowrap snap-start px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   activeTab === tab.id
                     ? "bg-zinc-800 text-teal-400 font-semibold shadow-sm"
                     : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
@@ -374,7 +374,7 @@ export default function ClientHistoryPage() {
                 <Card key={item.id} className="border-zinc-800 bg-zinc-900/90 overflow-hidden">
                   <div
                     onClick={() => toggleExpand(item.id)}
-                    className="p-5 cursor-pointer hover:bg-zinc-800/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    className="p-4 sm:p-5 cursor-pointer hover:bg-zinc-800/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2.5">
@@ -411,7 +411,7 @@ export default function ClientHistoryPage() {
 
                   {/* Expanded Details */}
                   {isExpanded && (
-                    <div className="border-t border-zinc-800 p-5 space-y-6 bg-zinc-950/40">
+                    <div className="border-t border-zinc-800 p-4 sm:p-5 space-y-6 bg-zinc-950/40">
                       {/* 1. THERAPIST SOAP NOTES (4 BOXES) */}
                       {hasSoapNotes && (
                         <div className="space-y-3">
@@ -633,7 +633,7 @@ export default function ClientHistoryPage() {
       )}
 
       {/* ==================================================================== */}
-      {/* SECTION B: LIVE SESSION SOAP NOTES WITH SIMPLE SUMMARY               */}
+      {/* SECTION B: SESSION CLINICAL DOCUMENTATION WITH SIMPLE SUMMARY               */}
       {/* ==================================================================== */}
       {primaryTab === "live_sessions" && (
         <div className="space-y-4">
@@ -641,10 +641,10 @@ export default function ClientHistoryPage() {
             <div className="space-y-0.5">
               <h2 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
                 <Stethoscope className="w-4 h-4 text-teal-400" />
-                Live Session SOAP Notes from Your Clinician
+                Session Clinical Documentation
               </h2>
               <p className="text-xs text-zinc-400">
-                Official clinical documentation from your in-person or tele-rehab sessions, accompanied by clear family takeaways.
+                Official clinical documentation from your sessions, accompanied by clear family takeaways.
               </p>
             </div>
           </div>

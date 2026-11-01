@@ -186,7 +186,7 @@ export function ActivityCanvas({
               type="button"
               onClick={() => { setColor(c); setTool("pen"); }}
               title={COLOR_NAMES[c] || c}
-              className={`w-7 h-7 rounded-full border-2 flex items-center justify-center ${color === c && tool === "pen" ? "border-teal-400 scale-110 shadow-md" : "border-zinc-600"} transition-all hover:scale-105`}
+              className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 flex items-center justify-center ${color === c && tool === "pen" ? "border-teal-400 scale-110 shadow-md" : "border-zinc-600"} transition-all hover:scale-105`}
               style={{ background: c }}
               aria-label={`color ${c}`}
             >

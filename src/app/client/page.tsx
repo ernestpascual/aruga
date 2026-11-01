@@ -121,7 +121,7 @@ function ClientHomeContent() {
             <button
               type="button"
               onClick={() => setSelectedPersona("adult")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs truncate font-medium transition-colors ${
                 !isPediatric
                   ? "bg-zinc-800 text-teal-300 font-semibold shadow-sm"
                   : "text-zinc-400 hover:text-zinc-200"
@@ -133,7 +133,7 @@ function ClientHomeContent() {
             <button
               type="button"
               onClick={() => setSelectedPersona("pediatric")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs truncate font-medium transition-colors ${
                 isPediatric
                   ? "bg-sky-950 text-sky-300 border border-sky-500/50 font-semibold shadow-sm"
                   : "text-zinc-400 hover:text-zinc-200"
@@ -147,11 +147,11 @@ function ClientHomeContent() {
       )}
 
       {/* Welcome & Assigned Therapist Card */}
-      <Card className="border-zinc-800 bg-zinc-900/90 p-6">
+      <Card className="border-zinc-800 bg-zinc-900/90 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
+          <div className="space-y-1 min-w-0 flex-1">
             <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-bold tracking-tight text-zinc-100">
+              <h1 className="text-xl font-bold tracking-tight text-zinc-100 break-words">
                 {profile?.display_name
                   ? isPediatric
                     ? `Welcome back, ${profile.display_name}${profile?.caregiver_name ? ` & ${profile.caregiver_name}` : ""}`
@@ -260,7 +260,7 @@ function ClientHomeContent() {
             </div>
           </Card>
         ) : activeAssignedProgram ? (
-          <Card className="p-5 relative overflow-hidden group transition-colors border-teal-500/40 bg-zinc-900/90 hover:border-teal-500">
+          <Card className="p-4 sm:p-5 relative overflow-hidden group transition-colors border-teal-500/40 bg-zinc-900/90 hover:border-teal-500">
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <h3 className="text-lg font-bold text-zinc-100 group-hover:text-teal-300 transition-colors">
@@ -385,14 +385,14 @@ function ClientHomeContent() {
                   )}
 
                   {/* Actions Row */}
-                  <div className="pt-1 flex flex-row items-center justify-between gap-3 whitespace-nowrap border-t border-zinc-800/60">
+                  <div className="pt-1 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-zinc-800/60">
                     <span className="text-[11px] text-zinc-500">
                       {isReviewed
                         ? "Feedback published by therapist • Submission finalized"
                         : "Awaiting clinician review • You can edit submission"}
                     </span>
 
-                    <div className="flex flex-row items-center gap-2 whitespace-nowrap">
+                    <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2">
                       {!isReviewed && (
                         <Link
                           href={`/client/programs/${sub.program_id}?edit=true${sub.scheduled_date ? `&date=${sub.scheduled_date}` : ""}`}
