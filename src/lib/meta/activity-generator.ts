@@ -67,15 +67,21 @@ export async function runSparkActivitySpec(params: {
   // Prefer Spark 1.3 for structured activity specs; 1.2 often returns NO_CONTENT with strict json_schema.
   const modelId = process.env.META_SPARK_MODEL || process.env.SPARK_MODEL_ID || "muse-spark-1.3-contributor";
 
-  async function callOnce(useJsonSchema: boolean) {
+  // Concise re-try user text if we hit a length cutoff mid-JSON (common prod failure)
+  const conciseUserSuffix = "\n\nBUDGET: Keep the entire JSON under ~1800 chars: instructions <= 350 chars, visualBrief 70–90 words, refinedImagePrompt <= 600 chars, zones <= 4. Prefer compact phrasing.";
+
+  async function callOnce(useJsonSchema: boolean, concise = false, maxTokensOverride?: number) {
+    const effectiveUser = concise ? user + conciseUserSuffix : user;
     const hasImages = params.referenceImages && params.referenceImages.length > 0;
     const userContent = hasImages
       ? [
-          { type: "text", text: user },
+          { type: "text", text: effectiveUser },
           ...params.referenceImages!.slice(0, 4).map((url) => ({ type: "image_url", image_url: { url, detail: "auto" } })),
         ]
-      : user;
+      : effectiveUser;
 
+    // Muse Spark 1.3 reasoning + output often truncates at 4000; 6000 is safe and reduces finish_reason=length
+    // retry-on-length uses slightly more headroom and concise wording.
     const body: Record<string, unknown> = {
       model: modelId,
       messages: [
@@ -83,8 +89,7 @@ export async function runSparkActivitySpec(params: {
         { role: "user", content: userContent as never },
       ],
       temperature: 0.35,
-      // 4000 leaves headroom for reasoning tokens; 1800 was too tight and produced NO_CONTENT with finish_reason=length
-      max_tokens: 4000,
+      max_tokens: maxTokensOverride ?? 6000,
     };
     if (useJsonSchema) {
       body.response_format = {
@@ -180,25 +185,16 @@ export async function runSparkActivitySpec(params: {
       }
     }
 
-    // Robust JSON extraction: handle fences, preamble, and truncation (finish_reason=length often cuts mid-string)
+    // Shared parsing/repair used for both first and length-retry payloads
     function extractJsonObject(text: string): string {
-      // 1. Strip common fences first
       let s = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
-      // 2. Narrow to outermost { ... } (discards preamble like "Here is..." or trailing notes)
-      let first = s.indexOf("{");
-      let last = s.lastIndexOf("}");
-      // Also handle rare array wrapper [{...}]
-      if (first !== -1 && last !== -1 && last > first) {
-        s = s.slice(first, last + 1);
-      }
+      const first = s.indexOf("{");
+      const last = s.lastIndexOf("}");
+      if (first !== -1 && last !== -1 && last > first) s = s.slice(first, last + 1);
       return s;
     }
-
     function tryRepairTruncatedJson(jsonStr: string): string {
-      // Close an unterminated string, then balance braces/brackets, strip trailing commas.
       let s = jsonStr;
-      // If we end inside a string (odd number of unescaped quotes on the tail), close it
-      // Count quotes not preceded by \ – simple pass sufficient (no need to handle \\" perfectly)
       let inString = false;
       let escaped = false;
       for (let i = 0; i < s.length; i++) {
@@ -207,19 +203,15 @@ export async function runSparkActivitySpec(params: {
         if (ch === "\\") { escaped = true; continue; }
         if (ch === '"') inString = !inString;
       }
-      if (inString) {
-        s += '"'; // close dangling string value
-      }
-      // Trim trailing comma/comma-whitespace that often precedes a cutoff
+      if (inString) s += '"';
       s = s.replace(/,\s*$/, "");
-      // Balance { } and [ ]
-      const opens = { "{": "}", "[": "]" };
+      const opens = { "{": "}", "[": "]" } as const;
       const closes: Record<string, string> = { "}": "{", "]": "[" };
       const stack: string[] = [];
       inString = false;
       escaped = false;
       for (let i = 0; i < s.length; i++) {
-        const ch = s[i];
+        const ch = s[i] as string;
         if (escaped) { escaped = false; continue; }
         if (ch === "\\" && inString) { escaped = true; continue; }
         if (ch === '"') { inString = !inString; continue; }
@@ -232,50 +224,39 @@ export async function runSparkActivitySpec(params: {
       }
       while (stack.length) {
         const o = stack.pop()!;
-        s += opens[o as keyof typeof opens];
+        s += (opens as Record<string, string>)[o]!;
       }
       return s;
     }
-
-    let parsedJson: unknown;
-    let stripped = extractJsonObject(rawContent!);
-    try {
-      parsedJson = JSON.parse(stripped);
-    } catch (firstErr) {
-      // Most common prod case: finish_reason=length truncates mid-string/mid-object
-      const finishHint = choice.finish_reason === "length" ? " (response truncated — max_tokens exhausted mid-JSON)" : "";
-      if (choice.finish_reason === "length") {
-        const repairedRaw = tryRepairTruncatedJson(stripped);
-        try {
-          parsedJson = JSON.parse(repairedRaw);
-          stripped = repairedRaw;
-          console.warn(`[activity-generator] Repaired truncated JSON (length cutoff). Original preview: ${rawContent!.slice(0, 300)}...`);
-        } catch {
-          throw new MetaApiError(
-            `Spark response was truncated mid-JSON${finishHint}. Preview: ${repairedRaw.slice(0, 600)}... Try a shorter theme or image prompt.`,
-            "INVALID_JSON_OUTPUT",
-            500
-          );
+    // Parse helper — returns success or repair; never throws except caller wants it to
+    function tryParseWithRepair(text: string, finishReason: string | undefined, label: string): { ok: true; json: unknown; normalizedRaw: string } | { ok: false; err: string; normalizedRaw: string } {
+      let stripped = extractJsonObject(text);
+      try {
+        const j = JSON.parse(stripped);
+        return { ok: true, json: j, normalizedRaw: stripped };
+      } catch (firstErr) {
+        const hint = finishReason === "length" ? " (response truncated — max_tokens exhausted mid-JSON)" : "";
+        if (finishReason === "length") {
+          const repairedRaw = tryRepairTruncatedJson(stripped);
+          try {
+            const j2 = JSON.parse(repairedRaw);
+            console.warn(`[activity-generator] Repaired truncated JSON (${label}). Original preview: ${text.slice(0, 300)}...`);
+            return { ok: true, json: j2, normalizedRaw: repairedRaw };
+          } catch {
+            return { ok: false, err: `Spark response truncated mid-JSON${hint}. Preview: ${repairedRaw.slice(0, 600)}...`, normalizedRaw: repairedRaw };
+          }
         }
-      } else {
-        throw new MetaApiError(
-          `Invalid JSON from Spark activity${finishHint} (preview: ${stripped.slice(0, 600)}...) firstParse: ${String(firstErr).slice(0, 200)}`,
-          "INVALID_JSON_OUTPUT",
-          500
-        );
+        return { ok: false, err: `Invalid JSON from Spark activity${hint} (preview: ${stripped.slice(0, 600)}...) firstParse: ${String(firstErr).slice(0, 200)}`, normalizedRaw: stripped };
       }
     }
-
-    const validated = ActivitySpecSchema.safeParse(parsedJson);
-    if (!validated.success) {
-      // Attempt to fill required fields from a partially-truncated but parseable payload instead of hard-failing
+    function patchPartial(parsedJson: unknown, finishReason: string | undefined): ActivitySpecParsed | null {
       const partial = parsedJson as Record<string, unknown>;
       const layoutSpec = (partial.layoutSpec && typeof partial.layoutSpec === "object" ? partial.layoutSpec : {}) as Record<string, unknown>;
       const patched: Record<string, unknown> = {
         title: partial.title ?? params.titleOverride ?? `Activity — ${params.ageBand}`,
         instructions: partial.instructions ?? "Complete the activity at your own pace.",
-        visualBrief: partial.visualBrief ?? params.imagePrompt ?? `Therapy worksheet for ${params.ageBand}: ${(partial.instructions as string | undefined)?.slice(0, 200) ?? partial.title ?? "fine motor activity"} — black and white line art, bold outlines, A4 portrait, white background.`,
-        refinedImagePrompt: partial.refinedImagePrompt ?? partial.visualBrief ?? (partial.title as string | undefined) ?? `Black and white line art therapy worksheet, thick clean outlines, A4 portrait, white background, no shading`,
+        visualBrief: partial.visualBrief ?? params.imagePrompt ?? `Therapy worksheet for ${params.ageBand}: ${(partial.instructions as string | undefined)?.slice(0, 200) ?? (partial.title as string | undefined) ?? "fine motor activity"} — black and white line art, bold outlines, A4 portrait, white background.`,
+        refinedImagePrompt: partial.refinedImagePrompt ?? (partial.visualBrief as string | undefined) ?? (partial.title as string | undefined) ?? `Black and white line art therapy worksheet, thick clean outlines, A4 portrait, white background, no shading`,
         layoutSpec: {
           orientation: (layoutSpec.orientation as string) || "portrait",
           lineGuides: (layoutSpec.lineGuides as string) || "none",
@@ -283,14 +264,56 @@ export async function runSparkActivitySpec(params: {
         },
         difficulty: partial.difficulty ?? params.difficulty ?? "guided",
         estimatedMinutes: typeof partial.estimatedMinutes === "number" ? partial.estimatedMinutes : 10,
-        warnings: Array.isArray(partial.warnings) ? partial.warnings : [`Recovered from truncated response (finish_reason=${String(choice.finish_reason)}). Fields defaulted.`],
+        warnings: Array.isArray(partial.warnings) ? partial.warnings : [`Recovered from truncated response (finish_reason=${String(finishReason)}). Fields defaulted.`],
       };
       const revalidated = ActivitySpecSchema.safeParse(patched);
-      if (!revalidated.success) {
-        throw new MetaApiError(`Activity spec validation failed: ${revalidated.error.issues.map(i=>i.message).join(", ")}`, "SCHEMA_VALIDATION_FAILED", 500);
+      if (!revalidated.success) return null;
+      return revalidated.data;
+    }
+
+    // First attempt — standard prompt
+    let parsedJson: unknown;
+    let strippedForLogs = "";
+    let parsedAttempt = tryParseWithRepair(rawContent!, choice.finish_reason, "first");
+    if (parsedAttempt.ok) {
+      parsedJson = parsedAttempt.json;
+      strippedForLogs = parsedAttempt.normalizedRaw;
+    } else {
+      // Only retry on length truncation (the actual prod failure mode); otherwise surface immediately
+      if (choice.finish_reason === "length") {
+        console.warn(`[activity-generator] length truncation on first try — retrying with concise prompt`);
+        const retryResponse = await callOnce(false, true, 7000);
+        const retryChoice = (retryResponse as { choices?: Array<{ message?: unknown; finish_reason?: string }> })?.choices?.[0] as { message?: unknown; finish_reason?: string } | undefined;
+        const retryMsg = retryChoice?.message as { content?: unknown } | undefined;
+        const retryRawRaw = retryMsg?.content as unknown;
+        let retryRaw: string | null = null;
+        if (typeof retryRawRaw === "string") retryRaw = retryRawRaw;
+        else if (Array.isArray(retryRawRaw)) retryRaw = (retryRawRaw as unknown[]).map((p) => typeof p === "string" ? p : (p as { text?: unknown })?.text ? String((p as { text?: unknown }).text) : "").join("");
+        else if (retryRawRaw != null) retryRaw = String(retryRawRaw);
+        if (!retryRaw || !retryRaw.trim()) {
+          throw new MetaApiError(parsedAttempt.err, "INVALID_JSON_OUTPUT", 500);
+        }
+        const retryParsed = tryParseWithRepair(retryRaw, retryChoice?.finish_reason, "retry");
+        if (!retryParsed.ok) {
+          throw new MetaApiError(retryParsed.err, "INVALID_JSON_OUTPUT", 500);
+        }
+        parsedJson = retryParsed.json;
+        strippedForLogs = retryParsed.normalizedRaw;
+        // Also update choice finish hint for warning message
+        (choice as { finish_reason?: string }).finish_reason = retryChoice?.finish_reason;
+      } else {
+        throw new MetaApiError(parsedAttempt.err, "INVALID_JSON_OUTPUT", 500);
       }
-      console.warn(`[activity-generator] Recovered from validation failure via patched defaults. Original issues: ${validated.error.issues.map(i=>i.path.join(".")+":"+i.message).join("; ")} (preview: ${stripped.slice(0,400)}...)`);
-      return { result: revalidated.data, latencyMs };
+    }
+
+    const validated = ActivitySpecSchema.safeParse(parsedJson);
+    if (!validated.success) {
+      const patched = patchPartial(parsedJson, choice.finish_reason);
+      if (!patched) {
+        throw new MetaApiError(`Activity spec validation failed: ${validated.error.issues.map(i=>i.message).join(", ")}`, "SCHEMA_VALIDATION_FAILED", 500);
+      }
+      console.warn(`[activity-generator] Recovered from validation failure via patched defaults. Original issues: ${validated.error.issues.map(i=>i.path.join(".")+":"+i.message).join("; ")} (preview: ${strippedForLogs.slice(0,400)}...)`);
+      return { result: patched, latencyMs };
     }
 
     return { result: validated.data, latencyMs };
