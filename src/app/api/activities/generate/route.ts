@@ -31,8 +31,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "ageBand must be one of pedia, adolescent, adult, geriatric" }, { status: 400 });
     }
 
-    const effectiveSparkPrompt = customSparkPrompt || customSpark || undefined;
-    const effectiveImagePrompt = customImagePrompt || customImage || undefined;
+    // Efficient: cap custom prompts at source to avoid finish_reason=length
+    const effectiveSparkPrompt = (customSparkPrompt || customSpark || undefined)?.toString().slice(0, 800) || undefined;
+    const effectiveImagePrompt = (customImagePrompt || customImage || undefined)?.toString().slice(0, 600) || undefined;
 
     // If templateId provided, hydrate template prompts as base
     let templateSpark: string | undefined = effectiveSparkPrompt;

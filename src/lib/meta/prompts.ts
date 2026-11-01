@@ -165,37 +165,40 @@ export function buildActivitySparkPrompt(params: {
   referenceImageNotes?: string;
 }): { system: string; user: string } {
   const ageBandGuidance: Record<string, string> = {
-    pedia: "Ages 2–12. Use large targets, bold outlines, playful wording, caregiver-friendly instructions, wide spacing, minimal clutter.",
-    adolescent: "Ages 13–17. Use identity-relevant themes, moderate detail, executive function supports, modern layout, not childish.",
-    adult: "Ages 18–64. Use functional/ADL/work contexts, high precision, professional tone, efficient layout.",
-    geriatric: "Ages 65+. Use HIGH-CONTRAST, EXTRA-LARGE targets, very low visual clutter, generous whitespace, 14pt+ instruction text, low fatigue.",
+    pedia: "2–12y: large targets, bold outlines, playful, caregiver-friendly, wide spacing, minimal clutter.",
+    adolescent: "13–17y: identity-relevant, moderate detail, executive-function supports, modern, not childish.",
+    adult: "18–64y: functional/ADL/work, high precision, professional tone, efficient layout.",
+    geriatric: "65+y: HIGH-CONTRAST, XL targets, very low clutter, generous whitespace, 14pt+ text, low fatigue.",
   };
 
+  // Enforce token budget at source — truncate verbose template prompts
+  const tp = params.templatePrompt ? params.templatePrompt.slice(0, 420).trim() : undefined;
+  const ip = params.imagePrompt ? params.imagePrompt.slice(0, 320).trim() : undefined;
+  const th = params.theme ? params.theme.slice(0, 100).trim() : undefined;
+
   const system = `${SPARK_PROMPT_SYSTEM_BASE}
-YOUR TASK: Design a single printable occupational therapy worksheet specification.
-- Tailor rigorously to age band: ${ageBandGuidance[params.ageBand] || params.ageBand}
-- Category: ${params.category || "general fine motor / visual motor"}.
-- The worksheet must be printable A4 and digitally drawable (has clear zones to write/color/trace inside).
-- For handwriting: respect lineStyle=${params.lineStyle || "none"} (none=free, double-line=HWT two solid lines with wide space, triple-line=Seyes 3 lines, seyes=French ruled, dotted=dashed trace guides). Specify correctly in layoutSpec.lineGuides.
-- visualBrief: a single dense paragraph (80–120 words) describing EXACTLY what the black-and-white line-art image should show — composition, number of items, line weight, spacing, orientation. Must be image-model-ready without needing further human editing. Must be A4 printable.
-- refinedImagePrompt: transform visualBrief into a fully optimized text-to-image prompt: add style directives "black and white line art, thick clean outlines, A4 portrait, vector-style, white background, no shading, no grayscale, print-ready" and preserve age-band constraints.
-- Keep instructions encouraging, clear, client-facing, with estimatedMinutes realistic (5–30).
-- Do NOT invent unsafe activities. If theme is ambiguous flag in warnings.`;
+YOUR TASK: Design one printable OT worksheet spec (A4, drawable zones).
+- Age band: ${ageBandGuidance[params.ageBand] || params.ageBand}
+- Category: ${params.category || "fine/visual motor"}.
+- lineStyle=${params.lineStyle || "none"} → layoutSpec.lineGuides (none/double-line/triple-line/seyes/dotted).
+- visualBrief: 70–90 words — dense, image-model-ready: composition, item count, line weight, spacing, orientation. A4 printable.
+- refinedImagePrompt: visualBrief + "black and white line art, thick clean outlines, A4 portrait, vector-style, white bg, no shading, print-ready" + age constraints.
+- BUDGET: Entire JSON ≤1800 chars. instructions ≤350 chars. visualBrief 70–90 words. refinedImagePrompt ≤600 chars. zones ≤4. Be concise.`;
 
   const userParts = [
     `Age band: ${params.ageBand}`,
     `Category: ${params.category || "other"}`,
-    params.theme ? `Theme/topic requested by therapist: "${params.theme}"` : null,
+    th ? `Theme: "${th}"` : null,
     params.difficulty ? `Difficulty: ${params.difficulty}` : null,
-    params.lineStyle ? `Requested line guide style: ${params.lineStyle}` : null,
-    params.titleOverride ? `Therapist title override: "${params.titleOverride}"` : null,
-    params.templatePrompt ? `Base template prompt: """\n${params.templatePrompt}\n"""` : null,
-    params.imagePrompt ? `Base image prompt hint: """\n${params.imagePrompt}\n"""` : null,
+    params.lineStyle ? `lineStyle: ${params.lineStyle}` : null,
+    params.titleOverride ? `Title: "${params.titleOverride.slice(0, 80)}"` : null,
+    tp ? `Template: """${tp}"""` : null,
+    ip ? `Image hint: """${ip}"""` : null,
     params.referenceLinks && params.referenceLinks.length > 0
-      ? `Reference inspiration links (use as loose creative inspiration only, do NOT copy copyrighted content):\n${params.referenceLinks.map((l, i) => `${i + 1}. ${l}`).join("\n")}`
+      ? `Refs (inspiration only, do not copy): ${params.referenceLinks.slice(0, 3).join(" | ")}`
       : null,
-    params.referenceImageNotes ? `Reference photo context (therapist uploaded images described): ${params.referenceImageNotes}` : null,
-    `Generate structured JSON matching the activity schema. Ensure visualBrief is image-generation-ready and refinedImagePrompt is fully self-contained and includes print style directives.`,
+    params.referenceImageNotes ? `Photo ctx: ${params.referenceImageNotes.slice(0, 180)}` : null,
+    `Output JSON per schema. Keep concise per BUDGET.`,
   ]
     .filter(Boolean)
     .join("\n\n");
