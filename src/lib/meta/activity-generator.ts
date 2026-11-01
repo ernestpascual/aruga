@@ -180,15 +180,118 @@ export async function runSparkActivitySpec(params: {
       }
     }
 
+    // Robust JSON extraction: handle fences, preamble, and truncation (finish_reason=length often cuts mid-string)
+    function extractJsonObject(text: string): string {
+      // 1. Strip common fences first
+      let s = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+      // 2. Narrow to outermost { ... } (discards preamble like "Here is..." or trailing notes)
+      let first = s.indexOf("{");
+      let last = s.lastIndexOf("}");
+      // Also handle rare array wrapper [{...}]
+      if (first !== -1 && last !== -1 && last > first) {
+        s = s.slice(first, last + 1);
+      }
+      return s;
+    }
+
+    function tryRepairTruncatedJson(jsonStr: string): string {
+      // Close an unterminated string, then balance braces/brackets, strip trailing commas.
+      let s = jsonStr;
+      // If we end inside a string (odd number of unescaped quotes on the tail), close it
+      // Count quotes not preceded by \ – simple pass sufficient (no need to handle \\" perfectly)
+      let inString = false;
+      let escaped = false;
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (escaped) { escaped = false; continue; }
+        if (ch === "\\") { escaped = true; continue; }
+        if (ch === '"') inString = !inString;
+      }
+      if (inString) {
+        s += '"'; // close dangling string value
+      }
+      // Trim trailing comma/comma-whitespace that often precedes a cutoff
+      s = s.replace(/,\s*$/, "");
+      // Balance { } and [ ]
+      const opens = { "{": "}", "[": "]" };
+      const closes: Record<string, string> = { "}": "{", "]": "[" };
+      const stack: string[] = [];
+      inString = false;
+      escaped = false;
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (escaped) { escaped = false; continue; }
+        if (ch === "\\" && inString) { escaped = true; continue; }
+        if (ch === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (ch in opens) stack.push(ch);
+        else if (ch in closes) {
+          if (stack[stack.length - 1] === closes[ch]) stack.pop();
+          else stack.pop();
+        }
+      }
+      while (stack.length) {
+        const o = stack.pop()!;
+        s += opens[o as keyof typeof opens];
+      }
+      return s;
+    }
+
     let parsedJson: unknown;
-    // Some gateways wrap JSON in ```json fences even with json_object
-    const stripped = rawContent!.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
-    try { parsedJson = JSON.parse(stripped); } catch {
-      throw new MetaApiError(`Invalid JSON from Spark activity (preview: ${stripped.slice(0, 600)}...)`, "INVALID_JSON_OUTPUT", 500);
+    let stripped = extractJsonObject(rawContent!);
+    try {
+      parsedJson = JSON.parse(stripped);
+    } catch (firstErr) {
+      // Most common prod case: finish_reason=length truncates mid-string/mid-object
+      const finishHint = choice.finish_reason === "length" ? " (response truncated — max_tokens exhausted mid-JSON)" : "";
+      if (choice.finish_reason === "length") {
+        const repairedRaw = tryRepairTruncatedJson(stripped);
+        try {
+          parsedJson = JSON.parse(repairedRaw);
+          stripped = repairedRaw;
+          console.warn(`[activity-generator] Repaired truncated JSON (length cutoff). Original preview: ${rawContent!.slice(0, 300)}...`);
+        } catch {
+          throw new MetaApiError(
+            `Spark response was truncated mid-JSON${finishHint}. Preview: ${repairedRaw.slice(0, 600)}... Try a shorter theme or image prompt.`,
+            "INVALID_JSON_OUTPUT",
+            500
+          );
+        }
+      } else {
+        throw new MetaApiError(
+          `Invalid JSON from Spark activity${finishHint} (preview: ${stripped.slice(0, 600)}...) firstParse: ${String(firstErr).slice(0, 200)}`,
+          "INVALID_JSON_OUTPUT",
+          500
+        );
+      }
     }
 
     const validated = ActivitySpecSchema.safeParse(parsedJson);
-    if (!validated.success) throw new MetaApiError(`Activity spec validation failed: ${validated.error.issues.map(i=>i.message).join(", ")}`, "SCHEMA_VALIDATION_FAILED", 500);
+    if (!validated.success) {
+      // Attempt to fill required fields from a partially-truncated but parseable payload instead of hard-failing
+      const partial = parsedJson as Record<string, unknown>;
+      const layoutSpec = (partial.layoutSpec && typeof partial.layoutSpec === "object" ? partial.layoutSpec : {}) as Record<string, unknown>;
+      const patched: Record<string, unknown> = {
+        title: partial.title ?? params.titleOverride ?? `Activity — ${params.ageBand}`,
+        instructions: partial.instructions ?? "Complete the activity at your own pace.",
+        visualBrief: partial.visualBrief ?? params.imagePrompt ?? `Therapy worksheet for ${params.ageBand}: ${(partial.instructions as string | undefined)?.slice(0, 200) ?? partial.title ?? "fine motor activity"} — black and white line art, bold outlines, A4 portrait, white background.`,
+        refinedImagePrompt: partial.refinedImagePrompt ?? partial.visualBrief ?? (partial.title as string | undefined) ?? `Black and white line art therapy worksheet, thick clean outlines, A4 portrait, white background, no shading`,
+        layoutSpec: {
+          orientation: (layoutSpec.orientation as string) || "portrait",
+          lineGuides: (layoutSpec.lineGuides as string) || "none",
+          zones: Array.isArray(layoutSpec.zones) ? layoutSpec.zones : [],
+        },
+        difficulty: partial.difficulty ?? params.difficulty ?? "guided",
+        estimatedMinutes: typeof partial.estimatedMinutes === "number" ? partial.estimatedMinutes : 10,
+        warnings: Array.isArray(partial.warnings) ? partial.warnings : [`Recovered from truncated response (finish_reason=${String(choice.finish_reason)}). Fields defaulted.`],
+      };
+      const revalidated = ActivitySpecSchema.safeParse(patched);
+      if (!revalidated.success) {
+        throw new MetaApiError(`Activity spec validation failed: ${revalidated.error.issues.map(i=>i.message).join(", ")}`, "SCHEMA_VALIDATION_FAILED", 500);
+      }
+      console.warn(`[activity-generator] Recovered from validation failure via patched defaults. Original issues: ${validated.error.issues.map(i=>i.path.join(".")+":"+i.message).join("; ")} (preview: ${stripped.slice(0,400)}...)`);
+      return { result: revalidated.data, latencyMs };
+    }
 
     return { result: validated.data, latencyMs };
   } catch (err: unknown) {
@@ -242,7 +345,7 @@ export function buildMockActivitySvg(title: string, ageBand: string, category: s
   <rect width="1024" height="1448" fill="white"/>
   <rect x="20" y="20" width="984" height="1408" fill="none" stroke="#a1a1aa" stroke-width="3" stroke-dasharray="12 8" rx="16"/>
   <text x="512" y="120" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" font-weight="700" fill="#09090b">${esc(title)}</text>
-  <text x="512" y="160" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#71717a">${esc(ageBand)} • ${esc(category)} • Mock preview — enable live AI for image generation</text>
+  <text x="512" y="160" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#71717a">${esc(ageBand)} • ${esc(category)}</text>
   <g transform="translate(80,220)">
     <rect x="0" y="0" width="864" height="480" rx="12" fill="none" stroke="#14b8a6" stroke-width="2" stroke-dasharray="8 6"/>
     <text x="432" y="240" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="16" fill="#14b8a6">Activity line art renders here</text>
