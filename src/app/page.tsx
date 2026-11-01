@@ -98,13 +98,7 @@ export default function LandingPage() {
               </span>
             </Link>
           </div>
-          <nav className="hidden md:flex items-center justify-center gap-8 text-[13px] tracking-[0.03em] text-white font-medium">
-            <a href="#overview" className="hover:text-white/70 transition-colors">Overview</a>
-            <a href="#disciplines" className="hover:text-white/70 transition-colors">Disciplines</a>
-            <a href="#lifespan" className="hover:text-white/70 transition-colors">Lifespan</a>
-            <a href="#soap-notes" className="hover:text-white/70 transition-colors">SOAP</a>
-            <a href="#safety" className="hover:text-white/70 transition-colors">Safety</a>
-          </nav>
+          <div className="hidden md:block" aria-hidden />
           <div className="flex justify-end items-center gap-2.5 sm:gap-3 shrink-0 ml-auto md:ml-0">
             {user ? (
               <Link href={dashboardHref}>
@@ -159,20 +153,7 @@ export default function LandingPage() {
               <h1 className="text-[32px] sm:text-[44px] lg:text-[52px] font-semibold leading-[0.9] tracking-[-0.02em] text-white max-w-[560px]">
                 Therapy doesn&apos;t<br />stop at the<br />clinic door.
               </h1>
-              <div className="flex flex-col gap-3 text-white">
-                <div className="flex gap-2.5 items-start max-w-[280px]">
-                  <span className="w-5 h-5 rounded-full bg-white/15 border border-white/20 flex items-center justify-center shrink-0 mt-0.5 text-[10px]">◈</span>
-                  <div><div className="text-[11px] font-semibold leading-none">Real-Time Progress</div><div className="text-[10px] text-white/70 leading-tight">Track reps and form between visits.</div></div>
-                </div>
-                <div className="flex gap-2.5 items-start max-w-[280px]">
-                  <span className="w-5 h-5 rounded-full bg-white/15 border border-white/20 flex items-center justify-center shrink-0 mt-0.5 text-[10px]">✎</span>
-                  <div><div className="text-[11px] font-semibold leading-none">Personalized Plans</div><div className="text-[10px] text-white/70 leading-tight">OT, PT, and Speech tailored to you.</div></div>
-                </div>
-                <div className="flex gap-2.5 items-start max-w-[280px]">
-                  <span className="w-5 h-5 rounded-full bg-white/15 border border-white/20 flex items-center justify-center shrink-0 mt-0.5 text-[10px]">♥</span>
-                  <div><div className="text-[11px] font-semibold leading-none">Holistic Follow-Through</div><div className="text-[10px] text-white/70 leading-tight">Photo or clip, skip if tired — always safe.</div></div>
-                </div>
-              </div>
+              <p className="text-[13px] sm:text-sm text-white/80 leading-relaxed max-w-[420px]">It continues in the real world — at home, between visits, with your clinician guiding every step.</p>
             </div>
 
 
@@ -186,7 +167,6 @@ export default function LandingPage() {
 
           {/* Below hero — full width, no card */}
           <div className="w-full bg-[#F6F3EF] px-5 sm:px-6 lg:px-8 py-8 sm:py-10">
-            <div className="flex items-center gap-2 text-[10px] tracking-[0.12em] uppercase text-black/40"><span>✱</span> Ready to see what your body’s been trying to tell you?</div>
             <h2 className="mt-3 text-[22px] sm:text-[30px] font-bold leading-[1.1] tracking-[-0.02em] text-black max-w-xl">A simple, supervised home-program — for people and practitioners.</h2>
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
               {/* Step 1 — New Program form */}
@@ -287,12 +267,12 @@ export default function LandingPage() {
 
           <div className="mt-0 border-b border-black/10 grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-black/10">
             {[
-              { icon: Hand, title: "Occupational Therapy", desc: "Turn fine motor goals into simple home steps. Families follow and share a quick photo." },
-              { icon: Activity, title: "Physical Therapy", desc: "Keep strength and balance going at home. Clients rest when needed." },
-              { icon: MessageSquare, title: "Speech-Language Pathology", desc: "Send short speech practice for home. You listen and reply — no auto scores." },
-            ].map((d, i) => (
-              <div key={i} className="p-8 flex flex-col items-start text-left space-y-3">
-                <d.icon className="w-5 h-5 text-black/30" />
+              { img: "/pegs/ot-inspired.svg", title: "Occupational Therapy", desc: "Turn fine motor goals into simple home steps. Families follow and share a quick photo." },
+              { img: "/pegs/pt-inspired.svg", title: "Physical Therapy", desc: "Keep strength and balance going at home. Clients rest when needed." },
+              { img: "/pegs/sp-inspired.svg", title: "Speech-Language Pathology", desc: "Send short speech practice for home. You listen and reply — no auto scores." },
+            ].map((d) => (
+              <div key={d.title} className="p-8 flex flex-col items-start text-left space-y-3">
+                <img src={d.img} alt={d.title} className="w-20 h-16 object-contain" />
                 <h3 className="text-sm font-semibold text-black">{d.title}</h3>
                 <p className="text-xs text-black/60 leading-relaxed">{d.desc}</p>
               </div>
@@ -303,6 +283,100 @@ export default function LandingPage() {
       </section>
       <div className="h-px w-full bg-black/10" />
 
+      {/* OPTIMIZE — new features framed as care / time / resources */}
+      <section id="optimize" className="bg-[#F6F3EF] border-b border-black/10">
+        <div className="container mx-auto px-5 sm:px-6 max-w-7xl py-10 sm:py-14">
+          <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black">
+            <span className="block text-3xl sm:text-5xl lg:text-6xl">Save time.</span>
+            <span className="block text-3xl sm:text-5xl lg:text-6xl text-black/30">Keep care going.</span>
+          </h2>
+          <p className="mt-4 max-w-2xl text-xs sm:text-sm text-black/50 leading-relaxed">
+            Aruga turns small clinic minutes into consistent home care — less busywork, fewer extra visits, clearer follow-through.
+          </p>
+
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-0 border border-black/10 divide-y md:divide-y-0 md:divide-x divide-black/10 bg-white">
+            <div className="p-6 sm:p-8 space-y-3">
+              <img src="/pegs/optimize-time.svg" alt="Saves time" className="w-16 h-12 object-contain" />
+              <h3 className="text-sm font-semibold text-black">Saves time for clinicians</h3>
+              <p className="text-xs text-black/60 leading-relaxed">Write a short goal and get a clear draft in seconds. Schedule up to 10 dates at once. Review all submissions in one place.</p>
+              <ul className="pt-3 border-t border-black/10 space-y-1.5 text-xs text-black/55">
+                <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />AI draft you approve — no auto send</li>
+                <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />One program covers many days</li>
+                <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />Publish feedback in one tap</li>
+              </ul>
+            </div>
+            <div className="p-6 sm:p-8 space-y-3">
+              <img src="/pegs/optimize-resources.svg" alt="Uses resources wisely" className="w-16 h-12 object-contain" />
+              <h3 className="text-sm font-semibold text-black">Uses resources wisely</h3>
+              <p className="text-xs text-black/60 leading-relaxed">No new apps to manage. Photos and videos live in your private cloud. Reuse activities and messages instead of extra visits and calls.</p>
+              <ul className="pt-3 border-t border-black/10 space-y-1.5 text-xs text-black/55">
+                <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />Private cloud — no extra storage to buy</li>
+                <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />Activity Studio: reusable worksheets</li>
+                <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />Messaging and handover in one place</li>
+              </ul>
+            </div>
+            <div className="p-6 sm:p-8 space-y-3">
+              <img src="/pegs/optimize-care.svg" alt="Better care at home" className="w-16 h-12 object-contain" />
+              <h3 className="text-sm font-semibold text-black">Better care at home</h3>
+              <p className="text-xs text-black/60 leading-relaxed">Clients send a photo or short clip — or skip with a reason when tired. You see it clearly and reply in plain language.</p>
+              <ul className="pt-3 border-t border-black/10 space-y-1.5 text-xs text-black/55">
+                <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />Photo or video per step, camera included</li>
+                <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />Visual support highlights what matters</li>
+                <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />SOAP + plain summary families understand</li>
+              </ul>
+            </div>
+          </div>
+          <p className="mt-6 text-[11px] text-black/40 leading-relaxed max-w-3xl">Every step stays clinician-approved. AI helps draft, you decide. Families see only what you publish.</p>
+        </div>
+      </section>
+
+      <div className="h-px w-full bg-black/10" />
+
+      {/* META SPARK — black breaker, hand-drawn style */}
+      <section id="meta-spark" className="bg-black border-y border-white/10">
+        <div className="container mx-auto px-5 sm:px-6 max-w-7xl py-10 sm:py-12">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
+            <div className="shrink-0 max-w-sm">
+              <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-tight">A little AI.<br/><span className="text-white/40">All human care.</span></h2>
+              <p className="mt-3 text-xs text-white/50 leading-relaxed">Muse Spark helps you see more. You stay in control.</p>
+            </div>
+            <div className="flex-1 lg:max-w-3xl">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <div className="overflow-hidden">
+                  <div className="h-40 sm:h-44 overflow-hidden bg-transparent flex items-center justify-center">
+                    <img src="/pegs/understanding-videos-inspired.svg" alt="Understanding videos illustration" className="w-full h-full object-contain scale-110" />
+                  </div>
+                  <div className="pt-4">
+                    <div className="text-xs font-semibold text-white">Understanding videos</div>
+                    <p className="text-[11px] text-white/50 leading-relaxed mt-1">AI spots key moments so you can give quick, clear feedback.</p>
+                  </div>
+                </div>
+                <div className="overflow-hidden">
+                  <div className="h-40 sm:h-44 overflow-hidden bg-transparent flex items-center justify-center">
+                    <img src="/pegs/performance-tracking-inspired.svg" alt="Performance tracking illustration" className="w-full h-full object-contain scale-110" />
+                  </div>
+                  <div className="pt-4">
+                    <div className="text-xs font-semibold text-white">Dynamic insights</div>
+                    <p className="text-[11px] text-white/50 leading-relaxed mt-1">Get tailored tracking based on your clinician's goal.</p>
+                  </div>
+                </div>
+                <div className="overflow-hidden">
+                  <div className="h-40 sm:h-44 overflow-hidden bg-transparent flex items-center justify-center">
+                    <img src="/pegs/activity-sheets-inspired.svg" alt="Activity sheets illustration" className="w-full h-full object-contain scale-110" />
+                  </div>
+                  <div className="pt-4">
+                    <div className="text-xs font-semibold text-white">Made for you</div>
+                    <p className="text-[11px] text-white/50 leading-relaxed mt-1">Activity sheets made just for you, based on your progress.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="h-px w-full bg-black/10" />
+
       {/* LIFESPAN — editorial */}
       <section id="lifespan" className="bg-white border-b border-black/10">
         <div className="container mx-auto px-5 sm:px-6 max-w-7xl py-10 sm:py-14">
@@ -310,14 +384,14 @@ export default function LandingPage() {
           <p className="mt-4 max-w-2xl text-xs sm:text-sm text-black/50 leading-relaxed">Aruga keeps therapy going at home — simple steps, quick photo or clip, and clear feedback from your clinician.</p>
           <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-0 border border-black/10 divide-y md:divide-y-0 md:divide-x divide-black/10">
             {[
-              { label: "Pediatric  1–12", title: "Play-Based Developmental", desc: "Aruga turns play into guided home practice. Parents follow short steps and share a quick photo between visits.", points: ["Play at home, not just in clinic","Parents can help easily","Steady progress you can see"], Icon: Baby },
-              { label: "Adolescent  13–17", title: "Youth Coordination & Posture", desc: "Aruga gives teens clear tasks they can do on their own. They log it themselves and rest when needed.", points: ["Clear tasks for independence","They track it themselves","Rest is respected"], Icon: GraduationCap },
-              { label: "Adult  18–64", title: "Neuro & Orthopedic Recovery", desc: "Aruga brings rehab routines home after stroke or injury. Short clips help you adjust daily tasks.", points: ["Daily tasks made simple","You adjust based on video","Pacing that respects fatigue"], Icon: User },
-              { label: "Geriatrics  65+", title: "Dynamic Balance & Fall Prevention", desc: "Aruga supports safe movement at home. Simple steps and family follow-through help prevent falls.", points: ["Safer movement at home","Family-friendly steps","Easy to read and use"], Icon: HeartPulse },
+              { label: "Pediatric  1–12", title: "Play-Based Developmental", desc: "Aruga turns play into guided home practice. Parents follow short steps and share a quick photo between visits.", points: ["Play at home, not just in clinic","Parents can help easily","Steady progress you can see"], img: "/pegs/lifespan-pediatric.svg" },
+              { label: "Adolescent  13–17", title: "Youth Coordination & Posture", desc: "Aruga gives teens clear tasks they can do on their own. They log it themselves and rest when needed.", points: ["Clear tasks for independence","They track it themselves","Rest is respected"], img: "/pegs/lifespan-adolescent.svg" },
+              { label: "Adult  18–64", title: "Neuro & Orthopedic Recovery", desc: "Aruga brings rehab routines home after stroke or injury. Short clips help you adjust daily tasks.", points: ["Daily tasks made simple","You adjust based on video","Pacing that respects fatigue"], img: "/pegs/lifespan-adult.svg" },
+              { label: "Geriatrics  65+", title: "Dynamic Balance & Fall Prevention", desc: "Aruga supports safe movement at home. Simple steps and family follow-through help prevent falls.", points: ["Safer movement at home","Family-friendly steps","Easy to read and use"], img: "/pegs/lifespan-geriatric.svg" },
             ].map((c, i) => (
               <div key={i} className="p-6 sm:p-8 space-y-4 bg-white">
                 <div className="flex items-center justify-between">
-                  <c.Icon className="w-5 h-5 text-black/25" />
+                  <img src={c.img} alt={c.label} className="w-14 h-10 object-contain" />
                   <span className="text-[10px] tracking-[0.14em] uppercase border border-black/10 px-2.5 py-1 text-black/40">{c.label}</span>
                 </div>
                 <h3 className="text-sm font-semibold text-black">{c.title}</h3>
@@ -341,7 +415,7 @@ export default function LandingPage() {
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">Clinical notes.<br/><span className="text-black/25">Telehealth & assessments.</span></h2>
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-0 border border-black/10 divide-y lg:divide-y-0 lg:divide-x divide-black/10">
             <div className="p-6 sm:p-8 space-y-4">
-              <FileText className="w-5 h-5 text-black/30" />
+              <img src="/pegs/soap-notes.svg" alt="SOAP notes" className="w-16 h-12 object-contain" />
               <h3 className="text-sm font-semibold text-black">Standardized Progress Notes (SOAP)</h3>
               <p className="text-xs text-black/40 leading-relaxed">Separate documentation into Subjective, Objective, Assessment, Plan with auto-filled kinematic observations.</p>
               <div className="grid grid-cols-2 gap-2 pt-4 border-t border-black/10 text-[11px] font-mono">
@@ -352,7 +426,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="p-6 sm:p-8 space-y-4">
-              <Video className="w-5 h-5 text-black/30" />
+              <img src="/pegs/telehealth.svg" alt="Telehealth" className="w-16 h-12 object-contain" />
               <h3 className="text-sm font-semibold text-black">Telehealth & Standardized Tests</h3>
               <p className="text-xs text-black/40 leading-relaxed">Attach Google Meet / Zoom recordings and link validated sheets (PDMS-2, BBS, Fugl-Meyer, TUG).</p>
               <ul className="pt-4 border-t border-black/10 space-y-2 text-xs text-black/50">
@@ -361,7 +435,7 @@ export default function LandingPage() {
               </ul>
             </div>
             <div className="p-6 sm:p-8 space-y-4">
-              <Lock className="w-5 h-5 text-black/30" />
+              <img src="/pegs/record-lock.svg" alt="Record lock" className="w-16 h-12 object-contain" />
               <h3 className="text-sm font-semibold text-black">Record Lock & Feedback Edits</h3>
               <p className="text-xs text-black/40 leading-relaxed">Once published, submission locks for integrity. Clinicians can revise feedback anytime.</p>
               <ul className="pt-4 border-t border-black/10 space-y-2 text-xs text-black/50">

@@ -7,14 +7,16 @@
 ## Key Highlights
 
 - **Branding & Aesthetic**: Refined cursive *Playwrite IT Trad* wordmark paired with a medical-grade aesthetic—charcoal/black background, dark zinc cards, off-white text, and restrained teal accents.
-- **Light & Dark Mode**: Seamless theme toggle supporting system preferences, dark mode, and light mode.
+- **Dark Clinical Theme (Locked)**: Single dark theme enforced at layout level — `ThemeProvider` dark-only, `ThemeToggle` removed from all navs/login/landing for visual consistency.
+- **Mobile-Responsive Therapist Experience**: Hamburger slide drawer (`w-[300px] max-w-[85vw]`) on `md:hidden`, stacked headers, horizontally-scrollable filter pills with `scrollbar-none`/`snap-x`, stacked client/program cards (`p-3 sm:p-5`), grid footers, and `h-10` touch targets — all therapist routes (`dashboard`, `clients`, `clients/[id]`, `clients/[id]/programs/new`, `activities`, `profile`, `submissions/[id]`, `messages`) verified at 375px with zero horizontal overflow (`globals.css:scrollbar-none`).
 - **Multi-Population Care (Pediatric, Adolescent, Adult, Geriatrics 55+)**:
   - **Pediatric Care (<12y)**: Play-based fine motor development with dedicated **Caregiver Co-Runner** tracking.
   - **Adolescent Care (12–17y)**: School ergonomics, writing stamina, executive function, and bilateral coordination.
   - **Adult Care (18–54y)**: Post-stroke neurorehabilitation, upper extremity dexterity, and workplace ergonomics.
   - **Geriatrics Care (55+y)**: Fall prevention, joint mobility with osteoarthritis, hip precautions, tremor damping, and presbyphagia.
 - **Clinical Multi-Box SOAP Notes Architecture**:
-  - **Live Session SOAP Notes**: Dedicated tab on each client profile allowing therapists to create, view, edit, and delete multiple session notes over time.
+  - **Session Clinical Documentation (SOAP Notes)**: Dedicated tab on each client profile for creating/viewing/editing/deleting multiple session notes; supports optional `session_recording_url` + `assessment_links` (JSONB) parity with submission reviews (`supabase/migrations/20261031000008` + `20261031000012`).
+- **Activity Studio (Muse Spark + Muse Image)**: 20 system templates (5 per age band: pedia/adolescent/adult/geriatric) browsing/generation; per-step therapist attachment via `StepActivityControl` → `ActivityGeneratorModal` (template pick + **custom prompt without template** via `CustomActivityCreatorModal`) + `Generate image with Muse Image` checklist (`generateImage` flag — when off, text-only). Client completion via interactive canvas (`drawing_data_url` + `drawing_strokes` JSONB, 12 crayons, eraser `destination-out`) or photo fallback; print/PDF. Persisted to `generated_activities`/`activity_completions` (5MB cap, `uq_activity_completion_step_sub`).
   - **Home Program Feedback**: Replaced single feedback boxes with **4 distinct SOAP textareas**:
     - **Subjective (S)**: Patient quotes, fatigue, comfort, pain score.
     - **Objective (O)**: Quantified reps, ranges of motion, grip strength metrics.
@@ -32,9 +34,11 @@
 - **Care Transfer Service**:
   - Therapists can transfer an entire patient caseload, exercise history, and videos to a colleague clinician.
   - Preserves clinical audit trails with `previous_therapist_id` and mandatory `handover_notes`.
-- **Direct Cloud Storage Video Uploads**:
-  - High-res `.mp4`/`.webm` client recordings upload directly to private cloud storage (`program-videos` bucket) using signed URLs, bypassing serverless request body constraints.
-  - Enforces 50MB free tier file size boundaries.
+- **Direct Cloud Storage Uploads**:
+  - High-res client recordings + photos upload directly to private cloud storage (`program-videos` bucket, now `image/jpeg|png|webp|heic` + video MIME types) using signed URLs, bypassing serverless body limits; `submit_program_steps` RPC accepts `video_path` (generic media path) OR `skipped+reason` (`supabase/migrations/20261031000013`).
+  - Practice schedule: up to 10 `scheduled_dates` per `home_programs` (JSONB) → one `submissions.scheduled_date` per date; strict program→submission unique removed in favor of `idx_submissions_prog_date` (`supabase/migrations/20261031000009`).
+  - Activity assets in private `activity-assets` bucket (20MB, `png|jpeg|webp|svg+xml|pdf`, `06: SEED 20 ACTIVITY TEMPLATES` in `all_in_one_setup.sql`).
+  - Enforces 100MB `program-videos` / 20MB `activity-assets` boundaries (all buckets `public=false`).
 - **SAM 3.1 Clinical & Environmental Keyword Engines**:
   - **7 Validated Engines (700 Keywords Total)**:
     1. *Pediatric Care Engine* (100 keywords across OT, PT, SLP & OTPF-4)
@@ -44,7 +48,7 @@
     5. *Everyday Objects at Home Engine* (cups, utensils, keys, remote, toothbrush, etc.)
     6. *Everyday Objects at School Engine* (pencils, scissors, markers, notebook, glue, etc.)
     7. *Kitchen Items Engine* (spatula, mugs, jars, bowls, tongs, measuring spoons, etc.)
-  - **SAM 3.1 Test Workspace (`/sam-test`)**: Live engine selector, latency measurement in milliseconds, and session history reload.
+  - **SAM 3.1 Test Workspace (`/sam-test`)**: Sleek sticky header + stepper, grouped lifespan/environment engine cards, searchable chips, video+payload two-column, results/history cards; isolate `#1` black background with hole overlay + custom Play/Replay/scrub/Snapshot controls; 30 objects, Download placeholder.
 - **Multi-Client Messaging & Direct Routine Mentions**:
   - Therapists can manage messages across their caseload with a **Client Selector Dropdown**.
   - Supports message deletion (`is_deleted` flag).
@@ -64,26 +68,32 @@
 ## Feature Progress & Implementation Checklist
 
 ### Core Features (Completed)
-- [x] **Theme Switcher**: Instant toggle between Dark Mode and Light Mode with persistence.
+- [x] **Locked Dark Clinical Theme + Mobile-Responsive Therapist UI**: Dark-only `ThemeProvider` + hamburger drawer / scrollable pills / stacked cards at 375px.
 - [x] **Branding**: Cursive *Playwrite IT Trad* typography; removed generic hand logo icon.
-- [x] **Multi-Demographic Care**: Adult, Adolescent, Pediatric, and Geriatrics (55+) care with Caregiver co-runner fields.
+- [x] **Multi-Demographic Care**: Adult, Adolescent, Pediatric, and Geriatrics (55+) care with Caregiver co-runner fields (migrated `old_people` → `geriatric`, migration `20261031000010`).
 - [x] **SAM 3.1 Clinical Lifespan Engines**: 4 demographic engines + 3 environmental testing engines (700 keywords total).
 - [x] **SAM 3.1 Benchmarking & History**: Processing latency measurement, session storage, and reload capability.
-- [x] **Clinical Multi-Box SOAP Notes**: 4 distinct textareas (S, O, A, P) for live sessions (`soap_notes`) and home program reviews (`submission_reviews`).
+- [x] **Clinical Multi-Box SOAP Notes**: 4 distinct textareas (S, O, A, P) for `soap_notes` + `submission_reviews` (copy label: **Session Clinical Documentation**).
+- [x] **Session Recordings & Assessment Links**: Optional `session_recording_url` + `assessment_links` JSONB on both `soap_notes` and `submission_reviews` (`00008` + `00012`).
+- [x] **Scheduled Practice Dates**: Up to 10 `scheduled_dates` (JSONB) per `home_programs` → `submissions.scheduled_date` with `idx_submissions_prog_date`; submission edit window preserved (`00009`).
+- [x] **Photo-or-Video Step Submissions**: `step_submissions.video_path` is generic media path + `media_meta` JSONB (`mime/sizeBytes/durationSeconds/width/height/mediaKind`); RPC `submit_program_steps` validates media-or-skip (`00013`).
+- [x] **Activity Studio (Muse Spark + Muse Image Worksheets)**: 20 system templates (`05` + `06` in `all_in_one_setup.sql`), `generated_activities` + `program_steps.generated_activity_id` + `activity_completions` (canvas `drawing_data_url`/`drawing_strokes`/photo fallback, 5MB, `uq_activity_completion_step_sub`), bucket `activity-assets` (20MB), template-or-custom-prompt creation with `generateImage` flag.
+- [x] **Geriatric Category Migration**: `client_category` now `pedia|adolescent|adult|geriatric|old_people` with `old_people→geriatric` backfill (`00010` migrated to `all_in_one_setup.sql`).
+- [x] **Private Storage Buckets (3)**: `program-videos` (100MB), `chat-attachments` (50MB), `activity-assets` (20MB) — all `public=false`, `authenticated` storage-object policies.
+- [x] **HIPAA Storage Hardening**: `00011` enforces `program-videos public=false` + `TO authenticated` (Finding 3), `audit_events` immutability via `prevent_audit_tampering()`, audit indexes.
 - [x] **Plain-English Client Summary**: Family-friendly takeaways positioned prominently below clinical notes.
 - [x] **On-Demand AI Credit Protection**: Zero-credit database caching layer (`<15ms` cache hit) with manual "See Summary" expansion.
 - [x] **Two-Way Handshake Invitations**: Bidirectional email invitations and linking requests between clinicians and clients.
 - [x] **Care Transfer Service**: Seamless patient caseload transfer between clinicians with handover notes.
-- [x] **Direct Cloud Storage Uploads**: Browser-to-bucket direct upload to private `program-videos` storage bucket.
 - [x] **Multi-Client Messaging**: Caseload selector dropdown, routine `@mention` chips, and message deletion.
 - [x] **In-App Notifications Dropdown**: Real-time event notifications for assignments, reviews, and transfers.
-- [x] **Full Relational CRUD Architecture**: 100% relational coverage across patients, programs, steps, submissions, reviews, SOAP notes, and messages.
+- [x] **Full Relational CRUD Architecture**: 100% relational coverage across patients, programs, steps, submissions, reviews, SOAP notes, messages, and activities.
 - [x] **Zero Dummy Data for Clinicians**: Clean empty states; synthetic demo data restricted strictly to demo bypass accounts.
-- [x] **Credential Privacy Lifecycle**: Temporary passwords automatically purged from clinician view upon first client login.
+- [x] **Credential Privacy Lifecycle**: Temporary passwords automatically purged from clinician view upon first client login (badge copy: `Active` when cleared).
 - [x] **Therapist-Created Client Auto-Link on First Login**: Pending therapist-invited clients auto-accept on first `signIn` via `src/app/api/auth/clear-temp-credentials/route.ts:40` + DB trigger `supabase/RUN_ONCE_AUTO_LINK_ON_FIRST_LOGIN.sql:1` (sets `invitation_status='accepted'` + `first_login_at`, wipes temp password).
-- [x] **Live Session SOAP UX Polish**: Create modal CTA now reads **"Create SOAP Note"** (edit = "Save SOAP Note Changes") at `src/app/therapist/clients/[id]/page.tsx:2350`.
-- [x] **Ask OT Assistant (`/ask-ot`)**: Multi-chat clinical assistant with conversation management and database persistence.
-- [x] **Idempotent Database Migrations**: 6 clean sequential migrations + `all_in_one_setup.sql`.
+- [x] **Session Documentation UX Polish**: Tab/heading/modal copy unified to **Session Clinical Documentation** (copy-only, no behavior change).
+- [x] **Aruga Guide (`/aruga-guide`, permanent redirect from `/ask-ot`)**: Multi-chat clinical assistant with general rehab PT/OT/Speech guidance, `CLIENT CONTEXT` from profile+program, persistent "References + Send to clinician to verify".
+- [x] **Idempotent Database — `all_in_one_setup.sql` as Source of Truth**: Canonical consolidated script (schema + RLS + triggers + buckets + seeds + activity templates + template seeds); incremental `supabase/migrations/20261031*.sql` retained for existing DBs.
 - [x] **Privacy Hardening (C1–C3/H1–H4)**: RLS/API owner gates, random storage paths, short-lived signed URLs, EXIF strip — see [Security & Privacy Hardening](#security--privacy-hardening-c1c3--h1h4--nov-2026) and `supabase/RUN_ONCE_PRIVACY_FIX*.sql`.
 - [x] **Encryption Roadmap**: Column-level `pgsodium` + Vault and client-side E2E envelope planned in [`docs/FUTURE_PLANS.md`](docs/FUTURE_PLANS.md).
 
@@ -204,15 +214,22 @@ MAX_VIDEO_SECONDS=30
 > **Security Note**: Never expose or commit `.env.local` or service keys to version control.
 
 ### 3. Database Setup & Migrations
-- **Fresh Setup**: Execute [`supabase/all_in_one_setup.sql`](supabase/all_in_one_setup.sql) directly in your PostgreSQL SQL Editor, then apply [`supabase/RUN_ONCE_PRIVACY_FIX.sql`](supabase/RUN_ONCE_PRIVACY_FIX.sql), [`supabase/RUN_ONCE_AUTO_LINK_ON_FIRST_LOGIN.sql`](supabase/RUN_ONCE_AUTO_LINK_ON_FIRST_LOGIN.sql) (auto-accepts therapist-created pending invites on first login), and (if upgrading a legacy DB with permissive policies) [`supabase/RUN_ONCE_PRIVACY_FIX_C3_DROP_OPEN_POLICIES.sql`](supabase/RUN_ONCE_PRIVACY_FIX_C3_DROP_OPEN_POLICIES.sql) — all idempotent. Verify with [`scripts/verify-rls.sql`](scripts/verify-rls.sql).
-- **Incremental Migrations**: If your database is already initialized, run the migrations sequentially:
-  1. [`supabase/migrations/20261030000001_add_old_people_category.sql`](supabase/migrations/20261030000001_add_old_people_category.sql) — adds `'old_people'` category.
-  2. [`supabase/migrations/20261031000001_link_therapist_in_new_user_trigger.sql`](supabase/migrations/20261031000001_link_therapist_in_new_user_trigger.sql) — automatic client-therapist email linking on client signup.
-  3. [`supabase/migrations/20261031000002_two_way_handshake_invitations.sql`](supabase/migrations/20261031000002_two_way_handshake_invitations.sql) — two-way confirmation handshake (`invitation_status`, `invitation_initiated_by`).
-  4. [`supabase/migrations/20261031000003_care_transfer_service.sql`](supabase/migrations/20261031000003_care_transfer_service.sql) — care transfer service (`previous_therapist_id`, `handover_notes`).
-  5. [`supabase/migrations/20261031000004_program_videos_storage.sql`](supabase/migrations/20261031000004_program_videos_storage.sql) — Cloud Storage `program-videos` bucket setup (50MB limit, video streaming).
-  6. [`supabase/migrations/20261031000005_pending_requests_and_profiles_email.sql`](supabase/migrations/20261031000005_pending_requests_and_profiles_email.sql) — index optimizations and profile email synchronization.
-  7. [`supabase/migrations/20261031000006_soap_notes_and_program_feedback.sql`](supabase/migrations/20261031000006_soap_notes_and_program_feedback.sql) — multi-box `soap_notes` table and `submission_reviews` SOAP fields.
+- **Fresh Setup (Recommended)**: Execute [`supabase/all_in_one_setup.sql`](supabase/all_in_one_setup.sql) directly in Supabase SQL Editor — **single source of truth** containing schema + RLS + triggers + RPCs + 3 private buckets + `audit_events` + `soap_notes` + activity tables (`activity_templates`/`generated_activities`/`activity_completions`/`program_steps.generated_activity_id`) + 20 activity template seeds. Then apply [`supabase/RUN_ONCE_PRIVACY_FIX.sql`](supabase/RUN_ONCE_PRIVACY_FIX.sql), [`supabase/RUN_ONCE_AUTO_LINK_ON_FIRST_LOGIN.sql`](supabase/RUN_ONCE_AUTO_LINK_ON_FIRST_LOGIN.sql) (auto-accepts therapist-created pending invites on first login), and (if upgrading legacy permissive policies) [`supabase/RUN_ONCE_PRIVACY_FIX_C3_DROP_OPEN_POLICIES.sql`](supabase/RUN_ONCE_PRIVACY_FIX_C3_DROP_OPEN_POLICIES.sql) — all idempotent. Verify with [`scripts/verify-rls.sql`](scripts/verify-rls.sql).
+- **Incremental Migrations** (for already-initialized DBs) — run sequentially:
+  1. `20261030000001_add_old_people_category.sql` — adds `'old_people'` category.
+  2. `20261031000001_link_therapist_in_new_user_trigger.sql` — automatic client-therapist email linking on client signup.
+  3. `20261031000002_two_way_handshake_invitations.sql` — two-way handshake (`invitation_status`, `invitation_initiated_by`).
+  4. `20261031000003_care_transfer_service.sql` — care transfer (`previous_therapist_id`, `handover_notes`).
+  5. `20261031000004_program_videos_storage.sql` — `program-videos` bucket.
+  6. `20261031000005_pending_requests_and_profiles_email.sql` — profile email indexes.
+  7. `20261031000006_soap_notes_and_program_feedback.sql` — `soap_notes` + `submission_reviews` SOAP fields.
+  8. `20261031000007_ensure_therapist_created_user_is_client_type.sql` — therapist-created users strictly `role='client'`.
+  9. `20261031000008_soap_recording_and_assessment_links.sql` — `soap_notes.session_recording_url` + `assessment_links` JSONB.
+  10. `20261031000009_home_program_scheduled_dates_and_submission_edits.sql` — `home_programs.scheduled_dates` JSONB + `submissions.scheduled_date` + multi-date index.
+  11. `20261031000010_update_geriatric_category.sql` — adds `'geriatric'` + backfills `old_people→geriatric`.
+  12. `20261031000011_hipaa_security_safeguards.sql` — `program-videos public=false` + `TO authenticated` read, `prevent_audit_tampering()` immutability, audit indexes (**Finding 3** regression fixed in `00013`).
+  13. `20261031000012_submission_reviews_soap_recording_and_assessments.sql` — `submission_reviews.session_recording_url` + `assessment_links`.
+  14. `20261031000013_photo_upload_support.sql` — image MIME types, storage update/delete policies, `submit_program_steps` media-or-skip RPC, `video_path`/`media_meta` docs.
 
 ### 4. Run Development Server
 ```bash

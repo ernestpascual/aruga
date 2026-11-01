@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160" role="img">
+<rect width="200" height="160" fill="none"/>
+<g stroke-linecap="round" stroke-linejoin="round">
+  <!-- mat -->
+  <ellipse cx="100" cy="115" rx="75" ry="14" fill="#B8F2E6" stroke="#111" stroke-width="4"/>
+  <!-- character standing balance -->
+  <path d="M90 95 L85 65 Q85 45 100 40 Q115 45 115 65 L110 95" fill="#4D96FF" stroke="#111" stroke-width="4"/>
+  <circle cx="100" cy="28" r="20" fill="#FFE66D" stroke="#111" stroke-width="3.5"/>
+  <!-- lion mane hint -->
+  <path d="M85 28 Q78 12 100 8 Q122 12 115 28" fill="#FFD93D" stroke="#111" stroke-width="3"/>
+  <circle cx="93" cy="27" r="1.8" fill="#111"/><circle cx="107" cy="27" r="1.8" fill="#111"/>
+  <!-- arms out -->
+  <path d="M80 60 Q50 50 55 70" stroke="#111" stroke-width="3.5" fill="none"/>
+  <path d="M120 60 Q150 50 145 70" stroke="#111" stroke-width="3.5" fill="none"/>
+  <!-- legs -->
+  <path d="M85 105 L75 135" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+  <path d="M115 105 L125 135" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+  <path d="M160 40 L163 46 L169 49 L163 52 L160 58 L157 52 L151 49 L157 46 Z" fill="#FF6B6B" stroke="#111" stroke-width="1.8"/>
+</g>
+</svg>

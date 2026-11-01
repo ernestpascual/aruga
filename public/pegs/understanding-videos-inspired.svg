@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360" role="img" aria-labelledby="title">
+<title>Understanding videos – playful characters</title>
+<rect width="600" height="360" rx="24" fill="none"/>
+<g opacity="0.08">
+<circle cx="80" cy="80" r="40" fill="#FF6B6B"/><circle cx="520" cy="70" r="50" fill="#FFD93D"/><circle cx="500" cy="300" r="45" fill="#6BCB77"/><circle cx="90" cy="300" r="35" fill="#4D96FF"/>
+</g>
+<rect x="140" y="60" width="320" height="200" rx="18" fill="white" stroke="#111" stroke-width="6"/>
+<rect x="160" y="80" width="280" height="160" rx="12" fill="#E8F0FF" stroke="#111" stroke-width="4"/>
+<g id="bunny-kid">
+  <path d="M200 210 L200 160 Q200 130 230 130 Q260 130 260 160 L260 210 Z" fill="#FF8FAB" stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M210 135 Q205 90 220 85 Q230 85 225 130" fill="#FF8FAB" stroke="#111" stroke-width="4"/>
+  <path d="M250 135 Q255 90 240 85 Q230 85 235 130" fill="#FF8FAB" stroke="#111" stroke-width="4"/>
+  <circle cx="230" cy="150" r="18" fill="#FFE66D" stroke="#111" stroke-width="3"/>
+  <path d="M215 145 Q230 152 245 145" stroke="#111" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <circle cx="222" cy="148" r="2" fill="#111"/><circle cx="238" cy="148" r="2" fill="#111"/>
+</g>
+<g id="lion-kid">
+  <path d="M320 210 L320 155 Q320 125 350 125 Q380 125 380 155 L380 210 Z" fill="#FF9F1C" stroke="#111" stroke-width="4"/>
+  <path d="M315 155 Q300 120 330 110 Q350 100 370 110 Q400 120 385 155" fill="#FFD93D" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="350" cy="145" r="16" fill="#FFB6C1" stroke="#111" stroke-width="3"/>
+  <path d="M340 142 Q350 148 360 142" stroke="#111" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <circle cx="343" cy="142" r="1.8" fill="#111"/><circle cx="357" cy="142" r="1.8" fill="#111"/>
+</g>
+<rect x="192" y="125" width="76" height="95" rx="8" fill="none" stroke="#14b8a6" stroke-width="3" stroke-dasharray="6 4"/>
+<rect x="312" y="120" width="76" height="95" rx="8" fill="none" stroke="#0284c7" stroke-width="3" stroke-dasharray="6 4"/>
+<g opacity="0.9">
+  <path d="M120 70 L124 78 L132 82 L124 86 L120 94 L116 86 L108 82 L116 78 Z" fill="#FFD93D" stroke="#111" stroke-width="2"/>
+  <path d="M480 90 L484 98 L492 102 L484 106 L480 114 L476 106 L468 102 L476 98 Z" fill="#4D96FF" stroke="#111" stroke-width="2"/>
+</g>
+</svg>

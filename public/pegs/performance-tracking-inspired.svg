@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 320" role="img">
+<!-- transparent bg -->
+<rect width="520" height="320" fill="none"/>
+<!-- chart panel -->
+<rect x="80" y="70" width="360" height="190" rx="20" fill="white" stroke="#111" stroke-width="6"/>
+<rect x="100" y="90" width="320" height="150" rx="14" fill="#E8F0FF" stroke="#111" stroke-width="4"/>
+<!-- goal flag at end -->
+<g id="goal">
+  <path d="M360 115 L360 75" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+  <path d="M360 75 L395 85 L360 95 Z" fill="#FF6B6B" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+</g>
+<!-- bars - dynamic insights -->
+<rect x="125" y="175" width="45" height="45" rx="8" fill="#FFD93D" stroke="#111" stroke-width="4"/>
+<rect x="185" y="155" width="45" height="65" rx="8" fill="#6BCB77" stroke="#111" stroke-width="4"/>
+<rect x="245" y="135" width="45" height="85" rx="8" fill="#4D96FF" stroke="#111" stroke-width="4"/>
+<rect x="305" y="120" width="45" height="100" rx="8" fill="#FF8FAB" stroke="#111" stroke-width="4"/>
+<!-- trend line dotted -->
+<path d="M147 170 L207 150 L267 130 L327 115" fill="none" stroke="#111" stroke-width="4" stroke-dasharray="8 6" stroke-linecap="round"/>
+<!-- dots on line -->
+<circle cx="147" cy="170" r="9" fill="white" stroke="#111" stroke-width="3"/>
+<circle cx="207" cy="150" r="9" fill="white" stroke="#111" stroke-width="3"/>
+<circle cx="267" cy="130" r="9" fill="white" stroke="#111" stroke-width="3"/>
+<circle cx="327" cy="115" r="10" fill="#FFD23F" stroke="#111" stroke-width="3"/>
+<!-- small character climbing - inspired bunny -->
+<g id="tracker-kid" transform="translate(350 165)">
+  <path d="M0 30 L0 5 Q0 -10 18 -10 Q36 -10 36 5 L36 30 Z" fill="#FF8FAB" stroke="#111" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M4 -5 Q2 -22 12 -25 Q16 -25 12 -5" fill="#FF8FAB" stroke="#111" stroke-width="3"/>
+  <path d="M28 -5 Q30 -22 20 -25 Q16 -25 20 -5" fill="#FF8FAB" stroke="#111" stroke-width="3"/>
+  <circle cx="18" cy="0" r="10" fill="#FFE66D" stroke="#111" stroke-width="2.5"/>
+  <circle cx="13" cy="-1" r="1.6" fill="#111"/><circle cx="23" cy="-1" r="1.6" fill="#111"/>
+</g>
+<!-- sparkles -->
+<g opacity="0.9">
+  <path d="M70 60 L73 67 L80 70 L73 73 L70 80 L67 73 L60 70 L67 67 Z" fill="#FFD93D" stroke="#111" stroke-width="2"/>
+  <path d="M450 80 L453 87 L460 90 L453 93 L450 100 L447 93 L440 90 L447 87 Z" fill="#FF8FAB" stroke="#111" stroke-width="2"/>
+</g>
+</svg>

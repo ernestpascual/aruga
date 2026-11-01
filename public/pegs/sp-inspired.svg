@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160" role="img">
+<rect width="200" height="160" fill="none"/>
+<g stroke-linecap="round" stroke-linejoin="round">
+  <!-- speech bubble -->
+  <rect x="115" y="15" width="70" height="40" rx="12" fill="white" stroke="#111" stroke-width="3.5"/>
+  <path d="M135 55 L125 68 L145 55" fill="white" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+  <!-- waveform inside bubble -->
+  <path d="M128 35 Q132 22 136 35 T144 35 T152 35 T160 35 T170 35" fill="none" stroke="#4D96FF" stroke-width="3" stroke-linecap="round"/>
+  <!-- kid -->
+  <path d="M70 95 L70 60 Q70 38 92 38 Q114 38 114 60 L114 95" fill="#FF8FAB" stroke="#111" stroke-width="4"/>
+  <circle cx="92" cy="26" r="20" fill="#FFE66D" stroke="#111" stroke-width="3.5"/>
+  <circle cx="85" cy="26" r="1.8" fill="#111"/><circle cx="99" cy="26" r="1.8" fill="#111"/>
+  <path d="M85 32 Q92 38 99 32" stroke="#111" stroke-width="2" fill="none"/>
+  <!-- cat ears -->
+  <path d="M76 14 L70 2 L82 6 Z" fill="#FF8FAB" stroke="#111" stroke-width="2.5"/>
+  <path d="M108 14 L114 2 L102 6 Z" fill="#FF8FAB" stroke="#111" stroke-width="2.5"/>
+  <path d="M162 45 L165 51 L171 54 L165 57 L162 63 L159 57 L153 54 L159 51 Z" fill="#FFD93D" stroke="#111" stroke-width="1.6"/>
+</g>
+</svg>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 320" role="img">
+<rect width="520" height="320" fill="none"/>
+<!-- stack of sheets -->
+<g id="sheets">
+  <rect x="140" y="90" width="240" height="170" rx="16" fill="white" stroke="#111" stroke-width="6"/>
+  <rect x="125" y="75" width="240" height="170" rx="16" fill="white" stroke="#111" stroke-width="6"/>
+  <rect x="110" y="60" width="240" height="170" rx="16" fill="white" stroke="#111" stroke-width="6"/>
+  <!-- sheet content - dotted lines -->
+  <line x1="140" y1="95" x2="320" y2="95" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+  <line x1="140" y1="115" x2="280" y2="115" stroke="#E5E7EB" stroke-width="8" stroke-linecap="round"/>
+  <line x1="140" y1="135" x2="300" y2="135" stroke="#E5E7EB" stroke-width="8" stroke-linecap="round"/>
+  <line x1="140" y1="155" x2="270" y2="155" stroke="#E5E7EB" stroke-width="8" stroke-linecap="round"/>
+  <!-- doodle shapes -->
+  <circle cx="170" cy="190" r="20" fill="#FFD93D" stroke="#111" stroke-width="3"/>
+  <rect x="210" y="175" width="50" height="30" rx="8" fill="#6BCB77" stroke="#111" stroke-width="3"/>
+  <path d="M285 185 L300 200 L285 215 Z" fill="#4D96FF" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+  <!-- small character peeking -->
+  <g id="kid" transform="translate(360 130)">
+    <circle cx="0" cy="0" r="18" fill="#FFE66D" stroke="#111" stroke-width="3"/>
+    <path d="M-10 10 Q0 18 10 10" stroke="#111" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <circle cx="-6" cy="-2" r="1.8" fill="#111"/><circle cx="6" cy="-2" r="1.8" fill="#111"/>
+    <path d="M-12 -18 Q-16 -30 -8 -32 Q-4 -30 -6 -14" fill="#FF8FAB" stroke="#111" stroke-width="2.5"/>
+    <path d="M12 -18 Q16 -30 8 -32 Q4 -30 6 -14" fill="#FF8FAB" stroke="#111" stroke-width="2.5"/>
+  </g>
+</g>
+<!-- sparkle -->
+<g opacity="0.9">
+  <path d="M90 70 L93 77 L100 80 L93 83 L90 90 L87 83 L80 80 L87 77 Z" fill="#FFD93D" stroke="#111" stroke-width="2"/>
+  <path d="M440 85 L443 92 L450 95 L443 98 L440 105 L437 98 L430 95 L437 92 Z" fill="#4D96FF" stroke="#111" stroke-width="2"/>
+</g>
+</svg>

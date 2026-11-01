@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160" role="img">
+<rect width="200" height="160" fill="none"/>
+<g id="ot" stroke-linecap="round" stroke-linejoin="round">
+  <!-- table -->
+  <rect x="25" y="95" width="110" height="12" rx="6" fill="#FFD93D" stroke="#111" stroke-width="4"/>
+  <rect x="40" y="75" width="36" height="24" rx="6" fill="#4D96FF" stroke="#111" stroke-width="3"/>
+  <rect x="85" y="75" width="36" height="24" rx="6" fill="#FF8FAB" stroke="#111" stroke-width="3"/>
+  <!-- hands stacking -->
+  <path d="M55 60 Q65 35 85 45 Q95 50 88 70" fill="#FFE66D" stroke="#111" stroke-width="3.5"/>
+  <path d="M105 55 Q115 35 135 40 Q145 45 135 65" fill="#FFE66D" stroke="#111" stroke-width="3.5"/>
+  <!-- kid head bunny -->
+  <circle cx="95" cy="30" r="22" fill="#FFE66D" stroke="#111" stroke-width="3.5"/>
+  <path d="M80 12 Q76 -8 88 -10 Q92 -6 90 10" fill="#FF8FAB" stroke="#111" stroke-width="3"/>
+  <path d="M110 12 Q114 -8 102 -10 Q98 -6 100 10" fill="#FF8FAB" stroke="#111" stroke-width="3"/>
+  <circle cx="87" cy="28" r="1.8" fill="#111"/><circle cx="103" cy="28" r="1.8" fill="#111"/>
+  <!-- sparkles -->
+  <path d="M155 30 L158 36 L164 39 L158 42 L155 48 L152 42 L146 39 L152 36 Z" fill="#FFD93D" stroke="#111" stroke-width="1.8"/>
+</g>
+</svg>
