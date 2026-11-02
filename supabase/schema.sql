@@ -59,6 +59,9 @@ CREATE INDEX IF NOT EXISTS idx_patients_therapist ON public.patients(therapist_i
 CREATE UNIQUE INDEX IF NOT EXISTS uq_patients_client_user_idx ON public.patients(client_user_id) WHERE client_user_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_patients_email_idx ON public.patients(email);
 
+-- Care Guide — per-patient general guidelines (big textarea, therapist-editable, client read-only)
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS care_guide TEXT NOT NULL DEFAULT '';
+
 -- 3. Home Programs & Program Steps
 CREATE TABLE IF NOT EXISTS public.home_programs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

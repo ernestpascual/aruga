@@ -29,12 +29,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/supabase/auth-context";
-import { isDemoUser } from "@/lib/supabase/demo-helpers";
 import { Patient } from "@/types/database";
 
 export default function TherapistDashboardPage() {
   const { user, profile } = useAuth();
-  const isDemo = isDemoUser(user, profile);
   const [clients, setClients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -45,7 +43,7 @@ export default function TherapistDashboardPage() {
       setLoading(false);
       return;
     }
-    const url = `/api/therapist/clients?therapistId=${user.id}&isDemo=${isDemo}`;
+    const url = `/api/therapist/clients?therapistId=${user.id}&isDemo=false`;
     fetch(url)
       .then((res) => res.json())
       .then((data) => {
@@ -55,7 +53,7 @@ export default function TherapistDashboardPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [user?.id, isDemo]);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchCaseload();
@@ -165,7 +163,7 @@ export default function TherapistDashboardPage() {
             <Link href="/aruga-guide" className="w-full lg:w-auto">
               <Button variant="secondary" className="w-full gap-2 border-zinc-700 hover:border-teal-500/40 h-10 sm:h-9 text-xs justify-center">
                 <Bot className="w-4 h-4 text-teal-400" />
-                Ask OT Assistant
+                Ask Aruga Agent
               </Button>
             </Link>
           </div>

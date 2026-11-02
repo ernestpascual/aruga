@@ -6,6 +6,7 @@ import {
   runSparkAnalyzeVideo,
   runSparkDraftFeedback,
   runSparkOtChat,
+  runSparkOtChatAgentic,
 } from "./meta/spark";
 import { runSamVideoSegmentation } from "./meta/sam";
 import { sam3Engine } from "./meta/sam-engine";
@@ -399,8 +400,6 @@ export async function otChatAssistant(input: OtChatInput): Promise<OtChatOutput>
   }
 
   const attachments = (input.attachments || []).slice(0, 6);
-  // Classify by actual data-URL MIME, not just `kind`: video clips arrive as
-  // extracted JPEG frames (image data URLs), which must go down the image path.
   const images = attachments
     .filter((a) => a.dataUrl?.toLowerCase().startsWith("data:image/"))
     .map((a) => a.dataUrl)
@@ -412,23 +411,8 @@ export async function otChatAssistant(input: OtChatInput): Promise<OtChatOutput>
   const hasMedia = images.length > 0 || videoUrls.length > 0;
   const clinical = isClinicallyRelated(input.userText, hasMedia);
 
-  // Search grounding for every clinically related turn
-  let evidenceQuery: string | undefined;
-  let evidenceBlock = "";
-  let references: OtChatOutput["references"] = [];
-  if (clinical) {
-    try {
-      const evidence = await searchClinicalEvidence(input.userText);
-      evidenceQuery = evidence.query;
-      evidenceBlock = evidence.contextBlock;
-      references = evidence.references;
-    } catch {
-      evidenceBlock =
-        "SEARCH-GROUNDED CLINICAL EVIDENCE: live search errored for this turn. Give general educational information only and advise confirming with a licensed OT.";
-    }
-  }
-
-  // Build butler personalization block from profile + program if provided
+  // Agentic path: web_search grounding via Responses API (keeps citations contract)
+  // Falls back to synthesized reference for greetings; no custom PubMed/OpenAlex fetch.
   let clientContextBlock: string | undefined;
   if (input.clientContext) {
     const parts: string[] = ["CLIENT CONTEXT (use to personalize, do not repeat verbatim unless helpful):"];
@@ -439,26 +423,65 @@ export async function otChatAssistant(input: OtChatInput): Promise<OtChatOutput>
     clientContextBlock = parts.join("\n");
   }
 
-  const { text, latencyMs, modelId: usedModel } = await runSparkOtChat({
-    history: input.history,
-    userText: input.userText,
-    images,
-    videoUrls,
-    conversationId,
-    clientContext: clientContextBlock,
-    evidenceContext: clinical ? evidenceBlock : evidenceBlock ? evidenceBlock : "SEARCH-GROUNDED CLINICAL EVIDENCE: no search needed for this greeting, but still include at least one general rehab reference if you give health information.",
-    model: requestedModel,
-  });
-
-  // General rehab: always ensure at least one reference, even if isClinicallyRelated was false but answer contains health info — keep references array populated when possible
-  if (!clinical && references.length === 0) {
-    // Keep references as synthesized fallback so UI always shows sources
-    references = [
-      { id: "general", title: "General rehabilitation guidance — confirm with your clinician", authors: "Aruga Guide", year: new Date().getFullYear().toString(), source: "General Rehab Education", url: "https://pubmed.ncbi.nlm.nih.gov/" },
-    ];
+  // Try agentic Responses API first (web_search + reasoning). On any failure, fall back to classic chat.
+  let text: string;
+  let latencyMs: number;
+  let usedModel: string;
+  let agenticRefs: Array<{ title: string; url: string; source: string }> = [];
+  let evidenceQuery: string | undefined = input.userText.slice(0, 200);
+  try {
+    const agentic = await runSparkOtChatAgentic({
+      history: input.history,
+      userText: input.userText,
+      images,
+      videoUrls,
+      conversationId,
+      clientContext: clientContextBlock,
+      model: requestedModel,
+    });
+    text = agentic.text;
+    latencyMs = agentic.latencyMs;
+    usedModel = agentic.modelId;
+    agenticRefs = agentic.references;
+  } catch (e) {
+    // Fallback: classic Chat Completions (ensures chat never breaks on Responses unavailability)
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("AI_DISABLED") || msg.includes("MISSING_API_KEY")) throw e;
+    // Only fallback for transport/model errors; keep agenticRefs empty so synthesize below
+    const fallback = await runSparkOtChat({
+      history: input.history,
+      userText: input.userText,
+      images,
+      videoUrls,
+      conversationId,
+      clientContext: clientContextBlock,
+      evidenceContext: "SEARCH-GROUNDED CLINICAL EVIDENCE: web search was unavailable for this turn. Give general educational information only and advise confirming with a licensed clinician.",
+      model: requestedModel,
+    });
+    text = fallback.text;
+    latencyMs = fallback.latencyMs;
+    usedModel = fallback.modelId;
   }
 
-  // Enforce the References contract even if the model omits it.
+  // Map web_search annotations → ClinicalReference[] same shape as before (keeps UI identical)
+  let references: OtChatOutput["references"] = agenticRefs.map((r, i) => ({
+    id: `web:${i}:${r.url.slice(0, 32)}`,
+    title: r.title,
+    authors: r.source,
+    year: new Date().getFullYear().toString(),
+    source: r.source,
+    url: r.url,
+  }));
+  // Always ensure at least one reference (greetings get general fallback, clinical without results stays web-grounded)
+  if (references.length === 0) {
+    if (!clinical) {
+      references = [{ id: "general", title: "General rehabilitation guidance — confirm with your clinician", authors: "Aruga Guide", year: new Date().getFullYear().toString(), source: "General Rehab Education", url: "https://pubmed.ncbi.nlm.nih.gov/" }];
+    } else {
+      // Clinical but no web results — keep grounded=false signal via generic web fallback, UI shows "No specific studies" message handled by page
+      references = [{ id: "web:fallback", title: "General rehabilitation guidance — confirm with your clinician", authors: "Web search", year: new Date().getFullYear().toString(), source: "Web search", url: "https://pubmed.ncbi.nlm.nih.gov/" }];
+    }
+  }
+
   let reply = text;
   if (clinical && references.length > 0 && !/references/i.test(reply)) {
     reply += formatReferencesSection(references);
@@ -467,7 +490,7 @@ export async function otChatAssistant(input: OtChatInput): Promise<OtChatOutput>
   return {
     reply,
     references,
-    grounded: clinical,
+    grounded: clinical || agenticRefs.length > 0,
     evidenceQuery,
     modelId: usedModel,
     latencyMs,

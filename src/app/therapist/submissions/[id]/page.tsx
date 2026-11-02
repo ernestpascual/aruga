@@ -24,6 +24,7 @@ import {
   Stethoscope,
   Layers,
   Check,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,11 +32,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SamOverlay } from "@/components/ui/sam-overlay";
+import { BiomechPanel } from "@/components/therapist/BiomechPanel";
+import { useAuth } from "@/lib/supabase/auth-context";
 import { Submission, StepSubmission, ProgramStep, AiAnalysisRecord, SoapNoteAssessmentLink } from "@/types/database";
-import {
-  DEMO_SUBMISSION_ID,
-  DEMO_PEDIATRIC_SUBMISSION_ID,
-} from "@/lib/supabase/mock-store";
 
 export default function TherapistSubmissionReviewPage({
   params,
@@ -55,12 +54,9 @@ function TherapistSubmissionReviewContent({
   params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
+  const { user } = useAuth();
   const resolvedParams = use(params);
   const submissionId = resolvedParams.id;
-  const isDemo =
-    submissionId === DEMO_SUBMISSION_ID ||
-    submissionId === DEMO_PEDIATRIC_SUBMISSION_ID ||
-    submissionId.includes("demo");
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -89,6 +85,11 @@ function TherapistSubmissionReviewContent({
   const [aiRecords, setAiRecords] = useState<Record<string, AiAnalysisRecord>>({});
   const [confirmedObs, setConfirmedObs] = useState<Record<string, string[]>>({});
   const [activityCompletions, setActivityCompletions] = useState<Record<string, Record<string, unknown>>>({});
+  // Biomech Engine state per step (no mock fallback)
+  const [biomechIntents, setBiomechIntents] = useState<Record<string, string>>({});
+  const [biomechLoading, setBiomechLoading] = useState<string | null>(null);
+  const [biomechResults, setBiomechResults] = useState<Record<string, any>>({});
+  const [biomechError, setBiomechError] = useState<Record<string, string>>({});
 
   useEffect(() => {
     // Load submission data
@@ -96,8 +97,9 @@ function TherapistSubmissionReviewContent({
       try {
         setLoading(true);
 
-        // Attempt live fetch from database
-        const res = await fetch(`/api/client/submissions?submissionId=${submissionId}`);
+        // Attempt live fetch from database — include requesterId so ownership check passes (DB read blocker fix)
+        const qReq = user?.id ? `&requesterId=${user.id}` : "";
+        const res = await fetch(`/api/client/submissions?submissionId=${submissionId}${qReq}`);
         const data = await res.json();
 
         if (data.submission) {
@@ -141,256 +143,9 @@ function TherapistSubmissionReviewContent({
           return;
         }
 
-        const isDemoSubmission = isDemo;
-
-        if (!isDemoSubmission) {
-          setStatusMessage({ type: "error", text: "Submission not found or has been archived." });
-          setLoading(false);
-          return;
-        }
-
-        const isPediatric = submissionId === DEMO_PEDIATRIC_SUBMISSION_ID || submissionId.includes("pediatric");
-        const mockSteps: ProgramStep[] = isPediatric
-          ? [
-              {
-                id: "77777774-7777-4777-8777-777777777774",
-                program_id: "44444444-4444-4444-8444-444444444445",
-                position: 1,
-                title: "Colorful Peg Stacking Game",
-                instructions:
-                  "Have Leo use thumb and index finger (pincer grasp) to pick up 5 colorful pegs and place them into the board. Encourage keeping the helper hand steady on the table.",
-                created_at: new Date().toISOString(),
-              },
-              {
-                id: "77777775-7777-4777-8777-777777777775",
-                program_id: "44444444-4444-4444-8444-444444444445",
-                position: 2,
-                title: "Play-Doh Bead Roll & Squash",
-                instructions:
-                  "Roll three small dough balls between palms or fingers, then have Leo squash each one flat with his pointer finger.",
-                created_at: new Date().toISOString(),
-              },
-              {
-                id: "77777776-7777-4777-8777-777777777776",
-                program_id: "44444444-4444-4444-8444-444444444445",
-                position: 3,
-                title: "Two-Handed Lid Unscrewing",
-                instructions:
-                  "Hold the plastic jar base steady with the non-dominant helper hand while gently turning the lid with the dominant hand.",
-                created_at: new Date().toISOString(),
-              },
-            ]
-          : [
-              {
-                id: "77777771-7777-4777-8777-777777777771",
-                program_id: "44444444-4444-4444-8444-444444444444",
-                position: 1,
-                title: "Cylindrical Cup Lift and Transfer",
-                instructions:
-                  "Place a lightweight plastic cup 6 inches in front of you. Reach forward using full active extension, grasp with all digits, lift 3 inches vertically, hold for 2 seconds, and place back down gently without knocking it over.",
-                created_at: new Date().toISOString(),
-              },
-              {
-                id: "77777772-7777-4777-8777-777777777772",
-                program_id: "44444444-4444-4444-8444-444444444444",
-                position: 2,
-                title: "Small Block Lateral Stacking",
-                instructions:
-                  "Pick up the wooden block using a three-jaw chuck (thumb, index, middle fingers). Move it across your midline to the target marker on your left, then release cleanly.",
-                created_at: new Date().toISOString(),
-              },
-              {
-                id: "77777773-7777-4777-8777-777777777773",
-                program_id: "44444444-4444-4444-8444-444444444444",
-                position: 3,
-                title: "Forearm Supination with Washcloth",
-                instructions:
-                  "Hold the folded washcloth flat on the tabletop. Slowly rotate your forearm so your palm faces fully upward, pausing for 3 seconds before returning to neutral.",
-                created_at: new Date().toISOString(),
-              },
-            ];
-
-        const mockStepSubs: StepSubmission[] = isPediatric
-          ? [
-              {
-                id: "88888884-8888-4888-8888-888888888884",
-                submission_id: submissionId,
-                program_step_id: mockSteps[0].id,
-                video_path: "/demo/cup_grasp_transfer.mp4",
-                media_meta: { mime: "video/mp4", durationSeconds: 15, formatSupported: true },
-                client_comment: "Leo loved picking the green and yellow pegs today!",
-                skipped: false,
-                skip_reason: null,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-              {
-                id: "88888885-8888-4888-8888-888888888885",
-                submission_id: submissionId,
-                program_step_id: mockSteps[1].id,
-                video_path: "/demo/block_stacking.mp4",
-                media_meta: { mime: "video/mp4", durationSeconds: 12, formatSupported: true },
-                client_comment: "Used index finger to squash all 3 dough balls.",
-                skipped: false,
-                skip_reason: null,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-              {
-                id: "88888886-8888-4888-8888-888888888886",
-                submission_id: submissionId,
-                program_step_id: mockSteps[2].id,
-                video_path: "/demo/washcloth_supination.mp4",
-                media_meta: { mime: "video/mp4", durationSeconds: 13, formatSupported: true },
-                client_comment: "Leo practiced gentle tabletop wrist rotation and lid placement.",
-                skipped: false,
-                skip_reason: null,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-            ]
-          : [
-              {
-                id: "88888881-8888-4888-8888-888888888881",
-                submission_id: submissionId,
-                program_step_id: mockSteps[0].id,
-                video_path: "/demo/cup_grasp_transfer.mp4",
-                media_meta: { mime: "video/mp4", durationSeconds: 15, formatSupported: true },
-                client_comment: "Felt smoother than last week! Finger extension still feels stiff right before touching the cup.",
-                skipped: false,
-                skip_reason: null,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-              {
-                id: "88888882-8888-4888-8888-888888888882",
-                submission_id: submissionId,
-                program_step_id: mockSteps[1].id,
-                video_path: "/demo/block_stacking.mp4",
-                media_meta: { mime: "video/mp4", durationSeconds: 12, formatSupported: true },
-                client_comment: "Managed 4 repetitions with the small wooden block.",
-                skipped: false,
-                skip_reason: null,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-              {
-                id: "88888883-8888-4888-8888-888888888883",
-                submission_id: submissionId,
-                program_step_id: mockSteps[2].id,
-                video_path: "/demo/washcloth_supination.mp4",
-                media_meta: { mime: "video/mp4", durationSeconds: 15, formatSupported: true },
-                client_comment: "Slowed rotation tempo per instructions. Completed 5 full active repetitions with washcloth.",
-                skipped: false,
-                skip_reason: null,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-            ];
-
-        setSteps(mockSteps);
-        setStepSubmissions(mockStepSubs);
-
-        if (isPediatric) {
-          setStepNotes({
-            [mockStepSubs[0].id]: "Clear index-thumb opposition. Helper hand stabilized the board well.",
-            [mockStepSubs[1].id]: "Good finger isolation when squashing the dough beads.",
-            [mockStepSubs[2].id]: "Appropriate skip. Practice with a looser lid first.",
-          });
-          setOverallFeedback(
-            "Fantastic progress, Leo! Sarah, his pincer grasp on the pegs showed wonderful isolated finger control with much less whole-hand raking. Great call on loosening the jar lid for step 3."
-          );
-          setSoapRecordingUrl("https://meet.google.com/rec/aruga-leo-pediatric-telehealth");
-          setSoapSubjective("Sarah reported Leo was enthusiastic with the colored pegs. Noted step 3 jar was too tight for independent opening.");
-          setSoapObjective("Neat pincer grasp achieved on 5 peg placements. Helper hand spontaneously stabilized container rim.");
-          setSoapAssessment("Bilateral coordination and thumb-index pad opposition show marked maturation from gross raking grasp.");
-          setSoapAssessmentLinks([
-            {
-              title: "Peabody Developmental Motor Scales (PDMS-2) Fine Motor Report",
-              url: "https://drive.google.com/file/d/leo-pdms2-scorecard/view",
-            },
-          ]);
-          setSoapPlan("Continue daily peg stacking and play-doh home programs. Use pre-loosened plastic containers for bilateral twist-off practice.");
-          setClientSummary("Leo did an incredible job using his 'pincer fingers' to place the colorful pegs! Sarah, your encouragement and having him hold the board with his helper hand made all the difference. For tomorrow, start with the jar lid already partly twisted open so Leo can celebrate taking it off all by himself!");
-        } else {
-          setStepNotes({
-            [mockStepSubs[0].id]: "Smooth cylindrical grasp observed. Minimal trunk compensation. Keep focusing on slow finger release.",
-            [mockStepSubs[1].id]: "Clean pinch grasp. Noticeable control when crossing midline.",
-            [mockStepSubs[2].id]: "Appropriate skip. We will re-evaluate shoulder active range of motion during our next session.",
-          });
-          setOverallFeedback(
-            "Great effort on the tabletop transfer home program. Wrist alignment during the cup release is noticeably improved. Good decision to rest the shoulder on step 3—honoring fatigue prevents compensatory shoulder hiking."
-          );
-          setSoapRecordingUrl("https://meet.google.com/rec/aruga-marcus-telehealth");
-          setSoapSubjective("Marcus reported feeling smoother during cup lifts, but noted residual morning finger stiffness. Made an appropriate clinical decision to rest shoulder on step 3.");
-          setSoapObjective("Video review demonstrates active cylindrical grasp with 3-4 inch vertical cup lift. Trunk lateral flexion under 5°. Step 2 block stacking completed with 4 clean chuck releases.");
-          setSoapAssessment("Right UE hemiparesis shows steady neuromuscular recovery. Tabletop grasp and release are functional; proximal shoulder girdle endurance is the remaining limiting factor.");
-          setSoapAssessmentLinks([
-            {
-              title: "Fugl-Meyer UE Motor Assessment (Baseline)",
-              url: "https://drive.google.com/file/d/marcus-fugl-meyer-baseline/view",
-            },
-            {
-              title: "Box and Blocks Test Protocol",
-              url: "https://drive.google.com/file/d/box-and-blocks-standardized/view",
-            },
-          ]);
-          setSoapPlan("Maintain current tabletop home program 1x daily. Introduce 30-second resting intervals between block sets. Re-check active shoulder flexion in next live session.");
-          setClientSummary("You did an outstanding job lifting and releasing the cup smoothly without leaning your body. Listening to your shoulder and resting on step 3 was 100% the right call. Keep practicing the cup and block exercises once a day, and remember to take 30-second breathers whenever your shoulder feels tired!");
-        }
-
-        // Preload step 1 AI record from demo
-        const mockAiRec: AiAnalysisRecord = {
-          id: "bbbbbbb1-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
-          step_submission_id: mockStepSubs[0].id,
-          analysis_kind: "full_review",
-          model_id: "muse-spark-1.3 + sam-3.1",
-          idempotency_key: "spark-sam-demo-v1",
-          prompt_version: "v1",
-          processing_status: "completed",
-          spark_results: {
-            observations: [
-              { id: "obs-1", description: "Subject reaches forward with right upper extremity toward a blue plastic cup.", approx_timestamp_seconds: 2.4, confirmed: true },
-              { id: "obs-2", description: "Full active cylindrical grasp achieved around the midsection of the cup.", approx_timestamp_seconds: 5.1, confirmed: true },
-              { id: "obs-3", description: "Cup lifted approximately 3-4 inches above table surface without tilting.", approx_timestamp_seconds: 7.8, confirmed: true },
-              { id: "obs-4", description: "Controlled descent and release with minimal trunk lateral flexion.", approx_timestamp_seconds: 11.2, confirmed: false },
-            ],
-            limitations: [
-              "Camera angle is slightly angled from the right side; partial wrist occlusion during initial contact.",
-              "Video frame rate is approximately 30fps.",
-            ],
-            suggested_object_concept: "cup",
-            clinical_note_draft: "Video reveals smooth cylindrical grasp and sustained vertical lift of the target cup with intact tabletop release.",
-          },
-          sam_results: {
-            object_concept: "cup",
-            detected_frames_count: 8,
-            boxes: [
-              { frame_index: 0, timestamp_seconds: 0.0, box: [0.42, 0.48, 0.72, 0.62], label: "cup", confidence: 0.94 },
-              { frame_index: 1, timestamp_seconds: 2.0, box: [0.42, 0.48, 0.72, 0.62], label: "cup", confidence: 0.95 },
-              { frame_index: 2, timestamp_seconds: 4.5, box: [0.41, 0.48, 0.71, 0.62], label: "cup", confidence: 0.96 },
-              { frame_index: 3, timestamp_seconds: 6.0, box: [0.32, 0.48, 0.62, 0.62], label: "cup", confidence: 0.96 },
-              { frame_index: 4, timestamp_seconds: 8.0, box: [0.30, 0.48, 0.60, 0.62], label: "cup", confidence: 0.97 },
-              { frame_index: 5, timestamp_seconds: 10.0, box: [0.38, 0.48, 0.68, 0.62], label: "cup", confidence: 0.95 },
-              { frame_index: 6, timestamp_seconds: 12.0, box: [0.42, 0.48, 0.72, 0.62], label: "cup", confidence: 0.94 },
-              { frame_index: 7, timestamp_seconds: 14.0, box: [0.42, 0.48, 0.72, 0.62], label: "cup", confidence: 0.93 },
-            ],
-            svg_paths: [
-              { frame_index: 3, path: "M0.48 0.32 L0.62 0.32 L0.61 0.62 L0.49 0.62 Z" },
-              { frame_index: 4, path: "M0.48 0.30 L0.62 0.30 L0.61 0.60 L0.49 0.60 Z" },
-            ],
-            duration_analyzed_seconds: 14,
-          },
-          artifact_path: "ai-artifacts/sam-cup-demo.json",
-          confirmed_observations: ["obs-1", "obs-2", "obs-3"],
-          timing_ms: 1840,
-          sanitized_error: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        setAiRecords({ [mockStepSubs[0].id]: mockAiRec });
-        setConfirmedObs({ [mockStepSubs[0].id]: ["obs-1", "obs-2", "obs-3"] });
+        setStatusMessage({ type: "error", text: "Submission not found. Database record required — no mock data (configure Supabase and run migrations)." });
+        setLoading(false);
+        return;
       } catch {
         // error
       } finally {
@@ -399,13 +154,14 @@ function TherapistSubmissionReviewContent({
     };
 
     fetchSubmission();
-  }, [submissionId, isDemo]);
+  }, [submissionId, user?.id]);
 
   // Load activity completions (private per patient — therapist must own patient)
   useEffect(() => {
     if (stepSubmissions.length === 0) return;
     let cancelled = false;
-    const userId = (()=> { try { return JSON.parse(localStorage.getItem("aruga_user")||"null")?.id || ""; } catch { return ""; } })();
+    // Prefer real auth session over localStorage fallback — fixes DB-read block when localStorage stale/missing
+    const userId = user?.id || (()=> { try { return JSON.parse(localStorage.getItem("aruga_user")||"null")?.id || ""; } catch { return ""; } })();
     Promise.all(
       stepSubmissions.map(async (ss) => {
         try {
@@ -423,7 +179,7 @@ function TherapistSubmissionReviewContent({
       setActivityCompletions(map);
     });
     return () => { cancelled = true; };
-  }, [stepSubmissions.map((s)=>s.id).join("|")]);
+  }, [stepSubmissions.map((s)=>s.id).join("|"), user?.id]);
 
   // Toggle Assistant Collapse
   const toggleCollapse = (stepSubId: string) => {
@@ -434,7 +190,7 @@ function TherapistSubmissionReviewContent({
   };
 
   const handleAnalyzeWithMeta = async (stepSub: StepSubmission, step: ProgramStep) => {
-    if (!stepSub.video_path && !isDemo) {
+    if (!stepSub.video_path) {
       setStatusMessage({
         type: "error",
         text: "Cannot run Meta AI analysis: no video was uploaded by the client for this step.",
@@ -451,7 +207,7 @@ function TherapistSubmissionReviewContent({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           stepSubmissionId: stepSub.id,
-          videoUrl: stepSub.video_path || (isDemo ? "/demo/tabletop_exercise.mp4" : ""),
+          videoUrl: stepSub.video_path || "",
           stepInstructions: step.instructions,
           stepTitle: step.title || `Step ${step.position}`,
           runSam: true,
@@ -625,7 +381,7 @@ function TherapistSubmissionReviewContent({
           plan: soapPlan || "",
           clientName,
           forceRegenerate: true,
-          isDemo,
+          isDemo: false,
         }),
       });
 
@@ -644,8 +400,7 @@ function TherapistSubmissionReviewContent({
   const isAlreadyReviewed =
     submission?.state === "reviewed" ||
     submission?.review?.status === "published" ||
-    Boolean(submission?.review?.overall_feedback) ||
-    Boolean(overallFeedback && isDemo);
+    Boolean(submission?.review?.overall_feedback);
 
   // Save Draft Review or Publish Review
   const handleSaveReview = async (action: "save_draft" | "publish") => {
@@ -713,7 +468,7 @@ function TherapistSubmissionReviewContent({
     }
   };
 
-  const isPediatric = submissionId === DEMO_PEDIATRIC_SUBMISSION_ID || submissionId.includes("pediatric");
+  const isPediatric = false; // was DEMO check, now DB-driven
 
   if (loading) {
     return (
@@ -805,13 +560,7 @@ function TherapistSubmissionReviewContent({
               id: `step-sub-${step.id}`,
               submission_id: submissionId,
               program_step_id: step.id,
-              video_path: isDemo
-                ? idx === 0
-                  ? "/demo/cup_grasp_transfer.mp4"
-                  : idx === 1
-                  ? "/demo/block_stacking.mp4"
-                  : "/demo/washcloth_supination.mp4"
-                : null,
+              video_path: null,
               skipped: false,
               skip_reason: null,
               media_meta: {},
@@ -825,15 +574,7 @@ function TherapistSubmissionReviewContent({
           const currentConfirmed = confirmedObs[stepSub.id] || [];
 
           // Resolve and normalize video URL with leading slash
-          const rawVideoPath =
-            stepSub.video_path ||
-            (isDemo
-              ? idx === 0
-                ? "/demo/cup_grasp_transfer.mp4"
-                : idx === 1
-                ? "/demo/block_stacking.mp4"
-                : "/demo/washcloth_supination.mp4"
-              : null);
+          const rawVideoPath = stepSub.video_path;
 
           const videoSource = rawVideoPath
             ? rawVideoPath.startsWith("http") || rawVideoPath.startsWith("/") || rawVideoPath.startsWith("blob:")
@@ -960,6 +701,7 @@ function TherapistSubmissionReviewContent({
                         svgPaths={aiRec?.sam_results?.svg_paths}
                         objectConcept={aiRec?.sam_results?.object_concept}
                         modelProvenance="SAM 3.1: object segmentation"
+                        mhr={biomechResults[stepSub.id] ?? null}
                       />
                     );
                   })()}
@@ -1087,6 +829,59 @@ function TherapistSubmissionReviewContent({
                         </div>
                       </div>
                     )}
+                  </div>
+                  {/* Biomech Engine (no mock fallback) — per-step SAM 3.1 → Modal MHR */}
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3 space-y-2.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5"><Activity className="w-3.5 h-3.5 text-teal-400" /> Movement check — what to look at</span>
+                      <a href="/docs/AGENTS_GUIDE.md#5-agent-2--biomech-engine-sam-31--modal-mhr" target="_blank" className="text-[11px] text-teal-400 hover:underline">Guide</a>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={biomechIntents[stepSub.id] || "U1"}
+                        onChange={(e)=> setBiomechIntents(prev=> ({...prev, [stepSub.id]: e.target.value}))}
+                        className="h-8 rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-200 px-2.5 flex-1"
+                      >
+                        <option value="U1">Arm & shoulder — reach and lift</option>
+                        <option value="U2">Hand — grip and pinch</option>
+                        <option value="U3">Walking — steps and balance</option>
+                        <option value="U4">Get up & go — stand, walk, turn</option>
+                        <option value="U5">Posture — trunk and back</option>
+                        <option value="U6">Sit to stand — getting up</option>
+                        <option value="U7">Both hands — together</option>
+                        <option value="U8">Homework — how often</option>
+                        <option value="U9">Over time — progress trend</option>
+                        <option value="U10">Write notes — help draft</option>
+                        <option value="U11">Neck — head control</option>
+                      </select>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={!videoSource || biomechLoading === stepSub.id}
+                        onClick={async ()=>{
+                          if (!videoSource) return;
+                          const intent = biomechIntents[stepSub.id] || "U1";
+                          setBiomechLoading(stepSub.id);
+                          setBiomechError(prev=> ({...prev, [stepSub.id]: ""}));
+                          try {
+                            const res = await fetch("/api/agent/biomech/run", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ submissionId, stepSubmissionId: stepSub.id, intent }) });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error || "Biomech failed");
+                            setBiomechResults(prev=> ({...prev, [stepSub.id]: data}));
+                          } catch (e:any) { setBiomechError(prev=> ({...prev, [stepSub.id]: e.message || String(e)})); } finally { setBiomechLoading(null); }
+                        }}
+                        className="h-8 text-xs gap-1.5 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold shrink-0"
+                      >
+                        {biomechLoading===stepSub.id ? <span className="w-3 h-3 border-2 border-zinc-900/30 border-t-zinc-900 rounded-full animate-spin" /> : <Activity className="w-3.5 h-3.5" />}
+                        Check movement
+                      </Button>
+                    </div>
+                    {!videoSource && <p className="text-[11px] text-amber-300">No video yet — add one to check movement.</p>}
+                    {biomechError[stepSub.id] && <p className="text-xs text-rose-300 bg-rose-950/20 border border-rose-800/40 rounded p-2">{biomechError[stepSub.id]}</p>}
+                    {biomechResults[stepSub.id] && (
+                      <BiomechPanel mhr={biomechResults[stepSub.id]} onInsertObjective={(txt)=> setSoapObjective(prev=> prev ? `${prev}\n\n${txt}` : txt)} />
+                    )}
+                    {biomechResults[stepSub.id] && <p className="text-[10px] text-zinc-500">Changing dropdown re-filters cached MHR — no re-bill. 1 Modal inference serves U1+U5+U11 views.</p>}
                   </div>
                 </div>
               ) : (

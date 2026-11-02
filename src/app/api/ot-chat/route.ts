@@ -3,6 +3,8 @@ import { otChatAssistant } from "@/lib/meta-ai";
 import { MetaApiError } from "@/lib/meta/errors";
 import { DEFAULT_OT_CHAT_MODEL, isOtChatModel } from "@/lib/meta/models";
 
+export const maxDuration = 60;
+
 // Keep in sync with the chat UI: images are client-compressed, videos arrive
 // as extracted JPEG frames (sent as kind:"image"). Limits are intentionally
 // small so a chat POST stays fast and never OOMs on base64 JSON.

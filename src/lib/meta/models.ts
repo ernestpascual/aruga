@@ -13,12 +13,10 @@ export type OtChatModelId = (typeof OT_CHAT_MODELS)[number];
 
 export const DEFAULT_OT_CHAT_MODEL: OtChatModelId = "muse-spark-1.2-contributor";
 
-// Activity generation
+// Activity generation — Meta-only: Muse Image via api.meta.ai (no third-party fallbacks)
 export const ACTIVITY_IMAGE_MODELS = [
   "muse-image-1.0",
   "muse-image-1.1",
-  "dall-e-3",
-  "gpt-image-1",
 ] as const;
 
 export const DEFAULT_ACTIVITY_IMAGE_MODEL = "muse-image-1.0";

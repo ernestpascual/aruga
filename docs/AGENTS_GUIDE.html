@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aruga Agents Guide — Agentic Workflows v1.2 — 2026-11-02</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Playwrite+IT+Trad:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg-dark:#09090b;--card-bg:#121215;--card-border:#27272a;--teal:#14b8a6;--teal-soft:rgba(20,184,166,.12);--teal-glow:rgba(20,184,166,.22);--amber:#f59e0b;--sky:#0284c7;--violet:#8b5cf6;--emerald:#10b981;--rose:#f43f5e;--text:#f4f4f5;--muted:#a1a1aa;--dim:#71717a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg-dark);color:var(--text);font-family:'Inter',system-ui,sans-serif;line-height:1.65;-webkit-font-smoothing:antialiased;padding:24px}
+.container{max-width:1240px;margin:0 auto}
+a{color:var(--teal);text-decoration:none}
+a:hover{text-decoration:underline}
+.mono{font-family:'JetBrains Mono',monospace}
+header.hero{background:linear-gradient(135deg,rgba(20,184,166,.12) 0%,rgba(139,92,246,.07) 30%,rgba(18,18,21,.98) 75%);border:1px solid var(--card-border);border-radius:16px;padding:28px 30px;margin-bottom:16px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:18px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.wordmark{font-family:'Playwrite IT Trad',cursive;font-size:2rem;color:var(--teal);text-shadow:0 0 18px var(--teal-glow)}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:9999px;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border:1px solid}
+.badge-teal{background:rgba(20,184,166,.14);color:var(--teal);border-color:rgba(20,184,166,.35)}
+.badge-violet{background:rgba(139,92,246,.14);color:#a78bfa;border-color:rgba(139,92,246,.35)}
+.badge-emerald{background:rgba(16,185,129,.14);color:var(--emerald);border-color:rgba(16,185,129,.35)}
+.meta-col{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.meta-tag{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted);background:#18181b;padding:6px 10px;border-radius:8px;border:1px solid var(--card-border)}
+.banner{background:linear-gradient(90deg,rgba(20,184,166,.10),rgba(139,92,246,.06));border:1px solid rgba(20,184,166,.25);border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.banner .dot{width:30px;height:30px;border-radius:50%;background:var(--teal);display:grid;place-items:center;color:#fff;font-weight:800;box-shadow:0 0 10px var(--teal-glow)}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--card-bg);border:1px solid var(--card-border);border-radius:14px;padding:16px 18px}
+.kpi:hover{border-color:rgba(20,184,166,.35);transform:translateY(-1px)}
+.kpi-title{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.kpi-value{font-size:1.35rem;font-weight:800;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.kpi-sub{font-size:.72rem;color:var(--dim);margin-top:4px}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--card-border);margin-bottom:18px;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
+.tab-btn{background:transparent;border:none;color:var(--muted);padding:11px 14px;font-size:.84rem;font-weight:600;cursor:pointer;border-radius:10px 10px 0 0;white-space:nowrap}
+.tab-btn:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.tab-btn.active{color:var(--teal);border-bottom:3px solid var(--teal);background:rgba(20,184,166,.08)}
+.tab-content{display:none}
+.tab-content.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:22px;margin-bottom:16px}
+.card h3{font-size:1.02rem;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.card h4{font-size:.88rem;font-weight:700;color:var(--text);margin:14px 0 8px}
+.small{font-size:.78rem;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;padding:10px 12px;background:#18181b;border-bottom:1px solid var(--card-border);cursor:pointer;user-select:none}
+td{padding:10px 12px;border-bottom:1px solid rgba(39,39,42,.55);color:#d4d4d8;vertical-align:top}
+tr:hover td{background:rgba(255,255,255,.02)}
+.pill{padding:4px 9px;border-radius:9999px;font-size:.68rem;font-weight:700;border:1px solid;display:inline-block}
+.pill-ok{background:rgba(16,185,129,.14);color:var(--emerald);border-color:rgba(16,185,129,.3)}
+.pill-warn{background:rgba(245,158,11,.14);color:var(--amber);border-color:rgba(245,158,11,.3)}
+.pill-sky{background:rgba(2,132,199,.14);color:var(--sky);border-color:rgba(2,132,199,.3)}
+.pill-violet{background:rgba(139,92,246,.14);color:#a78bfa;border-color:rgba(139,92,246,.32)}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.search{flex:1;min-width:200px;max-width:360px;background:#18181b;border:1px solid var(--card-border);border-radius:8px;padding:9px 12px;color:#fff;font-size:.82rem}
+.search:focus{outline:none;border-color:var(--teal)}
+.select{background:#18181b;border:1px solid var(--card-border);border-radius:8px;padding:9px 10px;color:var(--text);font-size:.82rem}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.72rem;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:#18181b;color:var(--muted);cursor:pointer}
+.btn:hover{border-color:var(--teal);color:var(--teal)}
+.btn-teal{background:rgba(20,184,166,.14);border-color:rgba(20,184,166,.35);color:var(--teal)}
+.accordion{border:1px solid var(--card-border);border-radius:12px;overflow:hidden;margin-bottom:10px;background:#18181b}
+.acc-head{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer}
+.acc-head:hover{background:rgba(255,255,255,.03)}
+.acc-body{display:none;padding:16px;border-top:1px solid var(--card-border);background:var(--card-bg)}
+.acc-body.open{display:block}
+.chev{transition:transform .2s;color:var(--muted)}
+.chev.open{transform:rotate(180deg)}
+.code{position:relative;background:#09090b;border:1px solid var(--card-border);border-radius:10px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:.70rem;color:#d4d4d8;overflow-x:auto;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.copy{position:absolute;top:8px;right:8px;font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:5px 8px;border-radius:6px;border:1px solid var(--card-border);background:#18181b;color:var(--muted);cursor:pointer}
+.flow{display:grid;gap:10px}
+.flow-step{display:flex;gap:12px;background:#18181b;border:1px solid var(--card-border);border-radius:12px;padding:12px 14px}
+.flow-num{width:28px;height:28px;border-radius:50%;background:var(--teal);color:#fff;display:grid;place-items:center;font-weight:800;font-size:.78rem;flex-shrink:0}
+.flow-step h5{font-size:.84rem;font-weight:700}
+.flow-step p{font-size:.78rem;color:var(--muted);margin-top:2px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:800px){.grid-2{grid-template-columns:1fr}}
+.slider-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0}
+input[type=range]{flex:1;accent-color:var(--teal)}
+.check-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:700px){.check-list{grid-template-columns:1fr}}
+.check-item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:rgba(255,255,255,.015);border:1px solid rgba(255,255,255,.05);border-radius:10px;font-size:.82rem}
+.check-item.done{border-color:rgba(16,185,129,.28);background:rgba(16,185,129,.06)}
+.progress{height:8px;background:#18181b;border:1px solid var(--card-border);border-radius:9999px;overflow:hidden}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--teal),var(--emerald));width:0%;transition:width .35s}
+.toc{columns:2;column-gap:18px}
+.toc a{display:block;font-size:.82rem;padding:4px 0}
+.timeline{border-left:2px solid var(--card-border);padding-left:16px;margin:10px 0}
+.timeline-item{position:relative;padding:6px 0 6px 12px}
+.timeline-item::before{content:'';position:absolute;left:-7px;top:12px;width:10px;height:10px;border-radius:50%;background:var(--card-border);border:2px solid var(--bg-dark)}
+.timeline-item.done::before{background:var(--emerald)}
+footer{margin-top:22px;padding:16px;border:1px solid var(--card-border);border-radius:12px;background:var(--card-bg);font-size:.76rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between}
+@media print{body{background:#fff;color:#000;padding:0} .tabs,.no-print,header.hero .meta-col{display:none!important} .tab-content{display:block!important} .card,header.hero{border-color:#ddd;background:#fff;box-shadow:none}}
+</style>
+</head>
+<body>
+<div class="container">
+<header class="hero">
+  <div>
+    <div class="wordmark">aruga</div>
+    <h1 style="font-size:1.4rem;font-weight:800;margin-top:6px">Agents Guide — Agentic Workflows for Clinical Home Programs</h1>
+    <p class="small" style="margin-top:6px">Four agents turn prescription → performance → progress. Therapist stays in control — <b style="color:var(--text)">1 button per agent</b>, always <b style="color:var(--amber)">draft pending approval</b>, never silent writes.</p>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <span class="badge badge-teal">v1.2 — 2026-11-02</span>
+      <span class="badge badge-violet">Biomechanic Agent live at /tools/biomech</span>
+      <span class="badge badge-emerald">Build 74 routes ✓</span>
+    </div>
+  </div>
+  <div class="meta-col">
+    <span class="meta-tag"><em>Stack:</em> api.meta.ai/v1 · muse-spark-1.3</span>
+    <span class="meta-tag"><em>Vision:</em> sam-3.1 · sam-3d-body L4 Modal</span>
+    <span class="meta-tag"><em>Plans:</em> ACTIVITY · BIOMECHANIC · GOAL · HIGHLIGHTS</span>
+    <span class="meta-tag"><em>Docs:</em> dev.meta.ai/docs/overview · start-building</span>
+    <div style="display:flex;gap:8px" class="no-print">
+      <button class="btn" onclick="window.print()">Print / Save PDF</button>
+      <button class="btn btn-teal" onclick="navigator.clipboard.writeText(location.href).then(()=>alert('Link copied'))">Copy link</button>
+    </div>
+  </div>
+</header>
+
+<div class="banner">
+  <div class="dot">✓</div>
+  <div>
+    <div style="font-weight:700;font-size:.90rem">Deterministic ground truth untouched — Spark interprets, never invents angles</div>
+    <div class="small"><code class="mono">modal/app.py:111 compute_frame_biomech_and_scene</code> stays source of truth · Spark validates <code class="mono">insights[].value</code> exists in <code class="mono">mhr</code> JSON (evidence-gated)</div>
+  </div>
+  <span class="badge badge-teal" style="margin-left:auto">HIPAA RLS · signed URLs 10m · x-modal-secret</span>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi"><div class="kpi-title">Agents</div><div class="kpi-value">5 <span style="font-size:.82rem;font-weight:600;color:var(--muted)">Activity · Biomech · Goal · Highlights · Guide</span></div><div class="kpi-sub">4 draft → Approve/Publish · Guide conversational + Send to clinician gate</div></div>
+  <div class="kpi"><div class="kpi-title">Biomechanic Agent</div><div class="kpi-value" style="color:var(--teal)">Spark 16 → SAM 3.1 → Modal</div><div class="kpi-sub">No 700 word bank · AI thinks from prescribed activity</div></div>
+  <div class="kpi"><div class="kpi-title">Cost / clip</div><div class="kpi-value">~$0.011 <small style="color:var(--muted);font-size:.78rem">+ $0.001 synth</small></div><div class="kpi-sub">SAM $0.009 · Modal $0.002 · Planner $0.0006</div></div>
+  <div class="kpi"><div class="kpi-title">Latency</div><div class="kpi-value">2.5–4s</div><div class="kpi-sub">Agentic +1.5s for ambiguous therapistNeed</div></div>
+</div>
+
+<div class="tabs no-print" id="mainTabs">
+  <button class="tab-btn active" data-tab="overview">Overview</button>
+  <button class="tab-btn" data-tab="meta">Meta Stack</button>
+  <button class="tab-btn" data-tab="arch">Architecture</button>
+  <button class="tab-btn" data-tab="agents">Agents Deep Dive</button>
+  <button class="tab-btn" data-tab="activate">Activation</button>
+  <button class="tab-btn" data-tab="infra">Meta Infra</button>
+  <button class="tab-btn" data-tab="files">File Map</button>
+  <button class="tab-btn" data-tab="costs">Costs</button>
+  <button class="tab-btn" data-tab="phased">Build Status</button>
+</div>
+
+<!-- Overview -->
+<div class="tab-content active" id="tab-overview">
+  <div class="card">
+    <h3>Executive Summary — What Are Aruga Agents?</h3>
+    <p class="small">Rehab programs fail when generic. Each <code class="mono">HomeProgram</code> step becomes patient-aware, measurable, trackable over time.</p>
+    <div class="filter-row" style="margin-top:12px">
+      <input class="search" id="agentSearch" placeholder="Search agent, where to click, autonomy...">
+      <select class="select" id="agentFilter"><option value="">All agents</option><option>Activity Agent</option><option>Biomech Engine</option><option>Goal Tracking</option><option>Highlights</option></select>
+    </div>
+    <div style="overflow:auto;border:1px solid var(--card-border);border-radius:12px">
+      <table id="agentTable">
+        <thead><tr><th onclick="sortTable(0)">Agent</th><th>One-line job</th><th>Where therapist clicks</th><th>Autonomy</th></tr></thead>
+        <tbody>
+          <tr data-agent="Activity Agent"><td><span class="pill pill-sky">Activity Agent</span></td><td>Drafts patient-tailored printable worksheet per step (line art + instructions)</td><td class="mono">therapist/clients/[id]/programs/new → Draft with Agent</td><td><span class="pill pill-ok">Auto-debounce → pending approval</span></td></tr>
+          <tr data-agent="Biomech Engine"><td><span class="pill pill-violet">Biomech Engine</span><br><span class="small">Biomechanic Agent · /tools/biomech</span></td><td>Segments video (SAM 3.1) → 3D biomechanics (MHR Modal) → ROM + flags + overlay</td><td class="mono">therapist/submissions/[id] Analyze biomechanics<br><small>Playground: Tools → Biomechanic Agent</small></td><td><span class="pill pill-ok">1 click → Spark 2-8/16 → SAM+Modal · no re-bill</span></td></tr>
+          <tr data-agent="Goal Tracking"><td><span class="pill pill-ok">Goal Tracking</span></td><td>Checks STG/LTG vs SOAP + biomech + adherence → verdict</td><td class="mono">therapist/clients/[id] → Check goals</td><td><span class="pill pill-warn">Manual + auto → draft until Publish</span></td></tr>
+          <tr data-agent="Highlights"><td><span class="pill pill-sky">Highlights</span></td><td>Thinks & picks best 7 data points / month</td><td class="mono">therapist/clients/[id] or client/dashboard → Generate highlights</td><td><span class="pill pill-ok">Draft 7 → Publish to strip</span></td></tr>
+          <tr data-agent="Aruga Guide"><td><span class="pill pill-ok">Aruga Guide</span> ★ Companion</td><td>Explains program in everyday words + web citations + images/video → escalates</td><td class="mono">/aruga-guide → Send message + Send to clinician gate :690</td><td><span class="pill pill-ok">Conversational · 6/7 compliant</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small" style="margin-top:10px"><b style="color:var(--amber)">Invariant:</b> Every agent produces a draft. Nothing published until therapist taps Approve / Publish.</p>
+  </div>
+
+  <div class="card">
+    <h3>Biomechanic Agent — Why Agentic?</h3>
+    <div class="grid-2">
+      <div><h4>Start-Building aligned</h4><p class="small">Primitives correct: <code class="mono">api.meta.ai/v1</code> OpenAI compat <code class="mono">client.ts:14</code> + SAM 3.1 <code class="mono">sam.ts:50</code> + Modal <code class="mono">app.py:391</code>. Playground orchestrated in Next is faster/cheaper; full <code class="mono">tool_choice:auto</code> + <code class="mono">reasoning:medium</code> + <code class="mono">previous_response_id</code> improves ambiguous therapistNeed at +1.5–2s.</p>
+        <div class="code" style="margin-top:10px">Deterministic:  modal/app.py:111  compute_frame_biomech_and_scene
+Spark only:  interprets / filters / compares  (never invents °)
+Validated:  insights[].evidenceRef exists in mhr JSON<button class="copy" onclick="copyCode(this)">Copy</button></div>
+      </div>
+      <div><h4>Performance trade-off</h4><table><thead><tr><th>Path</th><th>Latency</th><th>Cost</th></tr></thead><tbody><tr><td>Orchestrated (happy path)</td><td>~2.5s</td><td>~$0.011</td></tr><tr><td>Agentic (ambiguous Need)</td><td>~4.0s</td><td>~$0.012</td></tr></tbody></table><p class="small" style="margin-top:8px">Keep orchestrated for standard U1-U11; agentic when <code class="mono">therapistNeed</code> free-text or history flag <code class="mono">x2</code> changes which 2-8 /16 to track — <code class="mono">BIOMECHANIC_AGENT.md:11 #4</code>.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- Meta -->
+<div class="tab-content" id="tab-meta">
+  <div class="card">
+    <h3>Meta AI Products (primary)</h3>
+    <div class="filter-row"><input class="search" id="metaSearch" placeholder="Filter products, model IDs, files..."><span class="small">Docs: <a href="https://dev.meta.ai/docs/overview" target="_blank">overview</a> · <a href="https://dev.meta.ai/lp/start-building" target="_blank">start-building</a></span></div>
+    <div style="overflow:auto;border:1px solid var(--card-border);border-radius:12px">
+      <table id="metaTable">
+        <thead><tr><th>Product</th><th>Model ID</th><th>Used for</th><th>Billing</th><th>File</th></tr></thead>
+        <tbody>
+          <tr><td><b>Muse Spark 1.3</b></td><td class="mono">muse-spark-1.3 / contributor</td><td>Activity spec, biomech planner, goal verdicts, highlights; <code class="mono">reasoning:medium/high summary:auto</code></td><td>$1.25/$4.25 std · $0.10/$0.20 contrib</td><td class="mono">client.ts agent.ts biomech-planner.ts</td></tr>
+          <tr><td><b>Structured Output</b></td><td class="mono">text.format=json_schema strict</td><td>All agent JSON validated Zod; 10 depth / 5k props / 120k chars · 6000→7000 retry</td><td>reasoning bills as output</td><td class="mono">schemas.ts</td></tr>
+          <tr><td><b>Muse Image</b></td><td class="mono">muse-image-1.0</td><td>Line-art worksheet from refinedImagePrompt ≤600ch</td><td>$0.01 / image</td><td class="mono">activity-generator.ts</td></tr>
+          <tr><td><b>SAM 3.1</b></td><td class="mono">sam-3.1 POST /v1/responses</td><td>segment_concepts 2-8/16 → boxes 0-1 + RLE masks → overlay · playground concurrency 2 cache 5m IoU 0.9</td><td>$0.20/1k frames → $0.009/45f</td><td class="mono">sam.ts sam-engine.ts tools/biomech/page.tsx</td></tr>
+          <tr><td><b>Muse Wonder</b></td><td class="mono">muse-wonder-1.0 reasoning:max</td><td>Escalation max reasoning triage (not on contributor)</td><td>standard + larger output</td><td>plan meta-notes</td></tr>
+          <tr><td><b>Files API</b></td><td class="mono">POST /v1/files user_data</td><td>Video upload for SAM; 10m TTL signed URL handoff</td><td>free upload</td><td class="mono">client.ts</td></tr>
+          <tr><td><b>Responses API</b></td><td class="mono">responses.create previous_response_id</td><td>Agentic loops + reasoning replay; biomech 4 tools tool_choice:auto parallel_tool_calls</td><td>input_tokens preflight 1M</td><td class="mono">biomech-agent.ts spark.ts</td></tr>
+          <tr><td><b>Prompt Caching</b></td><td class="mono">prompt_cache_key aruga-* 24h</td><td>Stable prefix first (BIOMECH_KEYWORDS 16) → cached_tokens $0.15/1M vs $1.25</td><td>auto</td><td class="mono">client.ts biomech-planner.ts:5</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Aruga Guide AI Agent — Meta Docs Adherence (2026-11-02)</h3>
+    <div style="overflow:auto;border:1px solid var(--card-border);border-radius:12px">
+      <table><thead><tr><th>Capability</th><th>What docs require</th><th>Verdict</th><th>Evidence</th></tr></thead><tbody>
+        <tr><td>Overview agentic identity</td><td>planner + tools + memory + human approval</td><td><span class="pill pill-ok">Agentic</span></td><td class="mono">runSparkOtChatAgentic · Send to clinician :690</td></tr>
+        <tr><td>Responses API</td><td>typed input[], instructions, store:false + include reasoning.encrypted_content</td><td><span class="pill pill-ok">Compliant</span></td><td class="mono">store:false max_output 4000</td></tr>
+        <tr><td>Tool calling</td><td>parallel_tool_calls:true tool_choice:auto call_id 1-64</td><td><span class="pill pill-ok">Compliant</span></td><td class="mono">tools:[web_search] parallel true</td></tr>
+        <tr><td>Search grounding</td><td>web_search server-side annotations</td><td><span class="pill pill-ok">Web articles</span></td><td class="mono">annotations→ClinicalReference</td></tr>
+        <tr><td>Reasoning</td><td>effort medium/high/max summary auto</td><td><span class="pill pill-ok">Medium+auto</span></td><td class="mono">reasoning:medium summary:auto</td></tr>
+        <tr><td>Structured output</td><td>json_schema strict</td><td><span class="pill pill-ok">For agents</span></td><td class="mono">ActivitySpecSchema via text.format</td></tr>
+        <tr><td>Prompt caching</td><td>prompt_cache_key 24h</td><td><span class="pill pill-warn">Partial</span></td><td>next: aruga-guide-${conversationId}</td></tr>
+      </tbody></table>
+    </div>
+    <p class="small" style="margin-top:8px">Overall 6/7 compliant. PubMed/OpenAlex retained fallback only; web search primary grounding.</p>
+  </div>
+  <div class="card">
+    <h3>Other Services</h3>
+    <table><thead><tr><th>Service</th><th>Role</th><th>Why not Meta alone</th></tr></thead><tbody>
+      <tr><td><b>Modal L4</b> sam-3d-body-vith</td><td>MHR 3D Body → pred_keypoints_3d/2d, angles, rom, flags</td><td>Muse/SAM cannot do 3D joint angles; 1.69GB ckpt + keep_warm=1 → 1.8s/clip</td></tr>
+      <tr><td><b>Supabase</b> PG + Storage + Auth</td><td>Source truth patients/programs/submissions/biomech_jobs/agent_runs; 3 private buckets</td><td>HIPAA RLS + signed URLs + EXIF strip</td></tr>
+      <tr><td><b>Next.js 16</b> + Vercel</td><td>Thin orchestrator POST /api/agent/*, ownership guard, SSE proxy, webhook</td><td>MODEL_API_KEY server-only, maxDuration 60</td></tr>
+      <tr><td><b>OpenAI SDK</b></td><td>Meta-compatible baseURL https://api.meta.ai/v1</td><td>One client for chat+responses+images+files</td></tr>
+    </tbody></table>
+  </div>
+</div>
+
+<!-- Arch -->
+<div class="tab-content" id="tab-arch">
+  <div class="card">
+    <h3>System Architecture — How Agents Compose</h3>
+    <div style="background:#09090b;border:1px solid var(--card-border);border-radius:12px;padding:16px;margin-top:10px;overflow:auto">
+<pre class="mono" style="font-size:.72rem;line-height:1.7">                    ┌─────────────────────────────────────────────────┐
+                    │   Therapist prescribes  Home Program (steps)    │
+                    │   therapist/clients/[id]/programs/new          │
+                    └────────────────┬────────────────────────────────┘
+                                     │ per step
+                    ┌────────────────▼────────────────┐
+                    │  AGENT 1 — Activity Agent        │  Muse Spark 1.3 (6000 tok) + Muse Image
+                    │  fetch_patient → list_templates  │  reasoning:medium · json_schema · prompt_cache
+                    │  → generate_activity (Spark+Img) │  → generated_activities draft → Approve/Edit/Regen/Reject
+                    └────────────────┬────────────────┘
+                                     │ program_steps.generated_activity_id
+                    ┌────────────────▼────────────────┐
+                    │   Client practices, draws/photos  │  Canvas draw+save · print/download
+                    │   activity_completions + videos   │  5MB cap · uq_activity_completion_step_sub
+                    └────────────────┬────────────────┘
+                                     │ per step video
+                    ┌────────────────▼──────────────────────────────────────────────┐
+                    │  AGENT 2 — Biomech (Biomechanic Agent) ★ PLAYGROUND LIVE     │
+                    │  Spark planner 2-8/16 (no 700 bank) → SAM 3.1 → Modal MHR      │
+                    │  → evaluate_history_trend → draft_clinical_insights            │
+                    │  Playground /tools/biomech + Clinical therapist/submissions/[id] │
+                    │  Overlay: moving boxes 0-1 + skeleton + HUD + sparkline         │
+                    └────────────────┬──────────────────────────────────────────────┘
+                                     │ mhr_results + completions
+                    ┌────────────────▼────────────────┐
+                    │  AGENT 3 — Goal Tracking          │  Muse Spark 1.3 reasoning:high (7 signals)
+                    │  fetch_goals + fetch_evidence     │  Verdict on_track/at_risk/behind/achieved/gap
+                    │  → draft_goal_review (LLM-only)   │  goal_reviews → Insert into Plan · Publish
+                    └────────────────┬────────────────┘
+                                     │ goal_reviews + prior agents
+                    ┌────────────────▼────────────────┐
+                    │  AGENT 4 — Highlights            │  Muse Spark 1.3 reasoning:high adaptive
+                    │  fetch_month (SOAP+feedback+goals│  Think + pick best 7 by |Δ|×consistency×confidence
+                    │  +adherence+performance) → 7     │  highlights → Publish strip to client/dashboard
+                    └─────────────────────────────────┘</pre>
+    </div>
+    <p class="small" style="margin-top:10px">Data flow: Supabase → Next api/agent/* (therapist_owns_patient) → Meta (Spark/SAM/Image) + Modal (MHR) → Supabase drafts → Therapist Approve/Publish → Client sees signed URL + HighlightsStrip.</p>
+    <div class="grid-2" style="margin-top:12px">
+      <div class="code" style="font-size:.72rem">Invariant: Each agent reuses prior outputs
+Highlights ← Biomech + Goal Tracking
+Goal Tracking ← Biomech
+No agent re-infers GPU work already done<button class="copy" onclick="copyCode(this)">Copy</button></div>
+      <div class="code" style="font-size:.72rem">Modal contract (no redeploy needed):
+POST {MODAL_MHR_URL}/infer
+  { samPerson: { boxes,masks,mediaSize,sampleFps:3 } }
+  → compute_frame_biomech_and_scene:111
+  → frames[] + summary.peakAngles/rom/gait<button class="copy" onclick="copyCode(this)">Copy</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Agents Deep Dive -->
+<div class="tab-content" id="tab-agents">
+  <div class="card">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" class="no-print">
+      <button class="btn btn-teal" data-sub="activity">Agent 1 — Activity</button>
+      <button class="btn" data-sub="biomech">Agent 2 — Biomech ★ Playground</button>
+      <button class="btn" data-sub="goal">Agent 3 — Goal</button>
+      <button class="btn" data-sub="highlights">Agent 4 — Highlights</button>
+      <button class="btn" data-sub="guide">Agent 5 — Guide ★ Companion</button>
+    </div>
+    <!-- Activity -->
+    <div class="sub-tab active" id="sub-activity">
+      <h3>Agent 1 — Activity Agent (Generate Activity per Step)</h3>
+      <p class="small">Source: <code class="mono">plan/ACTIVITY_AGENT_PLAN.md</code> · Live at <code class="mono">StepActivityControl.tsx + agent.ts + POST /api/agent/activity/run</code> · Auto-debounce 900ms + pending approval</p>
+      <div class="banner" style="margin-top:10px"><span class="pill pill-sky">Patient-aware</span> <span class="small">ageBand + condition + prior themes shape every draft — therapist always picks, never silent attach. <code class="mono">BUDGET ≤1800ch</code> <code class="mono">prompts.ts:155</code> keeps Spark cheap</span></div>
+      <h4>4.1 Agentic Journey (4-step loop)</h4>
+      <div class="flow">
+        <div class="flow-step"><div class="flow-num">1</div><div><h5>Gather — patient + templates</h5><p><code class="mono">fetch_patient({patientId})</code> → ageBand pedia/adolescent/adult/geriatric, condition, therapy_goals + <code class="mono">list_templates({ageBand})</code> → 12 system seeds 420/320ch + prior <code class="mono">generated_activities</code> themes. <code class="mono">parallel_tool_calls:true</code></p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--sky)">2</div><div><h5>Decide — Spark picks template vs custom</h5><p>Spark <code class="mono">muse-spark-1.3 reasoning:medium json_schema strict ActivitySpec</code> <code class="mono">prompt_cache_key:aruga-activity-agent</code> picks (a) best System template+theme override OR (b) custom prompt from <code class="mono">ageBand+condition+step</code>. <code class="mono">ActivitySpecSchema schemas.ts:70</code> depth≤10 enforced</p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--violet)">3</div><div><h5>Generate — Spark + Image</h5><p><code class="mono">runSparkActivitySpec 6000 tok → 7000 concise retry on finish_reason=length</code> → ActivitySpec JSON; optional <code class="mono">runMuseImage(refinedImagePrompt ≤600ch) 1024×1024</code> → url/b64. Repair <code class="mono">tryRepairTruncatedJson+patchPartial</code> + <code class="mono">previous_response_id</code> for Regenerate+feedback</p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--emerald)">4</div><div><h5>Present — pending card</h5><p>Persist <code class="mono">generated_activities status=ready</code> + <code class="mono">agent_runs{reasoning,trace}</code> — render pending card (reasoning chip + thumb + latency) → <code class="mono">Approve & Attach → program_steps.generated_activity_id</code> / Edit System/My/Custom 420/320ch / Regenerate / Reject. Playground <code class="mono">/activity-agent-playground</code> mock 4 patients 1.4s</p></div></div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="code">Cost: Spark $0.002–0.004 + Image $0.01 = ~$0.012–0.015/draft
+Text-only saves $0.01 · prompt_cache cached_tokens $0.15/1M
+generateImage toggle per step<button class="copy" onclick="copyCode(this)">Copy</button></div>
+        <div class="code">BUDGET guard (no length errors):
+instructions ≤350ch · visualBrief 70-90w
+refinedImagePrompt ≤600ch · zones ≤4 ≤1800ch
+slice 420/320ch + 6000→7000 concise retry<button class="copy" onclick="copyCode(this)">Copy</button></div>
+      </div>
+      <h4>Evidence-gating & Storage</h4>
+      <p class="small">Zod <code class="mono">ActivitySpecSchema</code> + <code class="mono">warnings[]</code> flags ambiguities; image failure → placeholder SVG (no synthetic worksheet). Grain = step <code class="mono">position</code>; store <code class="mono">generated_activities + agent_runs{patient_id,step_position,draft_id,reasoning,trace,status}</code>; <code class="mono">previous_response_id</code> kept for feedback loop. <code class="mono">therapist_owns_patient</code> + <code class="mono">x-requester-id</code> guard.</p>
+      <h4>Use Cases A1–A4</h4>
+      <div style="overflow:auto;border:1px solid var(--card-border);border-radius:12px">
+        <table><thead><tr><th>#</th><th>Family</th><th>AgeBand</th><th>Example step → draft</th><th>Key spec</th></tr></thead><tbody>
+          <tr><td>A1</td><td>Visual-motor</td><td>pedia</td><td>Peg Pick & Sort → large targets low clutter</td><td>lineGuides 2 zones 3</td></tr>
+          <tr><td>A2</td><td>Fine pincer</td><td>pedia/adult</td><td>Pincer 5 pegs → contrast circles</td><td>≤600ch prompt</td></tr>
+          <tr><td>A3</td><td>Gait/ADL</td><td>adult/old</td><td>Sit→stand kitchen → safe base</td><td>estimatedMinutes 8</td></tr>
+          <tr><td>A4</td><td>UE reach</td><td>adult</td><td>Shoulder flex overhead → upright cue</td><td>warnings trunk compens</td></tr>
+        </tbody></table>
+      </div>
+      <table style="margin-top:10px"><thead><tr><th>Dimension</th><th>Detail</th></tr></thead><tbody>
+        <tr><td><b>Input</b></td><td class="small">Step {title, instructions, position} + patientId + creatorId + patientContextHint 80ch + DB patients (age → ageBand pedia/adolescent/adult/geriatric, condition, therapy_goals) + prior themes + generateImage toggle</td></tr>
+        <tr><td><b>Process</b></td><td class="small">3 tools Responses API fetch_patient + list_templates (parallel) → planner picks template+theme or custom prompt → generate_activity runSparkActivitySpec reasoning:medium json_schema 6000→7000 retry + optional runMuseImage 1024×1024 → persist generated_activities ready + agent_runs trace</td></tr>
+        <tr><td><b>Output</b></td><td class="small">draftId pending approval: title, instructions ≤350ch, visualBrief 70-90w, refinedImagePrompt ≤600ch, layoutSpec {orientation, lineGuides, zones≤4}, difficulty, estimatedMinutes, warnings, base_image_url, reasoning, modelIds, latencyMs</td></tr>
+        <tr><td><b>Journey</b></td><td class="small">Type step → auto-draft 900ms debounce (≥10ch) or Draft with Agent → pending card → Approve & Attach / Edit (System/My/Custom 420/320ch counters) / Regenerate / Reject. Playground /activity-agent-playground mock 4 patients 1.4s trace</td></tr>
+      </tbody></table>
+      <div style="margin-top:10px;background:#09090b;border:1px solid var(--card-border);border-radius:10px;padding:12px;overflow:auto"><pre class="mono" style="font-size:.68rem">T -> N: {patientId, creatorId, step, generateImage:true} x-requester-id + therapist_owns_patient
+N -> S: fetch_patient → ageBand, condition, priorThemes
+N -> S: list_templates → 12 system seeds
+N -> M: responses.create(reasoning:medium, json_schema, tools:[fetch_patient,list_templates,generate_activity], prompt_cache_key)
+M -> N: planner picks template+theme or custom + reasoning
+N -> M: generate_activity → runSparkActivitySpec 6000 tok → runMuseImage?
+M -> N: ActivitySpec JSON + image
+N -> S: insert generated_activities + agent_runs
+N -> T: {draftId, sparkSpec, base_image_url, pending_approval}</pre></div>
+    </div>
+    <!-- Biomech -->
+    <div class="sub-tab" id="sub-biomech" style="display:none">
+      <h3>Agent 2 — Biomech Engine (SAM 3.1 → Modal MHR) — <span style="color:var(--teal)">Biomechanic Agent</span></h3>
+      <p class="small">Source: <code class="mono">plan/BIOMECHANIC_AGENT.md</code> unified 4-step loop + <code class="mono">BIOMECH_ENGINE_PLAN.md</code> · Playground live <code class="mono">src/app/tools/biomech/page.tsx → /tools/biomech</code> + <code class="mono">POST /api/tools/biomech/run</code> · Nav both roles <code class="mono">therapist-nav.tsx:78 client-nav.tsx:85</code> Activity icon</p>
+      <div class="banner" style="margin-top:10px"><span class="pill pill-violet">No 700 word bank</span> <span class="small">Spark thinks what 2-8 /16 to track from <code class="mono">prescribedTitle + prescribedInstructions + ageBand + therapistNeed</code> alone — guard <code class="mono">biomech-prompt.ts:5</code> + <code class="mono">biomech-planner.ts:5</code></span></div>
+      <h4>5.1 Playground — Agentic Journey (4-step loop)</h4>
+      <div class="flow">
+        <div class="flow-step"><div class="flow-num">1</div><div><h5>Determine — Spark planner</h5><p>Spark <code class="mono">muse-spark-1.3 reasoning:medium json_schema strict {concepts:2-8 enum BIOMECH_KEYWORDS, rationale≤220ch}</code> <code class="mono">prompt_cache_key:aruga-biomech-planner</code>. Free-text <code class="mono">therapistNeed</code> can multi-turn via <code class="mono">previous_response_id</code>. Fallback heuristic HEURISTIC_MAP if AI off. Always includes <code class="mono">person</code> first; assertSamTextConcept ≤8 words.</p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--sky)">2</div><div><h5>Segment → Forward — SAM 3.1 + Modal</h5><p><code class="mono">sam3Engine.segmentConcepts({videoUrl, concepts, mediaSize}) :304</code> concurrency 2 cache 5m IoU 0.9 → boxes/masks/tracks billedRequests → forward <code class="mono">samPerson{concepts,sampleFps:3,mediaSize,boxes,svgPaths}</code> → <code class="mono">POST {MODAL_MHR_URL}/infer :391</code> bypass ViTDet 1060→100ms/frame L4 One-Euro :59 → <code class="mono">compute_frame_biomech_and_scene:111</code></p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--violet)">3</div><div><h5>Compare — deterministic + Spark synthesis</h5><p>Deterministic <code class="mono">deriveExpectation + thresholdBand Good/Watch/Needs support :118</code> + <code class="mono">adherence 0.5*checklist+0.5*kinematic :243</code> + trend Δ shoulder/BoS vs previousMhr. Spark 2nd call <code class="mono">draft_clinical_insights json_schema</code> → insights[] {id,label,value,unit,threshold,rating,score,evidenceRef,evidenceFrames,explanation,formula} + adherence + trend + goalProgress + objectiveDraft — evidence-gated (value must exist in mhr JSON).</p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--emerald)">4</div><div><h5>Show — moving segmentation + measurements (SAM-Test parity)</h5><p><code class="mono">viewBox 0 0 1 1</code> SAM boxes 0.75s window + SVG masks PALETTE[8] + <code class="mono">BiomechSkeletonOverlay + BiomechInVideoHud + BiomechLiveHud</code> sparklines <code class="mono">BiomechOverlay.tsx:328</code> + isolate chips + trace drawer <code class="mono">agent_runs</code>. Same scrub mental model as <code class="mono">sam-test:999</code> — isolatedLabel fullscreen mask.</p></div></div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="code">Cost: Planner $0.0006 + SAM $0.009/45f + Modal $0.002 = ~$0.011/clip
+Agentic synth +$0.001 +1.5-2s for ambiguous therapistNeed
+No Modal redeploy — same samPerson contract app.py:391<button class="copy" onclick="copyCode(this)">Copy</button></div>
+        <div class="code">16 Keywords (sole source — guard enforced):
+person · shoulder · elbow · forearm · wrist · hand · finger · thumb
+hip · knee joint · ankle joint · foot · trunk · cervical spine · thoracic spine · neck<button class="copy" onclick="copyCode(this)">Copy</button></div>
+      </div>
+      <h4>Evidence-gating & Storage</h4>
+      <p class="small">Every insights[].value validated against mhr path <code class="mono">summary.peakAngles.* / frames[].angles.*</code> before render; missing → Watch/— not hallucinated. Playground stateless (Save as previous in memory for trend); clinical persists <code class="mono">biomech_jobs + agent_runs</code> per (patient_id, generated_activity_id) + step_submission_id grain; <code class="mono">previous_response_id</code> in meta for next turn.</p>
+      <h4>5.2 Clinical — Use Cases U1-U11</h4>
+      <div style="overflow:auto;border:1px solid var(--card-border);border-radius:12px">
+        <table><thead><tr><th>#</th><th>Use case</th><th>Agent picks</th><th>Metric</th><th>Output</th></tr></thead><tbody>
+          <tr><td>U1</td><td>UE ROM</td><td class="mono">person,shoulder,elbow,forearm,wrist</td><td>Shoulder/elbow flex</td><td>Objective 142→158° chart</td></tr>
+          <tr><td>U2</td><td>Hand/fine</td><td class="mono">person,hand,finger,thumb</td><td>Pinch aperture</td><td>Timeline + plan cue</td></tr>
+          <tr><td>U3</td><td>Gait</td><td class="mono">person,hip,knee,ankle,foot</td><td>Knee flex, symmetry</td><td>Gait report</td></tr>
+          <tr><td>U4</td><td>TUG / fall</td><td class="mono">person,trunk,hip,knee,neck</td><td>TUG sec, Berg proxy</td><td>Assessment 11.2s</td></tr>
+          <tr><td>U5</td><td>Trunk comp</td><td class="mono">person,trunk,cervical,thoracic</td><td>Trunk lean</td><td>Chip Mild — cue upright</td></tr>
+          <tr><td>U6</td><td>Sit-to-stand</td><td class="mono">person,hip,knee,trunk</td><td>Hip/knee synchrony</td><td>Score 0-4</td></tr>
+          <tr><td>U7</td><td>Bimanual</td><td class="mono">person,hand,shoulder</td><td>Inter-hand dist</td><td>Coordination %</td></tr>
+          <tr><td>U8</td><td>Adherence</td><td class="mono">person,shoulder,elbow,wrist</td><td>Completion vs ROM</td><td>Badge green/yellow/red</td></tr>
+          <tr><td>U11</td><td>Neck control ★</td><td class="mono">person,neck,cervical,thoracic,trunk</td><td>Neck flex/lateral/rotation</td><td>Neck card all ages</td></tr>
+        </tbody></table>
+      </div>
+      <p class="small" style="margin-top:8px">1 Modal inference serves all workflows — U1+U5+U11 = 1 call, 3 views. Dropdown re-filters cached <code class="mono">mhr_results</code> no re-bill.</p>
+    </div>
+    <!-- Goal -->
+    <div class="sub-tab" id="sub-goal" style="display:none">
+      <h3>Agent 3 — Goal Tracking (STG/LTG vs SOAP + Performance)</h3>
+      <p class="small">Source: <code class="mono">plan/GOAL_TRACKING_AGENT_PLAN.md</code> · Placed in <code class="mono">therapist/clients/[id]</code> · <code class="mono">POST /api/agent/goal-tracking/run</code> · LLM-only zero GPU — consumes prior agents</p>
+      <div class="banner" style="margin-top:10px"><span class="pill pill-ok">7 Signals</span> <span class="small">ROM vs target + Neck/flag + Adherence + Trend + SOAP alignment + Client qualitative + Time to deadline — quanti+quali prevents numeric-only discharge</span></div>
+      <h4>6.1 Agentic Journey (4-step loop)</h4>
+      <div class="flow">
+        <div class="flow-step"><div class="flow-num">1</div><div><h5>Gather — goals + SOAP</h5><p><code class="mono">fetch_goals({patientId})</code> → goals[] STG max10 LTG max5 → future <code class="mono">goals{id,text,domain,target,baseline,deadline,status}</code> + last 5 <code class="mono">soap_notes</code> S/O/A/P + assessment_links</p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--sky)">2</div><div><h5>Fetch evidence — biomech + activity</h5><p><code class="mono">fetch_evidence parallel</code> <code class="mono">reasoning:high summary:concise prompt_cache_key:aruga-goal-tracking</code> → last 30d <code class="mono">mhr_results</code> (reused $0 Modal) + 14d <code class="mono">step_submissions</code> completions + therapist feedback. Preflight <code class="mono">input_tokens</code> 1M</p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--violet)">3</div><div><h5>Evaluate — 7 signals → verdict</h5><p>Planner <code class="mono">draft_goal_review json_schema</code> scores 7 signals per goal → <code class="mono">verdict on_track|at_risk|behind|achieved|gap + confidence + signals{rom_vs_target,time_to_deadline,adherence} + reason + evidenceIds</code> + <code class="mono">warnings["LTG chin-tuck no recent U11"]</code></p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--emerald)">4</div><div><h5>Present — chips + chart + publish</h5><p>Persist <code class="mono">goal_reviews{verdicts,summary,suggestions,trace,status:draft}</code> → <code class="mono">GoalTrackingPanel</code> verdict chips + progress bar vs deadline + Recharts ROM+adherence% + warnings; poll 2s <code class="mono">Fetched 4 goals → 3 biomech → 2 SOAP → verdict</code> → Insert into Plan <code class="mono">soap_notes.plan:609</code> / Publish opt-in; auto on new MHR + weekly cron reuses draft</p></div></div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="code">Cost: &lt;$0.002/run (4 goals×7 signals) → $1≈500 checks
+$0 SAM/Modal — reuses mhr_results
+3 triggers share same goal_reviews JSON<button class="copy" onclick="copyCode(this)">Copy</button></div>
+        <div class="code">7 Signals = ROM vs target · Neck/flag · Adherence · Trend · SOAP alignment · Client quali · Time to deadline
+verdict enum: on_track | at_risk | behind | achieved | gap<button class="copy" onclick="copyCode(this)">Copy</button></div>
+      </div>
+      <h4>Evidence-gating & Storage</h4>
+      <p class="small">Every <code class="mono">reason</code> must cite <code class="mono">evidenceIds mhr:abc submission:def soap:123</code>; missing → <code class="mono">gap</code> not hallucinated; <code class="mono">confidence&lt;0.6</code> → low_confidence badge "Need 1 more clip". Grain = <code class="mono">patientId</code>; store <code class="mono">goal_reviews + agent_runs</code>; <code class="mono">previous_response_id</code> for re-check.</p>
+      <h4>Use Cases G1–G7</h4>
+      <div style="overflow:auto;border:1px solid var(--card-border);border-radius:12px">
+        <table><thead><tr><th>#</th><th>Domain</th><th>Biomech reused</th><th>Signals</th><th>Output</th></tr></thead><tbody>
+          <tr><td>G1</td><td>STG UE ROM</td><td>U1 ROM</td><td>1+2+7</td><td>at_risk deficit 2°/wk</td></tr>
+          <tr><td>G2</td><td>STG hand/pincer</td><td>U2 Hand</td><td>1+3</td><td>behind escalate 2×/day</td></tr>
+          <tr><td>G3</td><td>LTG gait/TUG</td><td>U3/U4</td><td>1+4</td><td>at_risk fall risk</td></tr>
+          <tr><td>G4</td><td>Neck/chin-tuck</td><td>U11 Neck</td><td>1+2</td><td>at_risk + cue</td></tr>
+          <tr><td>G5</td><td>Compensation</td><td>U5 Trunk</td><td>2+5</td><td>gap warning</td></tr>
+          <tr><td>G6</td><td>ADL adherence</td><td>U8</td><td>3+4</td><td>behind reschedule</td></tr>
+          <tr><td>G7</td><td>SOAP coherence</td><td>—</td><td>5</td><td>gap badge</td></tr>
+        </tbody></table>
+      </div>
+      <table style="margin-top:12px"><thead><tr><th>Dim</th><th>Detail</th></tr></thead><tbody>
+        <tr><td><b>Input</b></td><td class="small">patientId + trigger manual|on_submission|weekly + goals[] long max5 short max10 → future goals table {id,text,domain,target,baseline,deadline,status} + last 5 soap_notes + 30d mhr_results + 14d completions + per-step feedback</td></tr>
+        <tr><td><b>Process</b></td><td class="small">LLM-only zero GPU — 3 tools muse-spark-1.3 reasoning:high summary:concise prompt_cache_key aruga-goal-tracking → fetch_goals + fetch_evidence parallel → 7 signals per goal: ROM vs target, Neck/flag, Adherence, Trend, SOAP alignment, Client qualitative, Time to deadline → draft_goal_review {verdicts, summary, suggestions}</td></tr>
+        <tr><td><b>Output</b></td><td class="small">goal_reviews draft: verdicts[{goalId, verdict:on_track|at_risk|behind|achieved|gap, confidence, signals, reason, evidenceIds}] + summary{narrative} + suggestions[{action}] + warnings + modelId + trace</td></tr>
+        <tr><td><b>Journey</b></td><td class="small">Open therapist/clients/[id] → GoalTrackingPanel verdict chips + progress bar vs deadline + Recharts ROM+adherence% → Check goals → poll trace 2s → Insert into Plan → Publish (opt-in)</td></tr>
+      </tbody></table>
+    </div>
+    <!-- Highlights -->
+    <div class="sub-tab" id="sub-highlights" style="display:none">
+      <h3>Agent 4 — Highlights (Monthly 7 Adaptive Highlights)</h3>
+      <p class="small">Source: <code class="mono">plan/HIGHLIGHTS_AGENT_PLAN.md</code> · Button in <code class="mono">client/dashboard</code> strip + <code class="mono">therapist/clients/[id]</code> panel · <code class="mono">POST /api/agent/highlights/run</code> · Reuses prior agents $0 GPU</p>
+      <div class="banner" style="margin-top:10px"><span class="pill pill-violet">Adaptive</span> <span class="small">weight = <code class="mono">|Δ|×consistency×confidence</code> — fixed slot titles for comparability, adaptive data inside; never invent numbers, cite <code class="mono">evidenceIds</code></span></div>
+      <h4>7.1 Agentic Journey (4-step loop)</h4>
+      <div class="flow">
+        <div class="flow-step"><div class="flow-num">1</div><div><h5>Gather — 30d pool</h5><p><code class="mono">fetch_month({patientId, window:30d})</code> → last 6 <code class="mono">soap_notes</code> S/O/A/P + <code class="mono">homeProgramFeedback{therapist notes+client comments+confirmedObs}</code> + <code class="mono">goal_reviews.latest</code> + <code class="mono">adherence{rate,streak,trend}</code> + <code class="mono">activity{completions+mhr}</code> + prior highlights for arrow</p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--sky)">2</div><div><h5>Score — deltas + weight</h5><p>Deterministic deltas MoM (ROM max, adherence %, goal ratio) + quali anchors keyword match → score every candidate <code class="mono">weight=|Δ|×consistency×confidence</code> (|Δ| abs Δ, consistency 3/3=1.0 1/3=0.3, confidence <code class="mono">mhr/goal confidence</code>); threshold 0.15 → → stable</p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--violet)">3</div><div><h5>Curate — Spark picks 7</h5><p>Planner <code class="mono">muse-spark-1.3 reasoning:high prompt_cache_key:aruga-highlights json_schema 7-locked</code> "Consider recent SOAP, Home Program feedback, goals, adherence, performance. Think and pick best 7 per slot §2.1 each title story ≤25w delta arrow weight evidenceIds. Do not invent numbers." → <code class="mono">highlights[7]</code></p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--emerald)">4</div><div><h5>Present — 7 cards + publish</h5><p>Persist <code class="mono">highlights{patient_id,month,highlights,summary,trace,status:draft}</code> → 7 cards grid icon+title+arrow+story+delta pill + mixed badge + sparkline MoM + View evidence → Insert month summary into SOAP / Publish → client read-only 7-dot strip <code class="mono">HighlightsStrip</code> disclaimer. Same JSON dashboard/PDF/push. Poll 2s <code class="mono">Computed 4 deltas → weighted 7 → 1 re-roll</code></p></div></div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="code">Cost: &lt;$0.003/run → $1≈300 months
+$0 SAM/Modal — reuses all prior agents
+grain = patientId+month unique<button class="copy" onclick="copyCode(this)">Copy</button></div>
+        <div class="code">weight = |Δ| × consistency × confidence
+|Δ| abs MoM · consistency 3/3=1.0 1/3=0.3 · confidence mhr/goal
+tie-break quanti > quali · &lt;0.15 → → stable<button class="copy" onclick="copyCode(this)">Copy</button></div>
+      </div>
+      <h4>Evidence-gating & Storage</h4>
+      <p class="small">Every story must cite <code class="mono">quali</code> keyword + <code class="mono">evidenceIds mhr: goal: soap:</code>; missing signal → placeholder "Insufficient data — run 1 clip" not fake; pure quali → →. Persist <code class="mono">highlights(patient_id,month) unique + agent_runs</code>; reuse until new month.</p>
+      <h4>7 Slots + Use Cases H1–H7</h4>
+      <div style="overflow:auto;border:1px solid var(--card-border);border-radius:12px">
+        <table><thead><tr><th>#</th><th>Slot</th><th>Data point</th><th>Quali anchor</th><th>When hidden</th></tr></thead><tbody>
+          <tr><td>1</td><td>Goal Progress</td><td>achieved+on_track/total MoM</td><td>SOAP plan mention</td><td>→ next best if 0 goals</td></tr>
+          <tr><td>2</td><td>Top ROM gain</td><td>largest ROM Δ° conf>0.6</td><td>effort less note</td><td>need ≥2 clips else placeholder</td></tr>
+          <tr><td>3</td><td>Compensation shift</td><td>flag on→off</td><td>therapist flag note</td><td>if no flags</td></tr>
+          <tr><td>4</td><td>Adherence</td><td>completion % 30d vs prior</td><td>fatigue/busy comment</td><td>always shown</td></tr>
+          <tr><td>5</td><td>Neck cross-age</td><td>neckAngles Δ + forward_head</td><td>tummy-time note</td><td>if no U11</td></tr>
+          <tr><td>6</td><td>Program fit</td><td>category completion %</td><td>favorite program name</td><td>always shown</td></tr>
+          <tr><td>7</td><td>Next focus</td><td>goal risk×deadline</td><td>Goal suggestions[]</td><td>always shown</td></tr>
+        </tbody></table>
+      </div>
+      <table style="margin-top:12px"><thead><tr><th>Dim</th><th>Detail</th></tr></thead><tbody>
+        <tr><td><b>Input</b></td><td class="small">patientId + month YYYY-MM (default 30d) + full pool: soap_notes last 6, homeProgramFeedback {therapist+client notes + confirmedObs}, goal_reviews.latest, adherence {rate,streak,trend}, activity {completions + mhr}, prior highlights for MoM arrow</td></tr>
+        <tr><td><b>Process</b></td><td class="small">fetch_month 30d → deltas MoM + quali anchors → score candidates weight = |Δ|×consistency×confidence → planner muse-spark-1.3 reasoning:high: "Consider recent SOAP, feedback, goals, adherence, performance. Think and pick best 7 per slot §2.1 each title story ≤25w delta arrow weight evidenceIds. Do not invent numbers." → json_schema 7-locked</td></tr>
+        <tr><td><b>Output</b></td><td class="small">Exactly 7 highlights fixed slot titles (Goal Progress, Top ROM gain, Compensation shift, Adherence, Neck cross-age, Program fit, Next focus) each {slot,title,story≤25w,delta{quanti,quali},arrow,weight,evidenceIds} + summary + priorCompare. Weight&lt;0.15 → → stable</td></tr>
+        <tr><td><b>Journey</b></td><td class="small">Monthly auto 1st or Generate highlights (enabled when ≥1 goal_reviews or 7d activity) → 7 cards grid + sparkline MoM → View evidence → Insert month summary into SOAP / Publish → client read-only 7-dot strip + disclaimer</td></tr>
+      </tbody></table>
+    </div>
+    <!-- Guide -->
+    <div class="sub-tab" id="sub-guide" style="display:none">
+      <h3>Agent 5 — Aruga Guide (Always-On Client Companion) — <span style="color:var(--emerald)">Live 6/7</span></h3>
+      <p class="small">Source: <code class="mono">src/app/aruga-guide/page.tsx + spark.ts:runSparkOtChatAgentic + meta-ai.ts:otChatAssistant</code> · <code class="mono">POST /api/ot-chat</code> · 6/7 Meta compliant <code class="mono">§2.1a</code> — web_search grounded</p>
+      <div class="banner" style="margin-top:10px"><span class="pill pill-ok">Conversational</span> <span class="small">Not draft — but <b>never silently writes to chart</b>; <code class="mono">Send to clinician :690</code> is human gate; <code class="mono">store:false</code> no server persistence after disconnect</span></div>
+      <h4>8.1 Agentic Journey (4-step loop)</h4>
+      <div class="flow">
+        <div class="flow-step"><div class="flow-num">1</div><div><h5>Understand — history + media</h5><p>Collect <code class="mono">history ≤10 turns trimmed 3000ch</code> + <code class="mono">images ≤4 dataUrl</code> + <code class="mono">videoUrls ≤2 → frames</code>; <code class="mono">clientContext 2200ch</code> first input (cacheable) + <code class="mono">conversationId</code> grain + ageBand/program</p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--sky)">2</div><div><h5>Ground — web_search</h5><p>Spark <code class="mono">muse-spark-1.3 reasoning:medium summary:auto tools:[web_search] tool_choice:auto parallel_tool_calls:true</code> server-side <code class="mono">web_search</code> → annotations; <code class="mono">store:false include:reasoning.encrypted_content</code> skip on contributor + <code class="mono">max_output 4000 timeout 55000</code>; fallback without tools if host rejects</p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--violet)">3</div><div><h5>Synthesize — answer + citations</h5><p>Everyday-words answer + inline <code class="mono">ClinicalReference[] grounding.ts:217 → References(n) page.tsx:902</code> collapsible; <code class="mono">refs dedup spark.ts:agenticRefs → meta-ai.ts:web→ClinicalReference</code> strict shape validated; PubMed/OpenAlex retained fallback only</p></div></div>
+        <div class="flow-step"><div class="flow-num" style="background:var(--emerald)">4</div><div><h5>Verify — Send to clinician</h5><p>Render markdown + References + <code class="mono">Send to clinician :690</code> gate → <code class="mono">POST /api/ot-chat → therapist inbox</code> validates before chart; <code class="mono">maxDuration:60</code>; planned <code class="mono">prompt_cache_key:aruga-guide-${conversationId}</code> partial now; error 504 → fallback Chat Completions</p></div></div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="code">Cost: ~$0.003–0.006/msg (medium + web_search) → ~300 msgs/$1
+vs Activity $0.012–0.015 · cached_tokens $0.15/1M planned
+store:false + 60m signed chat-attachments<button class="copy" onclick="copyCode(this)">Copy</button></div>
+        <div class="code">6/7 compliant: overview ✓ Responses ✓ tool_calling ✓
+search_grounding ✓ reasoning ✓ structured ✓ prompt_caching partial
+next: prompt_cache_key aruga-guide-${conversationId}<button class="copy" onclick="copyCode(this)">Copy</button></div>
+      </div>
+      <h4>Evidence-gating & Storage</h4>
+      <p class="small">Inline web annotations → <code class="mono">ClinicalReference[]</code> validated before render; no diagnose/prescribe; <code class="mono">chat-attachments public=false</code> signed 60m + EXIF strip <code class="mono">sharp.rotate()</code>; <code class="mono">therapist_owns_patient</code> on context. Conversational memory not DB-persisted.</p>
+      <h4>Use Cases A5-1–A5-4</h4>
+      <div style="overflow:auto;border:1px solid var(--card-border);border-radius:12px">
+        <table><thead><tr><th>#</th><th>Question type</th><th>Grounding</th><th>Example output</th><th>Gate</th></tr></thead><tbody>
+          <tr><td>A5-1</td><td>Home program explain</td><td>web_search + program</td><td>Do pincer 1×/day — large targets help</td><td>Send to clinician</td></tr>
+          <tr><td>A5-2</td><td>Safety check</td><td>web articles</td><td>Stop if pain >5/10 — ask therapist</td><td>Escalate</td></tr>
+          <tr><td>A5-3</td><td>Progress why</td><td>prior agents</td><td>ROM up but adherence dip explains risk</td><td>—</td></tr>
+          <tr><td>A5-4</td><td>Image/video Q</td><td>input_image frames</td><td>Thumb posture looks… show side view?</td><td>Media gate</td></tr>
+        </tbody></table>
+      </div>
+      <table style="margin-top:12px"><thead><tr><th>Dim</th><th>Detail</th></tr></thead><tbody>
+        <tr><td><b>Input</b></td><td class="small">history[≤10] + userText + images ≤4 dataUrl + videoUrls ≤2 + conversationId + clientContext 2200ch + model muse-spark-1.3 / contributor</td></tr>
+        <tr><td><b>Process</b></td><td class="small">Responses runSparkOtChatAgentic reasoning:medium web_search grounded → fallback Chat Completions if unsupported; grounding.ts PubMed/OpenAlex retained fallback</td></tr>
+        <tr><td><b>Output</b></td><td class="small">{text markdown everyday words, references[ClinicalReference title/url/source], modelId, latencyMs} + References(n) collapsible + disclaimer therapist-verified</td></tr>
+        <tr><td><b>Journey</b></td><td class="small">Open /aruga-guide (client+therapist) → type + attach image/video → Send message → 1-2s answer + References(n) → Send to clinician gate → therapist validates → chart</td></tr>
+      </tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- Activation -->
+<div class="tab-content" id="tab-activate">
+  <div class="card">
+    <h3>Activation — 1 Button Per Agent</h3>
+    <p class="small" style="margin-bottom:10px">Nothing runs autonomously until you click (except 2 optional autos still need approval).</p>
+    <div style="overflow:auto;border:1px solid var(--card-border);border-radius:12px">
+      <table>
+        <thead><tr><th>Agent</th><th>Where you click</th><th>Debounce / Auto</th><th>What happens 1–12s</th><th>What you approve</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill pill-sky">Activity</span></td><td class="mono">therapist/clients/[id]/programs/new → Draft with Agent</td><td>Auto on edit ≥10ch + manual</td><td>Spark 6000tok + optional Image → pending card</td><td>Approve & Attach / Edit / Regenerate / Reject</td></tr>
+          <tr><td><span class="pill pill-violet">Biomech</span></td><td class="mono">Playground Tools→Biomechanic Agent /tools/biomech<br>Clinical therapist/submissions/[id] → Use Case + Analyze biomechanics</td><td>Playground always manual; Clinical video required</td><td>Spark 2-8/16 → 1 SAM + 1 Modal → insights + overlay + trace drawer</td><td>Insert into Objective/Plan / confirmedObs / Publish; Save as previous for trend</td></tr>
+          <tr><td><span class="pill pill-ok">Goal</span></td><td class="mono">therapist/clients/[id] → Check goals</td><td>Auto on new submission/MHR + weekly</td><td>LLM 7-signal check → verdict chips + chart</td><td>Insert into Plan / Publish</td></tr>
+          <tr><td><span class="pill pill-sky">Highlights</span></td><td class="mono">therapist/clients/[id] or client/dashboard → Generate highlights</td><td>Monthly cron; enabled when ≥1 goal_reviews or 7d activity</td><td>|Δ|×consistency×confidence → 7 highlights</td><td>Publish 7 to strip (read-only)</td></tr>
+          <tr><td><span class="pill pill-ok">Aruga Guide</span></td><td class="mono">/aruga-guide → Send message + attach image/video</td><td>Always-on; history ≤10 + images ≤4</td><td>reasoning:medium + web_search → References(n)</td><td>Send to clinician gate → chart</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small" style="margin-top:10px">Demos: <code class="mono">/activity-agent-playground</code> mock 4 patients · <code class="mono">/tools/biomech</code> presets + drag-drop video + 4-step trace SAM-Test parity — no mock fallback on Modal (surfaces MODAL_NOT_CONFIGURED/SAM_NO_DETECTIONS with plan intact).</p>
+  </div>
+</div>
+
+<!-- Infra -->
+<div class="tab-content" id="tab-infra">
+  <div class="card">
+    <h3>Shared Agentic Infrastructure (Meta Vision)</h3>
+    <p class="small">All 5 agents follow <a href="https://dev.meta.ai/docs/overview" target="_blank">dev.meta.ai/docs/overview</a>: Planner LLM + Tools + Responses API loop + Human approval.</p>
+    <table style="margin-top:10px"><thead><tr><th>Pattern</th><th>How Aruga implements</th><th>Why</th></tr></thead><tbody>
+      <tr><td>Responses API <span class="pill pill-violet" style="font-size:.60rem">core</span></td><td class="small"><code class="mono">openai.responses.create + previous_response_id</code> preserves reasoning_content private across turns; Chat cannot replay reasoning</td><td>Agentic loops with reasoning</td></tr>
+      <tr><td>Reasoning</td><td class="small">Activity/Biomech medium (biomech-agent.ts reasoning:medium summary:auto); Goal/Highlights high; Wonder max not on contributor; logprobs disallowed</td><td>Depth dial; more reasoning = more tokens</td></tr>
+      <tr><td>Structured output</td><td class="small"><code class="mono">text.format=json_schema strict</code> all agent JSON validated Zod; depth ≤10 5k props 120k chars; strict:false fallback retry</td><td>Guarantees valid JSON</td></tr>
+      <tr><td>Parallel tool calls</td><td class="small">Activity fetch_patient+list_templates; Biomech 4 tools get_prescribed/select/evaluate/draft with tool_choice:auto; Goal fetch_goals+fetch_evidence; call_id 1-64</td><td>1 turn not N</td></tr>
+      <tr><td>Tool search</td><td class="small">{type:tool_search} namespaces reserved when U1-U11+goals+highlights exceed 20 — not combinable with json_schema same turn</td><td>Keep tools &lt;10/turn</td></tr>
+      <tr><td>Prompt caching</td><td class="small">prompt_cache_key aruga-* 24h stable prefix first (BIOMECH_KEYWORDS 16) → cached_tokens $0.15/1M vs $1.25; biomech aruga-biomech-planner</td><td>Bursty clinic traffic</td></tr>
+      <tr><td>Token counting</td><td class="small">POST /v1/responses/input_tokens preflight checks 1M before long loop</td><td>Avoid truncation</td></tr>
+      <tr><td>Token budget & repair</td><td class="small">BUDGET ≤1800ch + slice 420/320ch + max_tokens 6000→7000 concise + tryRepairTruncatedJson + patchPartial</td><td>Fix finish_reason=length</td></tr>
+      <tr><td>Model choice</td><td class="small">muse-spark-1.3 standard clinical vs contributor prototyping vs muse-wonder-1.0 max triage</td><td>Pricing vs depth</td></tr>
+      <tr><td>Ownership guard</td><td class="small">Every POST /api/agent/*/run validates therapist_owns_patient via createAdminClient + x-requester-id supabase/owner.ts</td><td>PHI never leaks</td></tr>
+      <tr><td>Draft reuse</td><td class="small">1 Modal inference reused by Goal + Highlights (3 views); same highlights JSON dashboard/PDF/push</td><td>Avoid double bill</td></tr>
+      <tr><td>No local fallback</td><td class="small">On No content surface error no synthetic worksheet; image failures placeholder SVG</td><td>Prevent unsafe fakes</td></tr>
+    </tbody></table>
+  </div>
+</div>
+
+<!-- File Map -->
+<div class="tab-content" id="tab-files">
+  <div class="card">
+    <h3>File Map — Where Each Agent Lives</h3>
+    <div class="filter-row"><input class="search" id="fileSearch" placeholder="Search file path, e.g. biomech-planner, sam-engine..."><button class="btn" onclick="expandAll()">Expand all</button><button class="btn" onclick="collapseAll()">Collapse</button></div>
+    <div class="accordion"><div class="acc-head" onclick="toggleAcc(this)"><b>plan/ — source of truth</b><span class="chev">▾</span></div><div class="acc-body open"><table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody>
+      <tr><td class="mono">plan/ACTIVITY_AGENT_PLAN.md</td><td>Auto-generate pending approval per-step</td></tr>
+      <tr><td class="mono">plan/BIOMECH_ENGINE_PLAN.md</td><td>SAM 3.1 → Modal MHR 16 keywords U1-U11</td></tr>
+      <tr><td class="mono">plan/BIOMECHANIC_AGENT.md ★</td><td>Unified 4-step loop Determine→Segment→Forward→Compare→Show — source for playground+clinical</td></tr>
+      <tr><td class="mono">plan/GOAL_TRACKING_AGENT_PLAN.md</td><td>7 signals STG/LTG vs SOAP/biomech/adherence</td></tr>
+      <tr><td class="mono">plan/HIGHLIGHTS_AGENT_PLAN.md</td><td>7 adaptive highlights |Δ|×consistency×confidence</td></tr>
+    </tbody></table></div></div>
+    <div class="accordion"><div class="acc-head" onclick="toggleAcc(this)"><b>src/lib/meta/ — Meta clients & agents</b><span class="chev">▾</span></div><div class="acc-body"><table><thead><tr><th>File</th><th>Role</th></tr></thead><tbody>
+      <tr><td class="mono">client.ts</td><td>Host validation + OpenAI SDK api.meta.ai/v1</td></tr>
+      <tr><td class="mono">models.ts</td><td>Spark / Image / SAM 3.1 model IDs</td></tr>
+      <tr><td class="mono">biomech-prompt.ts</td><td>BIOMECH_KEYWORDS 16 locked sole source + U1-U11 + assertSamTextConcept</td></tr>
+      <tr><td class="mono">biomech-planner.ts:5</td><td>Spark planner + HEURISTIC_MAP + deriveExpectation/thresholdBand (shared playground+clinical)</td></tr>
+      <tr><td class="mono">biomech-agent.ts</td><td>Agentic orchestrator reasoning:medium + 4 tools + previous_response_id + synthesis + evidence-gating</td></tr>
+      <tr><td class="mono">sam.ts / sam-engine.ts:304</td><td>SAM 3.1 streaming @meta-sam/parser concurrency2 cache5m IoU0.9</td></tr>
+      <tr><td class="mono">spark.ts</td><td>runSparkOtChatAgentic pattern reused for biomech agentic</td></tr>
+    </tbody></table></div></div>
+    <div class="accordion"><div class="acc-head" onclick="toggleAcc(this)"><b>src/app/tools/biomech — Playground (no DB)</b><span class="chev">▾</span></div><div class="acc-body"><table><thead><tr><th>File</th><th>Role</th></tr></thead><tbody>
+      <tr><td class="mono">src/app/tools/biomech/page.tsx</td><td>Playground UI: presets, drag-drop, 4-step stepper, overlay toggles Boxes/Skeleton/HUD/Style, isolate chips, Save as previous, reasoning badge</td></tr>
+      <tr><td class="mono">src/app/api/tools/biomech/run/route.ts</td><td>Playground loop: planBiomechConcepts → segmentConcepts → POST {MODAL_MHR_URL}/infer {samPerson} → deriveExpectation/thresholdBand + synthesis → {plan,concepts,sam,mhr,insights,adherence,trend}</td></tr>
+      <tr><td class="mono">src/components/layout/therapist-nav.tsx:78 client-nav.tsx:85</td><td>Tools → Biomechanic Agent Activity icon — visible both roles</td></tr>
+      <tr><td class="mono">src/components/therapist/BiomechOverlay.tsx:328</td><td>Skeleton + HUD + sparklines reused playground+clinical</td></tr>
+      <tr><td class="mono">src/app/sam-test/page.tsx:999</td><td>Reference overlay parity target (moving boxes viewBox 0 0 1 1 + masks)</td></tr>
+    </tbody></table></div></div>
+    <div class="accordion"><div class="acc-head" onclick="toggleAcc(this)"><b>src/app/api/agent/ — production APIs</b><span class="chev">▾</span></div><div class="acc-body"><table><thead><tr><th>Route</th><th>Role</th></tr></thead><tbody>
+      <tr><td class="mono">activity/run|approve</td><td>Spark+Image + persist generated_activities + agent_runs</td></tr>
+      <tr><td class="mono">biomech/run|status</td><td>Clinical planner 2-8/16 → SAM → Modal → synthesis (Phase1 same biomech-agent.ts)</td></tr>
+      <tr><td class="mono">goal-tracking/* highlights/*</td><td>LLM-only 7 signals + adaptive 7 fetch_month</td></tr>
+      <tr><td class="mono">mhr/infer mhr/webhook</td><td>Proxy to Modal + webhook upsert ai_analyses.mhr_results + biomech_jobs + agent_runs</td></tr>
+    </tbody></table></div></div>
+    <div class="accordion"><div class="acc-head" onclick="toggleAcc(this)"><b>modal/ + supabase/</b><span class="chev">▾</span></div><div class="acc-body"><table><thead><tr><th>File</th><th>Role</th></tr></thead><tbody>
+      <tr><td class="mono">modal/app.py</td><td>App aruga-mhr Volume sam3db-ckpts L4 gpu L4 keep_warm=1 POST /infer {samPerson} → mock or real estimator.process_one_image crop*mask @3FPS One-Euro SMPL LBS</td></tr>
+      <tr><td class="mono">supabase/all_in_one_setup.sql</td><td>Canonical tables + RLS + 3 private buckets + 20 template seeds</td></tr>
+    </tbody></table></div></div>
+  </div>
+</div>
+
+<!-- Costs -->
+<div class="tab-content" id="tab-costs">
+  <div class="card">
+    <h3>Cost Per Agent</h3>
+    <p class="small">Source: docs/COST_GUIDE.md verified 2026-11-02 + BASETEN_CREDITS.md</p>
+    <div style="overflow:auto;border:1px solid var(--card-border);border-radius:12px;margin-top:10px">
+      <table><thead><tr><th>Agent</th><th>Model(s)</th><th>Cost / run</th><th>$1 buys</th><th>Optimization</th></tr></thead><tbody>
+        <tr><td><b>Activity</b></td><td class="mono">spark-contrib 6000tok + muse-image-1.0</td><td>~$0.012–0.015</td><td>70–80 worksheets</td><td>BUDGET 1800ch + slice 420/320ch; text-only saves $0.01</td></tr>
+        <tr><td><b>Biomech</b></td><td class="mono">sam-3.1 + Modal L4 + spark planner+synthesis</td><td>~$0.011–0.012</td><td>~115 min naive / 7h INT8</td><td>1 SAM pass for 2-8 concepts saves 92%; 1 Modal for U1+U5+U11</td></tr>
+        <tr><td><b>Goal Tracking</b></td><td class="mono">spark reasoning:high LLM-only</td><td>&lt;$0.002</td><td>~500 checks</td><td>Reuses mhr_results no extra GPU</td></tr>
+        <tr><td><b>Highlights</b></td><td class="mono">spark reasoning:high</td><td>&lt;$0.003</td><td>~300 months</td><td>Reuses prior agents; same 7 JSON for dashboard/PDF/push</td></tr>
+        <tr><td><b>Aruga Guide</b></td><td class="mono">spark reasoning:medium + web_search</td><td>~$0.003–0.006/msg</td><td>~300 msgs/$1</td><td>cached_tokens $0.15/1M planned; store:false</td></tr>
+      </tbody></table>
+    </div>
+    <p class="small" style="margin-top:8px">Per patient / month (15 min video, Standard mode): ~$0.50 direct AI → Starter free trial, Standard $29, Intensive $49. Margins ~94–96%.</p>
+  </div>
+  <div class="card">
+    <h3>Live Cost Calculator <span class="pill pill-sky" style="margin-left:8px">interactive</span></h3>
+    <div class="slider-row"><label class="small" style="min-width:160px">Patients / month</label><input type="range" id="calcPatients" min="1" max="200" value="30"><span class="mono" id="calcPatientsV">30</span></div>
+    <div class="slider-row"><label class="small" style="min-width:160px">Clips / patient / month</label><input type="range" id="calcClips" min="1" max="20" value="4"><span class="mono" id="calcClipsV">4</span></div>
+    <div class="slider-row"><label class="small" style="min-width:160px">Minutes video / clip</label><input type="range" id="calcMins" min="1" max="15" value="3"><span class="mono" id="calcMinsV">3 min</span></div>
+    <div class="slider-row"><label class="small" style="min-width:160px">Activity worksheets / patient</label><input type="range" id="calcActs" min="0" max="10" value="3"><span class="mono" id="calcActsV">3</span></div>
+    <div class="grid-2" style="margin-top:12px">
+      <div style="background:#18181b;border:1px solid var(--card-border);border-radius:12px;padding:14px">
+        <div class="small">Estimated AI cost / month</div>
+        <div class="mono" style="font-size:1.6rem;font-weight:800;color:var(--teal)" id="calcTotal">$—</div>
+        <div class="small" id="calcBreakdown"></div>
+      </div>
+      <div style="background:#18181b;border:1px solid var(--card-border);border-radius:12px;padding:14px">
+        <div class="small">Revenue (Standard $29/patient) vs margin</div>
+        <div class="mono" style="font-size:1.1rem;font-weight:700" id="calcRevenue">$—</div>
+        <div class="progress" style="margin-top:8px"><div class="progress-bar" id="calcMarginBar"></div></div>
+        <div class="small" id="calcMarginText" style="margin-top:6px"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Tier Comparator</h3>
+    <table><thead><tr><th>Tier</th><th>Includes</th><th>Price / patient</th><th>AI cost</th><th>Margin</th></tr></thead><tbody>
+      <tr><td><span class="pill pill-ok">Starter</span></td><td>Free trial 1 week all agents</td><td>Free</td><td>~$0.50</td><td>Trial</td></tr>
+      <tr><td><span class="pill pill-sky">Standard</span></td><td>15 min video + activities + highlights</td><td>$29</td><td>~$0.50</td><td>~98%</td></tr>
+      <tr><td><span class="pill pill-violet">Intensive</span></td><td>45 min + weekly goals + PDF</td><td>$49</td><td>~$0.80</td><td>~98%</td></tr>
+    </tbody></table>
+  </div>
+</div>
+
+<!-- Phased -->
+<div class="tab-content" id="tab-phased">
+  <div class="card">
+    <h3>Phased Build Status</h3>
+    <div style="display:flex;align-items:center;gap:16px;margin-top:10px">
+      <div class="progress" style="flex:1;max-width:320px"><div class="progress-bar" id="phasedBar"></div></div>
+      <span class="mono small" id="phasedPct">0%</span>
+      <span class="small">Checked <span id="phasedDone">0</span>/<span id="phasedTotal">0</span></span>
+    </div>
+    <div style="overflow:auto;border:1px solid var(--card-border);border-radius:12px;margin-top:12px">
+      <table><thead><tr><th>Phase</th><th>Activity Agent</th><th>Biomech Engine</th><th>Goal Tracking</th><th>Highlights</th></tr></thead><tbody>
+        <tr><td><span class="pill pill-ok">Phase 0 this week</span></td><td class="small">✅ Live: agent.ts planner + POST /api/agent/activity/run + auto-debounce StepActivityControl + GenerateActivityAgentModal + /activity-agent-playground — build 0</td><td class="small">✅ <b>Playground live</b> biomech-planner.ts + biomech-agent.ts + /tools/biomech → Spark 2-8/16 no 700 bank → SAM :304 → Modal :391 → BiomechOverlay :328 parity sam-test:999 · Clinical per-video button scaffolded</td><td class="small">🔨 Scaffolded: GoalTrackingPanel + POST /api/agent/goal-tracking/* + goals/goal_reviews migration; mock 7 signals</td><td class="small">🔨 Scaffolded: client/dashboard HighlightsStrip + HighlightsPanel + APIs; 7 adaptive contract</td></tr>
+        <tr><td>Phase 1 (1 wk)</td><td class="small">approve route + trace UI + Save as My Prompt + history</td><td class="small">Clinical promotion: wire POST /api/agent/biomech/run to same biomech-agent.ts (+ bioreview_jobs/agent_runs last 5 trend, mhr_results evidence-gating) + poller GET /api/agent/biomech/status + demo cup_grasp_transfer U1+U11 → verify previous_response_id</td><td class="small">goals table + LLM draft_goal_review + weekly cron + publish + longitudinal chart</td><td class="small">Cron monthly 1st + LLM adaptive |Δ|×consistency×confidence + publish + strip</td></tr>
+        <tr><td>Phase 2 (1 wk)</td><td class="small">Prior history avoidance + personalization</td><td class="small">INT8 TRT + hand decoder 5.5mm + reference-item focal + auto SOAP fill</td><td class="small">Goal parse regex + adherence projection + feed Highlights</td><td class="small">Year trend + priorCompare + PDF</td></tr>
+      </tbody></table>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Interactive Checklist — verify before Phase 1 promotion <span class="pill pill-warn" style="margin-left:8px">check to update progress</span></h3>
+    <div class="check-list" id="checklist">
+      <label class="check-item"><input type="checkbox" checked> Activity agent live — builds 0 errors</label>
+      <label class="check-item"><input type="checkbox" checked> Biomech planner Spark + heuristic fallback biomech-planner.ts:5</label>
+      <label class="check-item"><input type="checkbox" checked> Playground /tools/biomech 4-step trace + presets + drag-drop</label>
+      <label class="check-item"><input type="checkbox" checked> SAM 3.1 concurrency 2 cache 5m IoU 0.9 sam-engine.ts:304</label>
+      <label class="check-item"><input type="checkbox" checked> Modal samPerson contract POST {MODAL_MHR_URL}/infer :391 no redeploy</label>
+      <label class="check-item"><input type="checkbox" checked> Overlay parity BiomechOverlay.tsx:328 viewBox 0 0 1 1 + sam-test:999</label>
+      <label class="check-item"><input type="checkbox" checked> Tools menu both roles therapist-nav.tsx:78 client-nav.tsx:85 Activity icon</label>
+      <label class="check-item"><input type="checkbox" checked> Evidence-gating insights[].value validated against mhr JSON</label>
+      <label class="check-item"><input type="checkbox"> Agentic 4-tool biomech-agent.ts reasoning:medium previous_response_id</label>
+      <label class="check-item"><input type="checkbox"> Second Spark synthesis draft_clinical_insights BIOMECHANIC_AGENT.md:5.3</label>
+      <label class="check-item"><input type="checkbox"> Clinical POST /api/agent/biomech/run wired + biomech_jobs/agent_runs persistence</label>
+      <label class="check-item"><input type="checkbox"> Poller GET /api/agent/biomech/status live trace</label>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Today's status (2026-11-02)</h3>
+    <div class="timeline">
+      <div class="timeline-item done"><b>Activity Agent:</b> builds, auto-drafts, pending approval card, ownership guard — ✅ Live</div>
+      <div class="timeline-item done"><b>Biomech playground:</b> /tools/biomech live — no Modal redeploy needed same POST {MODAL_MHR_URL}/infer {samPerson} :391; BIOMECH_KEYWORDS 16 guard :5 enforced; 4-step loop + moving boxes+skeleton+HUD parity; npm run build 74 routes — ✅ Live</div>
+      <div class="timeline-item"><b>Goal Tracking:</b> GoalTrackingPanel + APIs next + goals/goal_reviews migration — 🔨 Scaffolded</div>
+      <div class="timeline-item"><b>Highlights:</b> HighlightsStrip + HighlightsPanel + APIs next — 🔨 Scaffolded</div>
+    </div>
+    <p class="small">Clinical <code class="mono">therapist/submissions/[id]</code> uses same <code class="mono">biomech-agent.ts</code> when wired in Phase 1 (biomech_jobs/agent_runs persistence + checklistPct adherence). Edit checkbox plans in <code class="mono">plan/*.md</code>, then approve &lt;PLAN&gt; to promote Phase 0 → Phase 1.</p>
+  </div>
+</div>
+
+<footer>
+  <span>Maintainer: Aruga team · Last verified: 2026-11-02 · Stack docs: META_INTEGRATION.md · DATABASE_DESIGN.md · COST_GUIDE.md · SAM_ENGINE_KEYWORDS.md · BIOMECHANICAL_DATAPOINTS.md · Plan: BIOMECHANIC_AGENT.md</span>
+  <span class="mono" style="font-size:.68rem;color:var(--muted)">docs/AGENTS_GUIDE.md v1.1 ↔ docs/AGENTS_GUIDE.html · dark zinc #09090b / #121215 · teal #14b8a6 amber #f59e0b sky #0284c7</span>
+</footer>
+</div>
+
+<script>
+// Tabs
+document.querySelectorAll('.tab-btn[data-tab]').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn[data-tab]').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    document.getElementById('tab-'+b.dataset.tab).classList.add('active');
+  });
+});
+// Sub-tabs for agents
+document.querySelectorAll('[data-sub]').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('[data-sub]').forEach(x=>x.classList.remove('btn-teal'));
+    b.classList.add('btn-teal');
+    document.querySelectorAll('.sub-tab').forEach(s=>s.style.display='none');
+    document.getElementById('sub-'+b.dataset.sub).style.display='block';
+  });
+});
+// Filter agents table
+const agentSearch=document.getElementById('agentSearch'), agentFilter=document.getElementById('agentFilter'), agentTable=document.getElementById('agentTable');
+function filterAgents(){
+  const q=(agentSearch.value||'').toLowerCase(), f=(agentFilter.value||'').toLowerCase();
+  agentTable.querySelectorAll('tbody tr').forEach(r=>{
+    const txt=r.textContent.toLowerCase();
+    const matchQ=!q||txt.includes(q);
+    const matchF=!f||r.dataset.agent.toLowerCase().includes(f.toLowerCase());
+    r.style.display=(matchQ&&matchF)?'':'none';
+  });
+}
+agentSearch.addEventListener('input',filterAgents); agentFilter.addEventListener('change',filterAgents);
+// Filter meta
+const metaSearch=document.getElementById('metaSearch'), metaTable=document.getElementById('metaTable');
+metaSearch.addEventListener('input',()=>{
+  const q=metaSearch.value.toLowerCase();
+  metaTable.querySelectorAll('tbody tr').forEach(r=> r.style.display=r.textContent.toLowerCase().includes(q)?'':'none');
+});
+// File search
+const fileSearch=document.getElementById('fileSearch');
+fileSearch.addEventListener('input',()=>{
+  const q=fileSearch.value.toLowerCase();
+  document.querySelectorAll('#tab-files tbody tr').forEach(r=> r.style.display=r.textContent.toLowerCase().includes(q)?'':'none');
+});
+function toggleAcc(head){
+  const body=head.nextElementSibling, chev=head.querySelector('.chev');
+  const open=body.classList.contains('open');
+  body.classList.toggle('open',!open); chev.classList.toggle('open',!open);
+  body.style.display=open?'none':'block';
+}
+function expandAll(){document.querySelectorAll('#tab-files .acc-body').forEach(b=>{b.classList.add('open');b.style.display='block'});document.querySelectorAll('#tab-files .chev').forEach(c=>c.classList.add('open'))}
+function collapseAll(){document.querySelectorAll('#tab-files .acc-body').forEach(b=>{b.classList.remove('open');b.style.display='none'});document.querySelectorAll('#tab-files .chev').forEach(c=>c.classList.remove('open'))}
+// Sort helper
+function sortTable(col){
+  const tbody=agentTable.querySelector('tbody'); const rows=[...tbody.querySelectorAll('tr')];
+  rows.sort((a,b)=> a.cells[col].textContent.localeCompare(b.cells[col].textContent));
+  rows.forEach(r=>tbody.appendChild(r));
+}
+function copyCode(btn){
+  const block=btn.parentElement; const text=block.textContent.replace('Copy','').trim();
+  navigator.clipboard.writeText(text).then(()=>{btn.textContent='Copied!'; setTimeout(()=>btn.textContent='Copy',1200)});
+}
+// Cost calculator
+function calc(){
+  const patients=parseInt(document.getElementById('calcPatients').value,10);
+  const clips=parseInt(document.getElementById('calcClips').value,10);
+  const mins=parseInt(document.getElementById('calcMins').value,10);
+  const acts=parseInt(document.getElementById('calcActs').value,10);
+  document.getElementById('calcPatientsV').textContent=patients;
+  document.getElementById('calcClipsV').textContent=clips;
+  document.getElementById('calcMinsV').textContent=mins+' min';
+  document.getElementById('calcActsV').textContent=acts;
+  const costPerClip=0.0115; // SAM+Modal+planner+synthesis avg
+  const costPerAct=0.013;
+  const total=(patients*clips*costPerClip + patients*acts*costPerAct);
+  const revenue=patients*29;
+  const marginRev=revenue?((revenue-total)/revenue*100):0;
+  document.getElementById('calcTotal').textContent='$'+total.toFixed(2)+'/mo';
+  document.getElementById('calcBreakdown').textContent='Biomech '+(patients*clips)+' clips × $0.0115 = $'+(patients*clips*costPerClip).toFixed(2)+' · Activity '+(patients*acts)+' worksheets × $0.013 = $'+(patients*acts*costPerAct).toFixed(2);
+  document.getElementById('calcRevenue').textContent='$'+revenue.toFixed(0)+' revenue · $'+total.toFixed(2)+' AI cost · $'+(revenue-total).toFixed(2)+' gross';
+  document.getElementById('calcMarginBar').style.width=Math.max(0,Math.min(100,marginRev))+'%';
+  document.getElementById('calcMarginText').textContent='Margin '+marginRev.toFixed(1)+'% · $'+(total/patients).toFixed(2)+' AI per patient / month';
+}
+['calcPatients','calcClips','calcMins','calcActs'].forEach(id=> document.getElementById(id).addEventListener('input',calc));
+calc();
+// Checklist progress
+function updatePhased(){
+  const boxes=document.querySelectorAll('#checklist input[type=checkbox]');
+  const done=[...boxes].filter(b=>b.checked).length, total=boxes.length;
+  const pct=Math.round(done/total*100);
+  document.getElementById('phasedBar').style.width=pct+'%';
+  document.getElementById('phasedPct').textContent=pct+'%';
+  document.getElementById('phasedDone').textContent=done; document.getElementById('phasedTotal').textContent=total;
+  boxes.forEach(b=> b.closest('.check-item').classList.toggle('done',b.checked));
+}
+document.querySelectorAll('#checklist input').forEach(b=> b.addEventListener('change',updatePhased));
+updatePhased();
+</script>
+</body>
+</html>

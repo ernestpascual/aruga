@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { X, Sparkles, Save, Loader2, AlertCircle, Check, ImageIcon, Palette, PenLine, Search, ArrowLeft, Layers, User, Wand2 } from "lucide-react";
+import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type Tab = "system" | "my" | "custom";
 
@@ -117,14 +118,28 @@ export function GenerateActivityAgentModal({
     return list;
   }, [myTemplates, filter, ageFilter]);
 
+  async function resolveEffectiveCreatorId(): Promise<string | null> {
+    if (creatorId) return creatorId;
+    try {
+      const supabase = createSupabaseBrowserClient();
+      if (!supabase) return null;
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user?.id) return data.session.user.id;
+      const { data: u } = await supabase.auth.getUser();
+      return u.user?.id || null;
+    } catch { return null; }
+  }
+
   async function handleGenerateFromTemplate() {
     if (!selected) return;
     setGenLoading(true);
     setError(null);
     try {
+      const effectiveCreatorId = await resolveEffectiveCreatorId();
+      if (patientId && !effectiveCreatorId) throw new Error("Not authenticated — please wait for sign-in to finish and retry (requesterId required).");
       const res = await fetch("/api/activities/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(effectiveCreatorId ? { "x-requester-id": effectiveCreatorId } : {}) },
         body: JSON.stringify({
           titleOverride: titleOverride.trim() || selected.title,
           ageBand: selected.age_band,
@@ -139,7 +154,7 @@ export function GenerateActivityAgentModal({
           referenceLinks: referenceLinks.length ? referenceLinks : undefined,
           referenceImages: referenceImages.length ? referenceImages : undefined,
           patientId,
-          creatorId,
+          creatorId: effectiveCreatorId || creatorId,
         }),
       });
       const data = await res.json();
@@ -193,9 +208,11 @@ export function GenerateActivityAgentModal({
     setGenLoading(true);
     setError(null);
     try {
+      const effectiveCreatorId = await resolveEffectiveCreatorId();
+      if (patientId && !effectiveCreatorId) throw new Error("Not authenticated — please wait for sign-in to finish and retry (requesterId required).");
       const res = await fetch("/api/activities/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(effectiveCreatorId ? { "x-requester-id": effectiveCreatorId } : {}) },
         body: JSON.stringify({
           titleOverride: cTitle.trim() || undefined,
           ageBand: cAgeBand,
@@ -209,7 +226,7 @@ export function GenerateActivityAgentModal({
           referenceLinks: cRefLinks.length ? cRefLinks : undefined,
           referenceImages: cRefImages.length ? cRefImages : undefined,
           patientId,
-          creatorId,
+          creatorId: effectiveCreatorId || creatorId,
         }),
       });
       const data = await res.json();
@@ -546,7 +563,6 @@ export function GenerateActivityAgentModal({
         </div>
 
         <div className="p-3 border-t border-zinc-800 bg-zinc-900 flex items-center justify-between gap-2">
-          <span className="text-[11px] text-zinc-500 hidden sm:inline">All 3 sources in one agent — System • My Prompts • Custom. Templates are now token-efficient.</span>
           <Button type="button" variant="ghost" size="sm" onClick={onClose} className="h-8 text-xs ml-auto">Close</Button>
         </div>
       </div>

@@ -2,12 +2,10 @@
 
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import {
   MessageSquare,
   Send,
   BookOpen,
-  User,
   Stethoscope,
   Baby,
   Trash2,
@@ -20,13 +18,6 @@ import { Card } from "@/components/ui/card";
 import { MentionTextarea, ProgramMentionOption } from "@/components/ui/mention-textarea";
 import { Message } from "@/types/database";
 import { useAuth } from "@/lib/supabase/auth-context";
-import { isDemoUser } from "@/lib/supabase/demo-helpers";
-import {
-  DEMO_CLIENT_ID,
-  DEMO_PATIENT_ID,
-  DEMO_PEDIATRIC_CLIENT_ID,
-  DEMO_PEDIATRIC_PATIENT_ID,
-} from "@/lib/supabase/mock-store";
 
 export default function ClientMessagesPage() {
   return (
@@ -38,18 +29,8 @@ export default function ClientMessagesPage() {
 
 function ClientMessagesContent() {
   const { user, profile } = useAuth();
-  const isDemo = isDemoUser(user, profile);
 
-  const searchParams = useSearchParams();
-  const initialMode = searchParams.get("demoPatient") === "pediatric" ? "pediatric" : "adult";
-  const [persona, setPersona] = useState<"adult" | "pediatric">(initialMode);
-
-  const isPediatric = isDemo
-    ? persona === "pediatric"
-    : profile?.client_category === "pedia";
-
-  const demoPatientId = isPediatric ? DEMO_PEDIATRIC_PATIENT_ID : DEMO_PATIENT_ID;
-  const myClientId = isPediatric ? DEMO_PEDIATRIC_CLIENT_ID : DEMO_CLIENT_ID;
+  const isPediatric = profile?.client_category === "pedia";
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [availablePrograms, setAvailablePrograms] = useState<ProgramMentionOption[]>([]);
@@ -65,9 +46,8 @@ function ClientMessagesContent() {
 
   const fetchMessages = async () => {
     try {
-      const endpoint = isDemo
-        ? `/api/messages?patientId=${demoPatientId}&isDemo=true`
-        : `/api/messages?clientUserId=${user?.id || ""}&isDemo=false`;
+      if (!user?.id) return;
+      const endpoint = `/api/messages?clientUserId=${user.id}`;
 
       const res = await fetch(endpoint);
       const data = await res.json();
@@ -76,6 +56,35 @@ function ClientMessagesContent() {
       }
       if (data.availablePrograms) {
         setAvailablePrograms(data.availablePrograms);
+      }
+      // after fetching, mark as read if last msg is from therapist
+      if (data.messages && data.messages.length > 0) {
+        const last = data.messages[data.messages.length - 1];
+        if (last && last.sender_id !== user.id) {
+          // mark read needs patientId; fetch it via unread endpoint to get patientIds, or use embedded patient_id from first message
+          const pid = (data.messages[0] as Message).patient_id;
+          if (pid) {
+            fetch("/api/messages/read", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ patientId: pid, requesterId: user.id }),
+            }).then(() => {
+              // update unread badge zero
+              fetch(`/api/messages/unread?requesterId=${user.id}`).then(r=>r.json()).then(d=>{
+                if (d.totalUnread !== undefined && typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("aruga:messages-unread", { detail: { totalUnread: d.totalUnread, perPatient: d.perPatient } }));
+                }
+              }).catch(()=>{});
+            }).catch(()=>{});
+          }
+        } else if (data.messages.length > 0) {
+          // also refresh badge even if last is mine (to clear counts when therapist replied then client read)
+          fetch(`/api/messages/unread?requesterId=${user.id}`).then(r=>r.json()).then(d=>{
+            if (d.totalUnread !== undefined && typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("aruga:messages-unread", { detail: { totalUnread: d.totalUnread, perPatient: d.perPatient } }));
+            }
+          }).catch(()=>{});
+        }
       }
     } catch {
       // error
@@ -86,7 +95,24 @@ function ClientMessagesContent() {
     fetchMessages();
     const interval = setInterval(fetchMessages, 5000);
     return () => clearInterval(interval);
-  }, [demoPatientId, user?.id, isDemo]);
+  }, [user?.id]);
+
+  // poll unread for nav badge even when not in messages (client page also does, but nav already polls)
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch(`/api/messages/unread?requesterId=${user.id}`);
+        const d = await res.json();
+        if (res.ok && typeof d.totalUnread === "number" && typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("aruga:messages-unread", { detail: { totalUnread: d.totalUnread, perPatient: d.perPatient } }));
+        }
+      } catch {}
+    };
+    fetchUnread();
+    const iv = setInterval(fetchUnread, 12000);
+    return () => clearInterval(iv);
+  }, [user?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -121,10 +147,8 @@ function ClientMessagesContent() {
       let res: Response;
       if (pendingFile) {
         const fd = new FormData();
-        if (isDemo) fd.set("patientId", demoPatientId);
-        else if (user?.id) fd.set("clientUserId", user.id);
+        if (user?.id) fd.set("clientUserId", user.id);
         if (user?.id) fd.set("senderId", user.id);
-        else fd.set("senderId", myClientId);
         fd.set("senderRole", "client");
         fd.set("text", inputText.trim() || "📷 Photo");
         if (selectedMentionProgram?.id) fd.set("referencedProgramId", selectedMentionProgram.id);
@@ -135,9 +159,8 @@ function ClientMessagesContent() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            patientId: isDemo ? demoPatientId : undefined,
-            clientUserId: !isDemo ? user?.id : undefined,
-            senderId: user?.id || (isDemo ? myClientId : undefined),
+            clientUserId: user?.id || undefined,
+            senderId: user?.id || undefined,
             senderRole: "client",
             text: inputText,
             referencedProgramId: selectedMentionProgram?.id || null,
@@ -150,6 +173,11 @@ function ClientMessagesContent() {
         setInputText("");
         setSelectedMentionProgram(null);
         clearPending();
+        // mark read after sending (client has seen up to now)
+        const pid = (data.message as Message).patient_id;
+        if (pid && user?.id) {
+          fetch("/api/messages/read", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: pid, requesterId: user.id }) }).catch(()=>{});
+        }
       }
     } catch {
     } finally {
@@ -179,7 +207,6 @@ function ClientMessagesContent() {
 
   return (
     <div className="space-y-4 max-w-3xl mx-auto h-[calc(100dvh-10rem)] sm:h-[calc(100vh-8rem)] min-h-0 flex flex-col">
-      {/* Header with Persona Switcher (Demo Only) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3 shrink-0">
         <div className="flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-teal-400" />
@@ -188,46 +215,10 @@ function ClientMessagesContent() {
               <span>Messages</span>
             </h1>
             <p className="text-[11px] text-zinc-400">
-              {isDemo
-                ? isPediatric
-                  ? "Leo Chen (Pediatric Care • Managed by Sarah Chen)"
-                  : "Marcus Vance (Adult Tabletop Rehab)"
-                : profile?.display_name
-                ? `${profile.display_name} • Messages`
-                : "Messages"}
+              {profile?.display_name ? `${profile.display_name} • Messages` : "Messages"}
             </p>
           </div>
         </div>
-
-        {/* Persona toggle pill only for demo bypass */}
-        {isDemo && (
-          <div className="flex items-center gap-1 p-1 rounded-lg bg-zinc-900/80 border border-zinc-800 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setPersona("adult")}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                !isPediatric
-                  ? "bg-zinc-800 text-teal-300 font-semibold"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              <User className="w-3 h-3" />
-              <span>Marcus</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPersona("pediatric")}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                isPediatric
-                  ? "bg-sky-950 text-sky-300 border border-sky-500/40 font-semibold"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              <Baby className="w-3 h-3 text-sky-400" />
-              <span>Leo & Sarah</span>
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Chat Messages Log Area - drop zone */}
@@ -250,9 +241,7 @@ function ClientMessagesContent() {
 
         {messages.map((msg) => {
           const isMe =
-            msg.sender_id === user?.id ||
-            msg.sender_id === myClientId ||
-            msg.sender_id.includes("client");
+            msg.sender_id === user?.id || msg.sender_id.includes("client");
 
           return (
             <div
@@ -263,19 +252,15 @@ function ClientMessagesContent() {
                 {isMe ? (
                   <>
                     <span className="font-semibold text-teal-400">
-                      {isDemo
-                        ? isPediatric
-                          ? "Sarah Chen (for Leo) (You)"
-                          : "Marcus Vance (You)"
-                        : profile?.display_name || "You"}
+                      {profile?.display_name || "You"}
                     </span>
-                    {isPediatric ? <Baby className="w-3 h-3 text-teal-400" /> : <User className="w-3 h-3 text-teal-400" />}
+                    {isPediatric ? <Baby className="w-3 h-3 text-teal-400" /> : null}
                   </>
                 ) : (
                   <>
                     <Stethoscope className="w-3 h-3 text-zinc-400" />
                     <span className="font-semibold text-zinc-300">
-                      {isDemo ? "Dr. Elena Ramos, OTR/L" : profile?.clinician_name || "Occupational Therapist"}
+                      {profile?.clinician_name || "Occupational Therapist"}
                     </span>
                   </>
                 )}
@@ -341,11 +326,7 @@ function ClientMessagesContent() {
           selectedProgram={selectedMentionProgram}
           onSelectProgram={setSelectedMentionProgram}
           availablePrograms={availablePrograms}
-          placeholder={
-            isDemo
-              ? "Ask Dr. Ramos a question... (Type @ to attach an assigned home program)"
-              : "Ask your therapist a question... (Type @ to attach an assigned home program)"
-          }
+          placeholder="Ask your therapist a question... (Type @ to attach an assigned home program)"
           className="min-h-[80px]"
         />
 

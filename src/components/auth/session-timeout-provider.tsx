@@ -38,7 +38,8 @@ export function SessionTimeoutProvider({ children }: { children: React.ReactNode
     } catch {
       // Fallback
     } finally {
-      router.push("/login?reason=session_timeout");
+      if (typeof window !== "undefined") window.location.assign("/login?reason=session_timeout");
+      else router.push("/login?reason=session_timeout");
     }
   }, [signOut, router]);
 

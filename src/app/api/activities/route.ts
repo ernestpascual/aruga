@@ -21,7 +21,13 @@ export async function GET(req: NextRequest) {
     const requesterId = searchParams.get("requesterId") || clientUserId || creatorId;
 
     const admin = createAdminClient();
-    if (!admin) return NextResponse.json({ activities: [] });
+    if (!admin) {
+      // If a scoped filter was requested, surface the config error instead of silently returning empty
+      if (id || patientId || creatorId || clientUserId) {
+        return NextResponse.json({ error: "Database not configured — run Supabase migrations. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY." }, { status: 503 });
+      }
+      return NextResponse.json({ activities: [] });
+    }
 
     // Single activity with privacy check
     if (id) {
@@ -31,8 +37,17 @@ export async function GET(req: NextRequest) {
 
       // If patientId supplied, verify activity is attached to that patient's home program
       if (patientId) {
-        const attached = await getAttachedActivityIds(admin, patientId);
-        if (!attached.includes(id) && data.patient_id !== patientId && data.creator_id !== requesterId) {
+        // Resolve canonical id if caller passed client_user_id
+        let canonicalPid = patientId;
+        {
+          const { data: byId } = await admin.from("patients").select("id").eq("id", patientId).maybeSingle();
+          if (!byId?.id) {
+            const { data: byClient } = await admin.from("patients").select("id").eq("client_user_id", patientId).maybeSingle();
+            if (byClient?.id) canonicalPid = byClient.id;
+          }
+        }
+        const attached = await getAttachedActivityIds(admin, canonicalPid);
+        if (!attached.includes(id) && data.patient_id !== canonicalPid && data.patient_id !== patientId && data.creator_id !== requesterId) {
           return NextResponse.json({ error: "Forbidden: activity not assigned to this patient" }, { status: 403 });
         }
       } else if (clientUserId) {
@@ -80,7 +95,16 @@ export async function GET(req: NextRequest) {
     }
 
     if (patientId) {
-      const attachedIds = await getAttachedActivityIds(admin, patientId);
+      // Resolve canonical patients.id if caller passed client_user_id / profiles.id
+      let canonicalPatientId = patientId;
+      {
+        const { data: byId } = await admin.from("patients").select("id").eq("id", patientId).maybeSingle();
+        if (!byId?.id) {
+          const { data: byClient } = await admin.from("patients").select("id").eq("client_user_id", patientId).maybeSingle();
+          if (byClient?.id) canonicalPatientId = byClient.id;
+        }
+      }
+      const attachedIds = await getAttachedActivityIds(admin, canonicalPatientId);
       if (attachedIds.length === 0) return NextResponse.json({ activities: [] });
       const { data, error } = await admin.from("generated_activities").select("*").in("id", attachedIds).order("created_at", { ascending: false });
       if (error) throw new Error(error.message);

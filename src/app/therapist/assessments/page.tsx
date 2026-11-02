@@ -149,13 +149,10 @@ export default function TherapistAssessmentsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2.5">
-              <ClipboardList className="w-6 h-6 text-teal-400" />
-              Standardized Assessments Registry
-            </h1>
-            <Badge variant="amber" statusText="SOAP Documentation" />
-          </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2.5">
+            <ClipboardList className="w-6 h-6 text-teal-400" />
+            Standardized Assessments Registry
+          </h1>
           <p className="text-xs sm:text-sm text-zinc-400 mt-1 max-w-2xl leading-relaxed">
             Search, filter, and review all standardized assessment documents and test scorecards linked across client SOAP notes.
           </p>

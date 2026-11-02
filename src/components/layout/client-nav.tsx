@@ -13,6 +13,7 @@ import {
   Palette,
   Bot,
   Scan,
+  Activity,
   HeartHandshake,
   ChevronDown,
   FolderArchive,
@@ -31,7 +32,29 @@ type NavItem = { label: string; icon: React.ElementType; href?: string; exact?: 
 export function ClientNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, user } = useAuth();
+  const [msgUnread, setMsgUnread] = useState(0);
+  const fetchMsgUnread = React.useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const res = await fetch(`/api/messages/unread?requesterId=${user.id}`);
+      const data = await res.json();
+      if (res.ok && typeof data.totalUnread === "number") setMsgUnread(data.totalUnread);
+    } catch {}
+  }, [user?.id]);
+  React.useEffect(() => {
+    if (!user?.id) { setMsgUnread(0); return; }
+    fetchMsgUnread();
+    const iv = setInterval(fetchMsgUnread, 12000);
+    const onCustom = (e: Event) => {
+      const d = (e as CustomEvent).detail;
+      if (d && typeof d.totalUnread === "number") setMsgUnread(d.totalUnread);
+    };
+    window.addEventListener("aruga:messages-unread", onCustom as EventListener);
+    const onVis = () => { if (document.visibilityState === "visible") fetchMsgUnread(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(iv); window.removeEventListener("aruga:messages-unread", onCustom as EventListener); document.removeEventListener("visibilitychange", onVis); };
+  }, [user?.id, fetchMsgUnread]);
 
   const navItems: NavItem[] = [
     { label: "Dashboard", icon: LayoutDashboard, href: "/client/dashboard" },
@@ -40,13 +63,15 @@ export function ClientNav() {
       icon: Home,
       href: "/client",
       exact: true,
-      children: [{ href: "/client/activities", label: "Activities", icon: Palette }],
+      children: [
+        { href: "/client/activities", label: "Activities", icon: Palette },
+        { href: "/client/care-guide", label: "Care Guide", icon: HeartHandshake },
+      ],
     },
     {
       label: "Records",
       icon: FolderArchive,
       children: [
-        { href: "/client/activities", label: "Activities", icon: Palette },
         { href: "/client/history", label: "History", icon: History },
       ],
     },
@@ -56,8 +81,9 @@ export function ClientNav() {
       icon: Wrench,
       children: [
         { href: "/client/guide", label: "How to use Aruga", icon: BookOpen },
-        { href: "/aruga-guide", label: "Guide", icon: HeartHandshake },
+        { href: "/aruga-guide", label: "Aruga Guide AI Agent", icon: Bot },
         { href: "/sam-test", label: "SAM Test", icon: Scan },
+        { href: "/tools/biomech", label: "Biomechanic Agent", icon: Activity },
       ],
     },
   ];
@@ -97,8 +123,14 @@ export function ClientNav() {
   }
 
   const handleSignOut = async () => {
-    await signOut();
-    router.push("/login");
+    try {
+      await signOut();
+    } finally {
+      // Hard navigation — bypasses Next.js Router Cache which can resurrect
+      // the login form snapshot with stale email/password + loading=true
+      if (typeof window !== "undefined") window.location.assign("/login");
+      else router.push("/login");
+    }
   };
 
   function isActiveItem(item: NavItem): boolean {
@@ -175,12 +207,17 @@ export function ClientNav() {
                 <Link
                   key={item.label}
                   href={item.href!}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     active ? "bg-zinc-800 text-teal-400 font-semibold" : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
                   }`}
                 >
                   <Icon className="w-4 h-4" />
                   {item.label}
+                  {item.label === "Messages" && msgUnread > 0 && (
+                    <span className="ml-1 inline-flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-amber-500 text-[11px] font-bold text-zinc-950 shadow-sm">
+                      {msgUnread > 99 ? "99+" : msgUnread}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -229,18 +266,16 @@ export function ClientNav() {
         </div>
       </div>
 
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden">
-          {/* Backdrop */}
-          <button
-            type="button"
-            aria-label="Close menu"
-            onClick={() => setMobileMenuOpen(false)}
-            className="fixed inset-0 top-14 bg-zinc-950/60 backdrop-blur-sm z-40"
-          />
-          {/* Panel */}
-          <div className="fixed inset-x-0 top-14 bottom-0 z-50 flex flex-col bg-zinc-950 border-t border-zinc-800 overflow-hidden">
+      {/* Mobile Drawer — slide-in side sheet, always mounted for CSS transition */}
+      <div className={`md:hidden pointer-events-none fixed inset-0 z-40 ${mobileMenuOpen ? "pointer-events-auto" : ""}`} aria-hidden={!mobileMenuOpen}>
+        <button
+          type="button"
+          aria-label="Close menu"
+          tabIndex={mobileMenuOpen ? 0 : -1}
+          onClick={() => setMobileMenuOpen(false)}
+          className={`absolute inset-0 bg-zinc-950/60 backdrop-blur-sm transition-opacity duration-300 ${mobileMenuOpen ? "opacity-100" : "opacity-0"}`}
+        />
+        <div className={`absolute left-0 top-14 bottom-0 w-[82%] max-w-[320px] flex flex-col bg-zinc-950 border-r border-zinc-800 shadow-2xl overflow-hidden transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
             <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 overscroll-contain">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -299,6 +334,11 @@ export function ClientNav() {
                       <Icon className="w-4 h-4" />
                     </span>
                     {item.label}
+                    {item.label === "Messages" && msgUnread > 0 && (
+                      <span className="ml-auto inline-flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-amber-500 text-[11px] font-bold text-zinc-950">
+                        {msgUnread > 99 ? "99+" : msgUnread}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -328,7 +368,6 @@ export function ClientNav() {
             </div>
           </div>
         </div>
-      )}
     </header>
   );
 }

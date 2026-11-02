@@ -62,6 +62,7 @@
 - **Therapist-Created Client Auto-Link on First Login**:
   - When a therapist creates a client (email + temp password), the client row is `invitation_status = 'pending'`; on first `signIn` the API (`src/app/api/auth/clear-temp-credentials/route.ts:40`) auto-flips to `accepted`, sets `first_login_at`/`client_user_id`, and clears the temp credential — enforced by DB trigger `supabase/RUN_ONCE_AUTO_LINK_ON_FIRST_LOGIN.sql:1`. No manual accept required.
 - **Live Session SOAP Note UX**: Create flow now shows **"Create SOAP Note"** on the modal CTA (`src/app/therapist/clients/[id]/page.tsx:2350`, edit still "Save SOAP Note Changes").
+- **Per-Client Care Guide**: Therapist-authored general care guidelines per `patients` row (`src/app/therapist/clients/[id]/page.tsx` tab `Care Guide` → draft/published, `src/app/client/care-guide/page.tsx` read-only). Client sees it under **Home Program ▸ Care Guide** (`src/components/layout/client-nav.tsx:36`, `Home Program` children `Activities | Care Guide`), editable by therapist anytime; 1:1 per `patient_id` (`public.care_guides`, `src/app/api/therapist/care-guides` + `src/app/api/client/care-guide`, RLS therapist write / client read published only).
 
 ---
 
@@ -98,6 +99,7 @@
 - [x] **Encryption Roadmap**: Column-level `pgsodium` + Vault and client-side E2E envelope planned in [`docs/FUTURE_PLANS.md`](docs/FUTURE_PLANS.md).
 
 ### Roadmap & Next Milestones
+- [ ] **Per-Client Care Guide (planned)**: Per-`patients` general guidelines authored on `therapist/clients/[id]` tab `Care Guide` (draft → published, `public.care_guides` 1:1, `api/therapist/care-guides` / `api/client/care-guide`), shown read-only at `/client/care-guide` under **Home Program ▸ Care Guide** (`src/components/layout/client-nav.tsx:36`); therapist-editable anytime, versioned via `updated_at`, markdown 10k, RLS-gated.
 - [ ] **Realtime Push Subscriptions**: Live WebSocket push updates for messages and review publications without page reload.
 - [ ] **Automated SMTP Email Dispatch (Resend / SendGrid)**: Deliver invitations directly to client inboxes.
 - [ ] **Gamified Pediatric Engagement**: Visual milestones, badges, and streaks for pediatric daily practice.
@@ -209,7 +211,11 @@ AI_MODE=mock # 'live' | 'mock' | 'off'
 APP_MODE=demo
 MAX_UPLOAD_MB=25
 MAX_VIDEO_SECONDS=30
+# --- Biomech Engine (Modal SAM 3D Body MHR) — optional, see modal/DEPLOYMENT_GUIDE.md ---
+MODAL_MHR_URL=https://<workspace>--aruga-mhr-infer.modal.run
 ```
+
+**Biomech Engine (Modal) — only `MODAL_MHR_URL` is required.** Deployed via `modal deploy modal/app.py` (or `bash modal/deploy.sh`). Set `MODAL_MHR_URL` in `.env.local` locally and in **Vercel → Settings → Environment Variables** (then Redeploy). You can ignore `MODAL_MHR_ENDPOINT` and `MODAL_WEBHOOK_URL`. `MODAL_SECRET` is optional — only needed if you enable `x-modal-secret` auth on Modal (`modal secret create aruga-mhr-env MODAL_SECRET=...`); without it, Next → Modal runs unauthenticated which is fine for the free-tier mock. If unset, `/api/agent/biomech/run` returns `503 MODAL_NOT_CONFIGURED` and other features still work.
 
 > **Security Note**: Never expose or commit `.env.local` or service keys to version control.
 
@@ -307,6 +313,8 @@ scripts/verify-rls.sql  # expect: buckets public=false, qual=true → 0 rows, RL
 - [SAM Engine Keywords & Clinical Classifications](docs/SAM_ENGINE_KEYWORDS.md)
 - [Progress & AI Cost Audit (Latest: 1101260315, Commit f77e45e)](audit/audit_report_1101260315.md) | [Interactive HTML](audit/audit_report_1101260315.html) | [Stable Copy (docs/)](docs/AUDIT_REPORT_LATEST.md) — Previous versions in [audit/old/](audit/old/)
 - [HIPAA Security & Privacy Compliance Audit (Latest: 1101260315, C1–H4 Hardened)](audit/HIPAA_COMPLIANCE_AUDIT_1101260315.md) | [Interactive HTML](audit/HIPAA_COMPLIANCE_AUDIT_1101260315.html) | [Stable Copy (docs/)](docs/HIPAA_AUDIT_LATEST.md) — Privacy Outline: [PRIVACY_HARDENING_LATEST.md](docs/PRIVACY_HARDENING_LATEST.md)
+- [Hackathon Winning Conditions (1102260208, Build primary + Frontier secondary — **43/50 Meta-only, R1 9/10**, harness 32 sess + SAM 3D Body ROM-over-time)](audit/HACKATHON_WINNING_CONDITIONS_1102260208.md) | [Interactive HTML](audit/HACKATHON_WINNING_CONDITIONS_1102260208.html) | [Stable Copy (docs/)](docs/HACKATHON_WINNING_CONDITIONS_LATEST.md) — Alias: [audit/HACKATHON_WINNING_CONDITIONS.md](audit/HACKATHON_WINNING_CONDITIONS.md) — Prev: [old/HACKATHON_WINNING_CONDITIONS_1102260157.md](audit/old/HACKATHON_WINNING_CONDITIONS_1102260157.md)
+- [Technical Skill Audit — Creative Meta Tooling + Engineering Craft (1102260229, **Creative 9/10 + Depth 9/10 Meta-only + Builder Profile Top 10-15% (Paxel lens, Aruga-only)**, 35/49 harness)](audit/TECHNICAL_SKILL_AUDIT_1102260229.md) | [Interactive HTML](audit/TECHNICAL_SKILL_AUDIT_1102260229.html) | [Stable Copy (docs/)](docs/TECHNICAL_SKILL_AUDIT_LATEST.md) — Alias: [audit/TECHNICAL_SKILL_AUDIT.md](audit/TECHNICAL_SKILL_AUDIT.md)
 - [Business Model Canvas V4 (C1–H4 BAA-Ready, 1101260315)](audit/BUSINESS_MODEL_CANVAS_V4_1101260315.md) | [Interactive HTML](audit/BUSINESS_MODEL_CANVAS_V4_1101260315.html) | [Stable Copy (docs/)](docs/BUSINESS_MODEL_CANVAS_LATEST.md) — Archived in [audit/old/](audit/old/) / [docs/old/](docs/old/)
 - [Meta AI Integration Details](docs/META_INTEGRATION.md)
 - [Hackathon Demo Walkthrough](docs/DEMO.md)

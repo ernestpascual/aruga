@@ -76,7 +76,7 @@ async function callSparkStructured<T>(params: {
       },
       temperature: 0.2,
       max_tokens: 1500,
-    });
+    } as never, { timeout: 55000, maxRetries: 1 } as never);
 
     const latencyMs = Date.now() - startTime;
     const choice = response.choices[0];
@@ -251,6 +251,176 @@ export async function runSparkDraftFeedback(params: {
   return { result: parsed, latencyMs };
 }
 
+// 4b. Rehab Guide Chat — Agentic (Responses API, web_search grounding, reasoning)
+// Uses Responses API with built-in web_search + reasoning; keeps same prompt/grounding contract.
+// Docs: dev.meta.ai/docs/protocols/responses + /docs/search-grounding + /docs/reasoning + /docs/tool-calling
+export async function runSparkOtChatAgentic(params: {
+  history: Array<{ role: "user" | "assistant"; content: string }>;
+  userText: string;
+  images?: string[];
+  videoUrls?: string[];
+  conversationId?: string;
+  clientContext?: string;
+  model?: string;
+}): Promise<{ text: string; latencyMs: number; modelId: string; references: Array<{ title: string; url: string; source: string }> }> {
+  const config = getMetaConfig();
+  const client = createMetaOpenAiClient();
+  const startTime = Date.now();
+  const modelId = params.model && isOtChatModel(params.model) ? params.model : config.models.spark || DEFAULT_OT_CHAT_MODEL;
+  const systemPrompt = buildOtChatSystemPrompt();
+  const isContributor = modelId.includes("contributor");
+  try {
+    const trimmedHistory = (params.history || []).slice(-10);
+    // Build Responses input array (typed)
+    const input: unknown[] = [];
+    // Instructions via developer/system equivalent — use developer role for behavior
+    input.push({ role: "developer", content: [{ type: "input_text", text: systemPrompt }] });
+    // Personalized client context as first user message (cacheable after instructions)
+    if (params.clientContext?.trim()) {
+      input.push({ role: "user", content: [{ type: "input_text", text: params.clientContext.slice(0, 2200) }] });
+    }
+    for (const turn of trimmedHistory) {
+      if (turn.role !== "user" && turn.role !== "assistant") continue;
+      const content = (turn.content || "").slice(0, 3000);
+      if (!content.trim()) continue;
+      if (turn.role === "user") input.push({ role: "user", content: [{ type: "input_text", text: content }] });
+      else input.push({ role: "assistant", content: [{ type: "output_text", text: content }] });
+    }
+    const imageUrls = (params.images || []).filter(Boolean).slice(0, 4);
+    const videoUrls = (params.videoUrls || []).filter(Boolean).slice(0, 2);
+    let finalText = params.userText?.trim() || "";
+    if (!finalText && imageUrls.length === 0 && videoUrls.length === 0) {
+      throw new MetaApiError("Message text or media is required.", "EMPTY_CHAT_REQUEST", 400);
+    }
+    if (videoUrls.length > 0) {
+      finalText += `\n\n[Note: the user attached ${videoUrls.length} video clip(s), but only a text reference could be forwarded. Describe what to look for generally and ask for still frames if needed.]`;
+    }
+    if (!finalText) finalText = "Please describe what you tentatively observe in the attached media.";
+    // Final user turn with optional images (video frames already as images)
+    if (imageUrls.length === 0) {
+      input.push({ role: "user", content: [{ type: "input_text", text: finalText }] });
+    } else {
+      const parts: Array<Record<string, unknown>> = [{ type: "input_text", text: finalText }];
+      for (const url of imageUrls) parts.push({ type: "input_image", image_url: url });
+      input.push({ role: "user", content: parts });
+    }
+
+    // Agentic: reasoning + web_search (built-in). Fallback: without web_search if model/host doesn't support it.
+    const baseReq: Record<string, unknown> = {
+      model: modelId,
+      input,
+      instructions: systemPrompt, // also set top-level for compatibility; server ignores duplicate
+      reasoning: { effort: "medium", summary: "auto" as const },
+      tools: [{ type: "web_search" }],
+      tool_choice: "auto" as const,
+      parallel_tool_calls: true,
+      max_output_tokens: 4000,
+      store: false as const,
+      include: isContributor ? [] : ["reasoning.encrypted_content" as const],
+    };
+
+    // Single-turn Responses call; web_search runs server-side, returns annotations in output.
+    let response: unknown;
+    try {
+      response = await (client as unknown as { responses: { create: (p: unknown, o?: unknown) => Promise<unknown> } }).responses.create(
+        baseReq as never,
+        { timeout: 55000, maxRetries: 1 } as never
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      // If web_search not supported (e.g., local mock), retry without tools
+      if (msg.toLowerCase().includes("web_search") || msg.toLowerCase().includes("tool")) {
+        const fallbackReq = { ...baseReq, tools: [] } as Record<string, unknown>;
+        delete (fallbackReq as Record<string, unknown>).tool_choice;
+        response = await (client as unknown as { responses: { create: (p: unknown, o?: unknown) => Promise<unknown> } }).responses.create(
+          fallbackReq as never,
+          { timeout: 55000, maxRetries: 1 } as never
+        );
+      } else throw e;
+    }
+
+    const latencyMs = Date.now() - startTime;
+    const resp = response as {
+      id?: string;
+      output?: Array<Record<string, unknown>>;
+      output_text?: string;
+      usage?: unknown;
+      error?: unknown;
+      status?: string;
+    };
+
+    // Extract output_text and annotations (search grounding citations)
+    let text = "";
+    const refs: Array<{ title: string; url: string; source: string }> = [];
+    if (typeof resp.output_text === "string" && resp.output_text.trim()) {
+      text = resp.output_text.trim();
+    }
+    // Parse output array for message content + annotations
+    if (!text && Array.isArray(resp.output)) {
+      for (const item of resp.output) {
+        if (item.type === "message" && Array.isArray((item as unknown as { content: unknown[] }).content)) {
+          const content = (item as unknown as { content: Array<Record<string, unknown>> }).content;
+          for (const c of content) {
+            if (c.type === "output_text" && typeof c.text === "string") text += c.text;
+            // annotations on content part (web_search citations)
+            const anns = (c as unknown as { annotations?: Array<Record<string, unknown>> }).annotations;
+            if (Array.isArray(anns)) {
+              for (const a of anns) {
+                const url = (a.url as string) || (a as unknown as { href?: string }).href || "";
+                const title = (a.title as string) || (a as unknown as { text?: string }).text || url;
+                if (url && url.startsWith("http")) {
+                  try {
+                    const host = new URL(url).hostname.replace(/^www\./, "");
+                    refs.push({ title: String(title).slice(0, 120), url, source: host });
+                  } catch { refs.push({ title: String(title).slice(0, 120), url, source: "web" }); }
+                }
+              }
+            }
+          }
+        }
+        // Some gateways put annotations at item level
+        const itemAnns = (item as unknown as { annotations?: Array<Record<string, unknown>> }).annotations;
+        if (Array.isArray(itemAnns)) {
+          for (const a of itemAnns) {
+            const url = (a.url as string) || "";
+            const title = (a.title as string) || url;
+            if (url.startsWith("http")) {
+              try { refs.push({ title: String(title).slice(0,120), url, source: new URL(url).hostname.replace(/^www\./,"") }); } catch { refs.push({ title: String(title).slice(0,120), url, source:"web"}); }
+            }
+          }
+        }
+      }
+    }
+    // Also check top-level annotations if SDK flattens
+    const topAnns = (resp as unknown as { annotations?: Array<Record<string, unknown>> }).annotations;
+    if (Array.isArray(topAnns) && refs.length===0) {
+      for (const a of topAnns) {
+        const url = (a.url as string) || "";
+        if (url.startsWith("http")) refs.push({ title: String((a.title as string)||url).slice(0,120), url, source: (()=>{try{return new URL(url).hostname.replace(/^www\./,"")}catch{return "web"}})() });
+      }
+    }
+
+    // Deduplicate refs by url
+    const dedup = Array.from(new Map(refs.map(r=>[r.url,r])).values()).slice(0,4);
+
+    if (!text.trim()) {
+      throw new MetaApiError(`Empty response from ${modelId}${resp.status? ` status=${resp.status}`:""}`, "EMPTY_SPARK_RESPONSE", 500);
+    }
+    if ((text.toLowerCase().includes("refused") && text.length<400) || (resp as unknown as { error?: unknown }).error) {
+      // surface refusal as typed error
+      const errMsg = String((resp as unknown as { error?: unknown }).error || text).slice(0,500);
+      if (errMsg.toLowerCase().includes("content_filter") || errMsg.toLowerCase().includes("refus")) throw new MetaRefusalError(`${modelId} refused: ${errMsg}`);
+    }
+    return { text: text.trim(), latencyMs, modelId, references: dedup };
+  } catch (err: unknown) {
+    if (err instanceof MetaApiError) throw err;
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    if (errorMsg.includes("timeout") || errorMsg.includes("timed out")) throw new MetaTimeoutError();
+    if (errorMsg.includes("rate") || errorMsg.includes("429")) throw new MetaRateLimitError();
+    throw new MetaApiError(`Muse Spark chat failed: ${errorMsg}`, "SPARK_CALL_FAILED", 500, true);
+  }
+}
+
 // 4. Rehab Guide Chat (butler) with Muse Spark (multimodal, prompt-cached per conversation)
 export async function runSparkOtChat(params: {
   history: Array<{ role: "user" | "assistant"; content: string }>;
@@ -350,12 +520,9 @@ export async function runSparkOtChat(params: {
         model: modelId,
         messages,
         temperature: 0.4,
-        // Single budget key only: sending both max_tokens and
-        // max_completion_tokens confuses some gateways. 4000 leaves room
-        // for hidden reasoning tokens before the visible answer.
         max_tokens: 4000,
       } as never,
-      { timeout: 25000, maxRetries: 1 } as never
+      { timeout: 55000, maxRetries: 1 } as never
     );
 
     const latencyMs = Date.now() - startTime;

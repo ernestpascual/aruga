@@ -50,7 +50,7 @@ function buildSearchQuery(userText: string): string {
   return `${cleaned} rehabilitation physical occupational speech therapy evidence`;
 }
 
-async function fetchWithTimeout(url: string, ms = 6000): Promise<Response> {
+async function fetchWithTimeout(url: string, ms = 3500): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   try {
@@ -63,14 +63,33 @@ async function fetchWithTimeout(url: string, ms = 6000): Promise<Response> {
   }
 }
 
+async function withDeadline<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms);
+  });
+  try {
+    const result = await Promise.race([promise, timeout]);
+    return result;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /**
  * Search grounding via PubMed E-utilities (no key required) + OpenAlex fallback.
- * Returns references + a context block to inject into the Muse Spark prompt.
+ * Time-boxed so grounding never blocks the primary Muse call (total budget ~5s).
  * Never throws — returns empty evidence on failure so chat still works.
  */
 export async function searchClinicalEvidence(
-  userText: string
+  userText: string,
+  opts?: { deadlineMs?: number }
 ): Promise<ClinicalEvidence> {
+  const deadlineMs = opts?.deadlineMs ?? 5000;
+  const deadlineAt = Date.now() + deadlineMs;
+  const remainingMs = () => Math.max(400, deadlineAt - Date.now());
+
+  async function doSearch(): Promise<ClinicalEvidence> {
   const query = buildSearchQuery(userText);
   const references: ClinicalReference[] = [];
 
@@ -79,7 +98,8 @@ export async function searchClinicalEvidence(
     const esearchUrl =
       `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed` +
       `&term=${encodeURIComponent(query)}&retmode=json&retmax=5&sort=relevance`;
-    const esearchRes = await fetchWithTimeout(esearchUrl);
+    if (remainingMs() <= 450) throw new Error("grounding deadline");
+    const esearchRes = await fetchWithTimeout(esearchUrl, Math.min(3500, remainingMs()));
     if (esearchRes.ok) {
       const esearchJson = (await esearchRes.json()) as {
         esearchresult?: { idlist?: string[] };
@@ -91,7 +111,8 @@ export async function searchClinicalEvidence(
         const esummaryUrl =
           `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed` +
           `&id=${ids.join(",")}&retmode=json`;
-        const esummaryRes = await fetchWithTimeout(esummaryUrl);
+        if (remainingMs() <= 450) throw new Error("grounding deadline");
+        const esummaryRes = await fetchWithTimeout(esummaryUrl, Math.min(3500, remainingMs()));
         if (esummaryRes.ok) {
           const esummaryJson = (await esummaryRes.json()) as {
             result?: Record<string, Record<string, unknown>>;
@@ -130,7 +151,8 @@ export async function searchClinicalEvidence(
       const openAlexUrl =
         `https://api.openalex.org/works?search=${encodeURIComponent(query)}` +
         `&filter=from_publication_date:2015-01-01&per-page=4&select=id,title,publication_year,authorships,primary_location,doi`;
-      const oaRes = await fetchWithTimeout(openAlexUrl);
+      if (remainingMs() <= 450) throw new Error("grounding deadline");
+      const oaRes = await fetchWithTimeout(openAlexUrl, Math.min(3500, remainingMs()));
       if (oaRes.ok) {
         const oaJson = (await oaRes.json()) as {
           results?: Array<{
@@ -180,6 +202,16 @@ export async function searchClinicalEvidence(
       : "SEARCH-GROUNDED CLINICAL EVIDENCE: live search returned no usable sources for this turn. Give general educational information only, state that specific references could not be retrieved, and advise confirming with a licensed OT.";
 
   return { query, references, contextBlock };
+  }
+
+  // Enforce overall deadline: if grounding exceeds budget, return empty evidence so chat still proceeds
+  const empty: ClinicalEvidence = {
+    query: buildSearchQuery(userText),
+    references: [],
+    contextBlock:
+      "SEARCH-GROUNDED CLINICAL EVIDENCE: live search timed out for this turn. Give general educational information only, state that specific references could not be retrieved in time, and advise confirming with a licensed OT.",
+  };
+  return withDeadline(doSearch(), deadlineMs, empty);
 }
 
 export function formatReferencesSection(references: ClinicalReference[]): string {

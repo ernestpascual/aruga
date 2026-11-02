@@ -130,6 +130,15 @@ function getInitialStore(): MockStoreData {
       invitation_sent_at: new Date(Date.now() - 20 * 86400000).toISOString(),
       created_at: new Date(Date.now() - 20 * 86400000).toISOString(),
       updated_at: new Date().toISOString(),
+      long_term_goals: [
+        "Regain functional dominant-hand use for independent feeding and grooming",
+        "Restore 40° active wrist extension for tabletop task tolerance",
+      ],
+      short_term_goals: [
+        "Complete 10 cylindrical cup lifts without trunk compensation",
+        "Hold 3-sec wrist neutral posture during block transfer",
+        "5 reps forearm supination with washcloth, pain ≤2/10",
+      ],
     },
     {
       id: DEMO_PEDIATRIC_PATIENT_ID,
@@ -146,6 +155,15 @@ function getInitialStore(): MockStoreData {
       invitation_sent_at: new Date(Date.now() - 15 * 86400000).toISOString(),
       created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
       updated_at: new Date().toISOString(),
+      long_term_goals: [
+        "Consistent pincer grasp for self-feeding and school tool use",
+        "Bilateral hand use in play and dressing with caregiver fading",
+      ],
+      short_term_goals: [
+        "5 peg placements with pincer grasp, helper hand stabilizing",
+        "Roll & squash 3 play-doh balls with index isolation",
+        "Unscrew pre-loosened lid with helper-hand assist",
+      ],
     },
     {
       id: DEMO_GERIATRIC_PATIENT_ID,
@@ -162,6 +180,8 @@ function getInitialStore(): MockStoreData {
       invitation_sent_at: new Date(Date.now() - 12 * 86400000).toISOString(),
       created_at: new Date(Date.now() - 12 * 86400000).toISOString(),
       updated_at: new Date().toISOString(),
+      long_term_goals: ["Safe two-hand cup carry and light meal preparation without pain"],
+      short_term_goals: ["30-sec pain-free flat-hand weight bearing on tabletop", "18-lb grip sustained 10 sec, wrist neutral"],
     },
     {
       id: DEMO_ADOLESCENT_PATIENT_ID,
@@ -178,6 +198,8 @@ function getInitialStore(): MockStoreData {
       invitation_sent_at: new Date(Date.now() - 10 * 86400000).toISOString(),
       created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
       updated_at: new Date().toISOString(),
+      long_term_goals: ["Pain-free 60-min homework typing with ergonomic posture"],
+      short_term_goals: ["Maintain tripod grasp 8 min before thumb collapse", "Neutral wrist 10–15° on ergonomic pad during keyboarding"],
     },
   ];
 

@@ -133,6 +133,9 @@ export interface Patient {
   temporary_password?: string | null;
   first_login_at?: string | null;
   credentials_cleared_at?: string | null;
+  long_term_goals?: string[] | null;
+  short_term_goals?: string[] | null;
+  care_guide?: string | null;
   created_at: string;
   updated_at: string;
   // Join fields
@@ -184,6 +187,8 @@ export interface GeneratedActivity {
   age_band: AgeBand;
   title: string;
   instructions: string;
+  worksheet_kind?: WorksheetKind;
+  written_tasks?: Array<{ step: number; text: string; kind: "do" | "check" | "write" }>;
   spark_prompt_used: string;
   image_prompt_used: string;
   reference_links: string[];
@@ -204,6 +209,8 @@ export interface GeneratedActivity {
 export interface ActivitySparkSpec {
   title: string;
   instructions: string;
+  worksheetKind?: WorksheetKind;
+  writtenTasks?: Array<{ step: number; text: string; kind: "do" | "check" | "write" }>;
   visualBrief: string;
   refinedImagePrompt: string;
   layoutSpec: {
@@ -215,6 +222,8 @@ export interface ActivitySparkSpec {
   estimatedMinutes: number;
   warnings: string[];
 }
+
+export type WorksheetKind = "drawable" | "written" | "mixed";
 
 export interface ActivityCompletion {
   id: string;
@@ -230,6 +239,8 @@ export interface ActivityCompletion {
     points: Array<{ x: number; y: number }>;
   }>;
   photo_upload_path: string | null;
+  text_response?: string | null;
+  checklist_state?: Array<{ index: number; done: boolean; note?: string }>;
   completion_method: CompletionMethod;
   completed_at: string | null;
   created_at: string;

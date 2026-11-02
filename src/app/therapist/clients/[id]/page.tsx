@@ -34,12 +34,20 @@ import {
   ChevronUp,
   ClipboardList,
   Search,
+  Target,
+  Flag,
+  Goal,
+  Save,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { GoalTrackingPanel } from "@/components/therapist/GoalTrackingPanel";
+import { HighlightsStrip } from "@/components/client/HighlightsStrip";
+import { useAuth } from "@/lib/supabase/auth-context";
 import { Patient, HomeProgram, ClientCategory, SoapNote, SoapNoteAssessmentLink } from "@/types/database";
 
 export default function TherapistClientDetailPage({
@@ -60,19 +68,17 @@ function TherapistClientDetailContent({
   params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
+  const { user } = useAuth();
   const resolvedParams = use(params);
   const clientId = resolvedParams.id;
-  const isDemo =
-    clientId === "33333333-3333-4333-8333-333333333333" ||
-    clientId === "33333333-3333-4333-8333-333333333334" ||
-    clientId.includes("demo");
+  const isDemo = false as const;
 
   const [client, setClient] = useState<Patient | null>(null);
   const [programs, setPrograms] = useState<HomeProgram[]>([]);
   const [soapNotes, setSoapNotes] = useState<SoapNote[]>([]);
   const [programsLoading, setProgramsLoading] = useState(true);
   const [soapNotesLoading, setSoapNotesLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"programs" | "soap" | "assessments">("programs");
+  const [activeTab, setActiveTab] = useState<"programs" | "soap" | "assessments" | "care_guide">("programs");
   const [assessmentSearch, setAssessmentSearch] = useState("");
   const [copiedAssessmentUrl, setCopiedAssessmentUrl] = useState<string | null>(null);
   const [programFilter, setProgramFilter] = useState<"all" | "completed" | "reviewed" | "draft">("all");
@@ -193,6 +199,110 @@ function TherapistClientDetailContent({
   const [editCategory, setEditCategory] = useState<ClientCategory>("adult");
   const [editSubmitting, setEditSubmitting] = useState(false);
 
+  // Therapy Goals (therapist-declared, below email) — max 5 long-term, 10 short-term
+  const [longTermGoals, setLongTermGoals] = useState<string[]>([]);
+  const [shortTermGoals, setShortTermGoals] = useState<string[]>([]);
+  const [editingGoals, setEditingGoals] = useState(false);
+  const [goalsDraftLong, setGoalsDraftLong] = useState<string[]>([]);
+  const [goalsDraftShort, setGoalsDraftShort] = useState<string[]>([]);
+  const [goalsSaving, setGoalsSaving] = useState(false);
+  const [goalsError, setGoalsError] = useState<string | null>(null);
+
+  const syncGoalsFromClient = (c: Patient | null) => {
+    const lt = Array.isArray((c as unknown as Record<string, unknown>)?.long_term_goals)
+      ? ((c as unknown as Record<string, unknown>).long_term_goals as string[]).filter(Boolean).slice(0, 5)
+      : [];
+    const st = Array.isArray((c as unknown as Record<string, unknown>)?.short_term_goals)
+      ? ((c as unknown as Record<string, unknown>).short_term_goals as string[]).filter(Boolean).slice(0, 10)
+      : [];
+    setLongTermGoals(lt);
+    setShortTermGoals(st);
+  };
+
+  const handleStartEditGoals = () => {
+    setGoalsDraftLong(longTermGoals.length ? [...longTermGoals] : []);
+    setGoalsDraftShort(shortTermGoals.length ? [...shortTermGoals] : []);
+    setGoalsError(null);
+    setEditingGoals(true);
+  };
+  const handleCancelEditGoals = () => {
+    setEditingGoals(false);
+    setGoalsError(null);
+  };
+  const handleSaveGoals = async () => {
+    const cleanLong = goalsDraftLong.map((s) => s.trim()).filter(Boolean).slice(0, 5);
+    const cleanShort = goalsDraftShort.map((s) => s.trim()).filter(Boolean).slice(0, 10);
+    if (cleanLong.some((s) => s.length > 1000) || cleanShort.some((s) => s.length > 1000)) {
+      setGoalsError("Each goal must be 1000 characters or less.");
+      return;
+    }
+    setGoalsSaving(true);
+    setGoalsError(null);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/therapist/clients", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: clientId, longTermGoals: cleanLong, shortTermGoals: cleanShort }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save goals.");
+      if (data.client) {
+        setClient(data.client);
+        syncGoalsFromClient(data.client);
+      } else {
+        setLongTermGoals(cleanLong);
+        setShortTermGoals(cleanShort);
+      }
+      setEditingGoals(false);
+      setSuccessMsg("Therapy goals saved.");
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (e: unknown) {
+      const m = e instanceof Error ? e.message : String(e);
+      setGoalsError(m);
+      setErrorMsg(m);
+    } finally {
+      setGoalsSaving(false);
+    }
+  };
+
+  // Care Guide — big textarea beside Created Assessments (per-patient, therapist-editable)
+  const [careGuide, setCareGuide] = useState("");
+  const [careGuideDraft, setCareGuideDraft] = useState("");
+  const [careGuideSaving, setCareGuideSaving] = useState(false);
+  const syncCareGuideFromClient = (c: Patient | null) => {
+    const cg = (c as unknown as Record<string, unknown>)?.care_guide;
+    const v = typeof cg === "string" ? cg : "";
+    setCareGuide(v);
+    setCareGuideDraft(v);
+  };
+  const handleSaveCareGuide = async () => {
+    const trimmed = careGuideDraft.slice(0, 10000);
+    setCareGuideSaving(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/therapist/clients", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: clientId, careGuide: trimmed }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save care guide.");
+      if (data.client) {
+        setClient(data.client);
+        syncCareGuideFromClient(data.client);
+      } else {
+        setCareGuide(trimmed);
+      }
+      setSuccessMsg("Care guide saved.");
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (e: unknown) {
+      setErrorMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCareGuideSaving(false);
+    }
+  };
+
   // Delete Modal State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
@@ -245,10 +355,13 @@ function TherapistClientDetailContent({
 
   const fetchData = async () => {
     try {
-      const res = await fetch(`/api/therapist/clients?id=${clientId}`);
+      const reqSuffix = user?.id ? `&requesterId=${user.id}` : "";
+      const res = await fetch(`/api/therapist/clients?id=${clientId}${reqSuffix}`);
       const data = await res.json();
       if (data.client) {
         setClient(data.client);
+        syncGoalsFromClient(data.client);
+        syncCareGuideFromClient(data.client);
         setEditName(data.client.name);
         setEditAge(data.client.age);
         setEditGender(data.client.gender || "Prefer not to say");
@@ -259,6 +372,8 @@ function TherapistClientDetailContent({
         const found = data.clients.find((c: Patient) => c.id === clientId);
         if (found) {
           setClient(found);
+          syncGoalsFromClient(found);
+          syncCareGuideFromClient(found);
           setEditName(found.name);
           setEditAge(found.age);
           setEditGender(found.gender || "Prefer not to say");
@@ -278,7 +393,8 @@ function TherapistClientDetailContent({
 
   const fetchPrograms = async () => {
     try {
-      const res = await fetch(`/api/therapist/programs?patientId=${clientId}`);
+      const withReq = user?.id ? `&requesterId=${user.id}` : "";
+      const res = await fetch(`/api/therapist/programs?patientId=${clientId}${withReq}`);
       const data = await res.json();
       if (data.programs) {
         setPrograms(data.programs);
@@ -292,7 +408,8 @@ function TherapistClientDetailContent({
 
   const fetchSoapNotes = async () => {
     try {
-      const res = await fetch(`/api/therapist/soap-notes?patientId=${clientId}&isDemo=true`);
+      const soapReq = user?.id ? `&requesterId=${user.id}` : "";
+      const res = await fetch(`/api/therapist/soap-notes?patientId=${clientId}${soapReq}`);
       const data = await res.json();
       if (data.soapNotes) {
         setSoapNotes(data.soapNotes);
@@ -306,13 +423,14 @@ function TherapistClientDetailContent({
 
   useEffect(() => {
     let isMounted = true;
-
+    // include requester identity so server can verify ownership — no isDemo fallback (DB read requires real ownership proof)
+    const reqQ = user?.id ? `&requesterId=${user.id}` : "";
     async function loadClientData() {
       try {
         const [clientRes, progRes, soapRes] = await Promise.all([
-          fetch(`/api/therapist/clients?id=${clientId}`),
-          fetch(`/api/therapist/programs?patientId=${clientId}`),
-          fetch(`/api/therapist/soap-notes?patientId=${clientId}&isDemo=true`),
+          fetch(`/api/therapist/clients?id=${clientId}${reqQ}`),
+          fetch(`/api/therapist/programs?patientId=${clientId}${reqQ}`),
+          fetch(`/api/therapist/soap-notes?patientId=${clientId}${reqQ}`),
         ]);
         const clientData = await clientRes.json();
         const progData = await progRes.json();
@@ -322,6 +440,8 @@ function TherapistClientDetailContent({
 
         if (clientData.client) {
           setClient(clientData.client);
+          syncGoalsFromClient(clientData.client);
+          syncCareGuideFromClient(clientData.client);
           setEditName(clientData.client.name);
           setEditAge(clientData.client.age);
           setEditGender(clientData.client.gender || "Prefer not to say");
@@ -332,6 +452,8 @@ function TherapistClientDetailContent({
           const found = clientData.clients.find((c: Patient) => c.id === clientId);
           if (found) {
             setClient(found);
+            syncGoalsFromClient(found);
+            syncCareGuideFromClient(found);
             setEditName(found.name);
             setEditAge(found.age);
             setEditGender(found.gender || "Prefer not to say");
@@ -363,7 +485,7 @@ function TherapistClientDetailContent({
     return () => {
       isMounted = false;
     };
-  }, [clientId]);
+  }, [clientId, user?.id]);
 
   // Open New SOAP Modal
   const handleOpenNewSoapModal = () => {
@@ -839,6 +961,254 @@ function TherapistClientDetailContent({
             </div>
           </div>
 
+          {/* Therapy Goals — therapist-declared (below email section) */}
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3.5 sm:p-4 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-8 h-8 rounded-lg bg-teal-950/50 border border-teal-500/20 grid place-items-center shrink-0">
+                  <Goal className="w-4 h-4 text-teal-400" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-xs sm:text-sm font-bold text-zinc-100 leading-tight flex items-center gap-1.5">
+                    Therapy Goals
+                    <span className="hidden sm:inline text-[10px] font-medium text-zinc-500">— clinician-declared</span>
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 hidden sm:block">Long-term outcomes & short-term milestones. Stored with this client.</p>
+                  <p className="text-[11px] text-zinc-500 sm:hidden">Stored with client • Max 5 LTG • 10 STG</p>
+                </div>
+              </div>
+              {!editingGoals ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleStartEditGoals}
+                  className="shrink-0 gap-1.5 text-xs border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-teal-300 hover:border-teal-500/30 h-8"
+                >
+                  <Pencil className="w-3.5 h-3.5 text-teal-400" />
+                  {longTermGoals.length === 0 && shortTermGoals.length === 0 ? "Add goals" : "Edit"}
+                </Button>
+              ) : (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancelEditGoals}
+                    disabled={goalsSaving}
+                    className="h-8 text-xs border-zinc-700 text-zinc-400 hover:bg-zinc-800"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleSaveGoals}
+                    disabled={goalsSaving}
+                    className="h-8 gap-1.5 text-xs bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold"
+                  >
+                    {goalsSaving ? <span className="w-3.5 h-3.5 border-2 border-zinc-900/30 border-t-zinc-900 rounded-full animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    Save
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {goalsError && (
+              <div className="flex items-start gap-2 rounded-lg bg-rose-950/30 border border-rose-800/50 px-3 py-2 text-xs text-rose-300">
+                <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                <span>{goalsError}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Long-term */}
+              <div className="rounded-xl border border-teal-900/30 bg-teal-950/10 p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-teal-300 uppercase">
+                    <Target className="w-3.5 h-3.5 text-teal-400" />
+                    Long-term goals
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-[10px] text-zinc-300 font-mono">
+                      {editingGoals ? `${goalsDraftLong.length}/5` : `${longTermGoals.length}/5`}
+                    </span>
+                  </div>
+                  {editingGoals && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (goalsDraftLong.length >= 5) return;
+                        setGoalsDraftLong((v) => [...v, ""]);
+                      }}
+                      disabled={goalsDraftLong.length >= 5}
+                      className="h-7 text-xs gap-1 text-teal-300 hover:bg-teal-950/40 disabled:opacity-40"
+                    >
+                      <Plus className="w-3 h-3" /> Add
+                    </Button>
+                  )}
+                </div>
+
+                {!editingGoals ? (
+                  longTermGoals.length === 0 ? (
+                    <p className="text-xs text-zinc-500 italic py-2">No long-term goals set. Click Edit to add up to 5.</p>
+                  ) : (
+                    <ol className="space-y-2">
+                      {longTermGoals.map((g, i) => (
+                        <li key={`lt-${i}`} className="flex gap-2.5 text-xs leading-relaxed bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2.5">
+                          <span className="w-6 h-6 rounded-full bg-teal-950/40 border border-teal-500/20 grid place-items-center text-[11px] font-bold text-teal-300 shrink-0">
+                            {i + 1}
+                          </span>
+                          <span className="text-zinc-200 break-words flex-1 pt-0.5">{g}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  )
+                ) : (
+                  <div className="space-y-2">
+                    {goalsDraftLong.length === 0 && <p className="text-xs text-zinc-500 italic">No long-term goals yet — add one.</p>}
+                    {goalsDraftLong.map((val, idx) => (
+                      <div key={`edit-lt-${idx}`} className="flex gap-2 items-start">
+                        <span className="w-6 h-6 rounded-full bg-teal-950/40 border border-teal-500/20 grid place-items-center text-[11px] font-bold text-teal-300 shrink-0 mt-1.5">
+                          {idx + 1}
+                        </span>
+                        <Input
+                          value={val}
+                          onChange={(e) => {
+                            const nv = e.target.value;
+                            setGoalsDraftLong((prev) => {
+                              const c = [...prev];
+                              c[idx] = nv;
+                              return c;
+                            });
+                          }}
+                          placeholder={`Long-term goal ${idx + 1} — e.g. Independent community dining with dominant hand`}
+                          maxLength={1000}
+                          className="flex-1 bg-zinc-900 border-zinc-700 text-xs h-9 placeholder:text-zinc-500"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setGoalsDraftLong((prev) => prev.filter((_, j) => j !== idx))}
+                          className="h-9 w-9 p-0 shrink-0 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/30"
+                          aria-label="Remove goal"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                    <p className="text-[10px] text-zinc-500">Max 5 • 1000 chars each • Empty lines are discarded on save</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Short-term */}
+              <div className="rounded-xl border border-sky-900/30 bg-sky-950/10 p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-sky-300 uppercase">
+                    <Flag className="w-3.5 h-3.5 text-sky-400" />
+                    Short-term goals
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-[10px] text-zinc-300 font-mono">
+                      {editingGoals ? `${goalsDraftShort.length}/10` : `${shortTermGoals.length}/10`}
+                    </span>
+                  </div>
+                  {editingGoals && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (goalsDraftShort.length >= 10) return;
+                        setGoalsDraftShort((v) => [...v, ""]);
+                      }}
+                      disabled={goalsDraftShort.length >= 10}
+                      className="h-7 text-xs gap-1 text-sky-300 hover:bg-sky-950/30 disabled:opacity-40"
+                    >
+                      <Plus className="w-3 h-3" /> Add
+                    </Button>
+                  )}
+                </div>
+
+                {!editingGoals ? (
+                  shortTermGoals.length === 0 ? (
+                    <p className="text-xs text-zinc-500 italic py-2">No short-term goals set. Click Edit to add up to 10.</p>
+                  ) : (
+                    <ol className="space-y-2">
+                      {shortTermGoals.map((g, i) => (
+                        <li key={`st-${i}`} className="flex gap-2.5 text-xs leading-relaxed bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2.5">
+                          <span className="w-6 h-6 rounded-full bg-sky-950/40 border border-sky-500/20 grid place-items-center text-[11px] font-bold text-sky-300 shrink-0">
+                            {i + 1}
+                          </span>
+                          <span className="text-zinc-200 break-words flex-1 pt-0.5">{g}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  )
+                ) : (
+                  <div className="space-y-2">
+                    {goalsDraftShort.length === 0 && <p className="text-xs text-zinc-500 italic">No short-term goals yet — add one.</p>}
+                    {goalsDraftShort.map((val, idx) => (
+                      <div key={`edit-st-${idx}`} className="flex gap-2 items-start">
+                        <span className="w-6 h-6 rounded-full bg-sky-950/40 border border-sky-500/20 grid place-items-center text-[11px] font-bold text-sky-300 shrink-0 mt-1.5">
+                          {idx + 1}
+                        </span>
+                        <Input
+                          value={val}
+                          onChange={(e) => {
+                            const nv = e.target.value;
+                            setGoalsDraftShort((prev) => {
+                              const c = [...prev];
+                              c[idx] = nv;
+                              return c;
+                            });
+                          }}
+                          placeholder={`Short-term goal ${idx + 1} — e.g. 10 reps cylindrical cup lift without trunk compensation`}
+                          maxLength={1000}
+                          className="flex-1 bg-zinc-900 border-zinc-700 text-xs h-9 placeholder:text-zinc-500"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setGoalsDraftShort((prev) => prev.filter((_, j) => j !== idx))}
+                          className="h-9 w-9 p-0 shrink-0 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/30"
+                          aria-label="Remove goal"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                    <p className="text-[10px] text-zinc-500">Max 10 • 1000 chars each • Empty lines are discarded on save</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <p className="text-[10px] text-zinc-500 flex items-center gap-1">
+              <Clock className="w-3 h-3 text-zinc-500" /> Last updated: {client?.updated_at ? new Date(client.updated_at).toLocaleDateString() : "—"} • Saved with client record
+            </p>
+          </div>
+
+          {/* AGENT: Goal Tracking (per plan/GOAL_TRACKING_AGENT_PLAN.md) — 1 button Check goals */}
+          <GoalTrackingPanel
+            patientId={clientId}
+            longTermGoals={longTermGoals}
+            shortTermGoals={shortTermGoals}
+            soapCount={soapNotes.length}
+            onInsertToPlan={(line) => {
+              setSoapPlan((prev) => (prev ? `${prev}\n\n${line}` : line));
+              setActiveTab("soap");
+              // scroll to SOAP form if draft exists
+              setTimeout(() => {
+                const el = document.getElementById("soap-plan");
+                if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+              }, 200);
+            }}
+          />
+
+          {/* AGENT: Highlights — Monthly 7 adaptive (per plan/HIGHLIGHTS_AGENT_PLAN.md) */}
+          <HighlightsStrip patientId={clientId} isTherapist />
+
           {/* Quick Actions — grid on mobile, flex scroll on desktop */}
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2 pt-1 border-t border-zinc-800/50 sm:border-0 sm:pt-0">
             <Button
@@ -879,12 +1249,7 @@ function TherapistClientDetailContent({
               </Button>
             </Link>
 
-            <Link href={`/therapist/clients/${clientId}/programs/new`} className="col-span-2 sm:col-span-1 sm:w-auto">
-              <Button size="sm" className="w-full gap-1.5 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold text-xs whitespace-nowrap h-9">
-                <Plus className="w-4 h-4" />
-                Create Program
-              </Button>
-            </Link>
+
           </div>
         </div>
       </Card>
@@ -937,6 +1302,22 @@ function TherapistClientDetailContent({
           <span className="hidden sm:inline">Created Assessments</span><span className="sm:hidden">Assessments</span>
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300">
             {allClientAssessments.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("care_guide")}
+          className={`snap-start shrink-0 flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-3.5 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors whitespace-nowrap ${
+            activeTab === "care_guide"
+              ? "bg-teal-950/80 border border-teal-500/40 text-teal-300"
+              : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60"
+          }`}
+        >
+          <HeartPulse className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+          <span className="hidden sm:inline">Care Guide</span><span className="sm:hidden">Care Guide</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300">
+            {careGuide.trim() ? "1" : "0"}
           </span>
         </button>
       </div>
@@ -1304,15 +1685,7 @@ function TherapistClientDetailContent({
                                 latestSub.step_submissions?.find((ss) => ss.program_step_id === step.id) ||
                                 latestSub.step_submissions?.[sIdx];
 
-                              const rawVideo =
-                                stepSub?.video_path ||
-                                (isDemo
-                                  ? sIdx === 0
-                                    ? "/demo/cup_grasp_transfer.mp4"
-                                    : sIdx === 1
-                                    ? "/demo/block_stacking.mp4"
-                                    : "/demo/washcloth_supination.mp4"
-                                  : null);
+                              const rawVideo = stepSub?.video_path || null;
 
                               const videoSrc = rawVideo ? normalizeVideoUrl(rawVideo) : null;
                               const isSkipped = stepSub?.skipped;
@@ -1807,6 +2180,57 @@ function TherapistClientDetailContent({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Tab 4: Care Guide — big textarea (therapist-editable, client read-only) */}
+      {activeTab === "care_guide" && (
+        <div className="max-w-3xl">
+          <Card className="border-zinc-800 bg-zinc-900/90 p-5 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
+                <HeartPulse className="w-4 h-4 text-teal-400" />
+                Care Guide
+                </h3>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 font-mono">
+                {careGuideDraft.length}/10000
+              </span>
+            </div>
+            <Textarea
+              value={careGuideDraft}
+              onChange={(e) => setCareGuideDraft(e.target.value.slice(0, 10000))}
+              placeholder={"e.g. Daily chin tucks 5\u00d7, avoid prolonged tech-neck, keep forearm supported on table...\nAdd wound-care, precautions, home safety, or caregiver instructions. One big text area — Save when done."}
+              rows={20}
+              className="min-h-[360px] bg-zinc-950 border-zinc-800 text-sm text-zinc-200 placeholder:text-zinc-600 resize-y leading-relaxed"
+            />
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <span className="text-[11px] text-zinc-500">
+                {client?.updated_at ? new Date(client.updated_at).toLocaleDateString() : "\u2014"}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCareGuideDraft(careGuide)}
+                  disabled={careGuideSaving || careGuideDraft === careGuide}
+                  className="h-8 text-xs text-zinc-400 hover:text-zinc-200"
+                >
+                  Reset
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveCareGuide}
+                  disabled={careGuideSaving || careGuideDraft === careGuide}
+                  className="h-8 gap-1.5 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold text-xs"
+                >
+                  {careGuideSaving ? <span className="w-3.5 h-3.5 border-2 border-zinc-900/30 border-t-zinc-900 rounded-full animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Save Care Guide
+                </Button>
+              </div>
+            </div>
+          </Card>
         </div>
       )}
 
@@ -2326,6 +2750,7 @@ function TherapistClientDetailContent({
                       </span>
                     </label>
                     <Textarea
+                      id="soap-plan"
                       rows={7}
                       placeholder="Continuum of care, modifications to home program, frequency and repetitions, precautions, next live appointment date..."
                       value={soapPlan}

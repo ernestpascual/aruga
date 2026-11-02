@@ -611,6 +611,7 @@ export default function AskOtPage() {
     // Butler personalization: profile + program brief (client-safe, no secrets)
     const profileBrief = profile
       ? [
+          `Role: ${profile.role || "client"}`,
           `Category: ${profile.client_category || "adult"}${profile.age ? `, Age: ${profile.age}` : ""}`,
           profile.primary_condition ? `Condition: ${profile.primary_condition}` : null,
           profile.therapy_goals ? `Goals: ${profile.therapy_goals}` : null,
@@ -743,7 +744,7 @@ export default function AskOtPage() {
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-teal-950 to-zinc-900 border border-teal-500/25 text-teal-300 flex items-center justify-center shrink-0">
               <HeartHandshake className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <h1 className="text-sm font-semibold tracking-tight text-zinc-100 leading-none truncate">Aruga Guide</h1>
+            <h1 className="text-sm font-semibold tracking-tight text-zinc-100 leading-none truncate">Aruga Guide AI Agent</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {conversations.length > 0 && (
@@ -809,7 +810,7 @@ export default function AskOtPage() {
         {/* Tabs — aligned, consistent height */}
         <div className="flex items-center gap-2 p-1 w-fit rounded-xl bg-zinc-900 border border-zinc-800">
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 text-teal-300 border border-zinc-700 shadow-sm">
-            <Sparkles className="w-3.5 h-3.5" /> Guide
+            <Sparkles className="w-3.5 h-3.5" /> Aruga Guide AI Agent
           </span>
           <Link
             href="/sam-test"
@@ -827,7 +828,7 @@ export default function AskOtPage() {
             </div>
             <p className="text-xs leading-relaxed text-zinc-300">
               <strong className="font-semibold text-zinc-100">Aruga Guide — your online buddy.</strong>{" "}
-              I know your profile{profile?.display_name ? ` (${profile.display_name})` : ""}{activeProgram ? ` and current program "${activeProgram.title}"` : ""} so I can explain conditions and why each exercise matters in plain words across PT, OT & Speech. I&apos;m not a licensed clinician — I can be wrong. Always verify important steps with your care team. In an emergency, dial 911.
+              I&apos;m not a licensed clinician — I can be wrong. Always verify important steps with your care team. In an emergency, dial 911.
             </p>
           </div>
         </Card>
@@ -844,7 +845,7 @@ export default function AskOtPage() {
                   Hi{profile?.display_name ? ` ${profile.display_name}` : ""} — I&apos;m your Aruga Guide
                 </h2>
                 <p className="text-xs text-zinc-400 leading-relaxed max-w-[62ch]">
-                  I&apos;m your online buddy for rehab — I can read your profile{activeProgram ? ` and your current home program` : ""} and explain your condition and why each activity helps in everyday life across PT, OT & Speech. Attach a photo or short clip anytime.
+                  I&apos;m your online buddy for rehab — I explain your condition and why each activity helps in everyday life across PT, OT &amp; Speech. Attach a photo or short clip anytime.
                 </p>
                 {activeProgram && (
                   <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs space-y-1">
@@ -1007,8 +1008,8 @@ export default function AskOtPage() {
           </div>
         )}
 
-        {/* Composer — aligned, consistent padding */}
-        <div className="sticky bottom-4 rounded-2xl border border-zinc-700 bg-zinc-900 backdrop-blur-md p-3 shadow-xl">
+        {/* Composer — even 8pt grid, balanced outline */}
+        <div className="sticky bottom-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-2.5 shadow-xl">
           <input
             ref={fileInputRef}
             type="file"
@@ -1020,11 +1021,11 @@ export default function AskOtPage() {
               e.target.value = "";
             }}
           />
-          <div className="flex items-end gap-2.5">
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="h-9 w-9 flex items-center justify-center rounded-xl border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 hover:bg-zinc-700 transition-colors shrink-0"
+              className="h-10 w-10 flex items-center justify-center rounded-xl border border-zinc-800 bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 hover:bg-zinc-700 transition-colors shrink-0"
               title="Attach image or video"
               aria-label="Attach image or video"
             >
@@ -1033,7 +1034,7 @@ export default function AskOtPage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="hidden sm:flex h-9 px-3 rounded-xl border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 hover:bg-zinc-700 transition-colors shrink-0 items-center gap-1.5 text-xs font-medium"
+              className="hidden sm:inline-flex h-10 px-3.5 rounded-xl border border-zinc-800 bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 hover:bg-zinc-700 transition-colors shrink-0 items-center gap-1.5 text-xs font-medium"
               title="Attach video clip"
             >
               <Video className="w-3.5 h-3.5" /> Video
@@ -1048,13 +1049,13 @@ export default function AskOtPage() {
                 }
               }}
               placeholder="Ask a question…"
-              rows={2}
-              className="flex-1 resize-none bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none px-2 py-2.5 leading-relaxed"
+              rows={1}
+              className="flex-1 min-h-[44px] max-h-28 resize-none bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-teal-500/40 focus:ring-1 focus:ring-teal-500/20 px-3.5 py-2.5 leading-relaxed"
             />
             <Button
               onClick={() => sendMessage()}
               disabled={sending || isProcessingMedia || (!input.trim() && pendingFiles.length === 0)}
-              className="h-9 gap-1.5 bg-teal-600 hover:bg-teal-500 text-white font-semibold px-4 shrink-0 shadow-sm"
+              className="h-10 gap-1.5 bg-teal-600 hover:bg-teal-500 text-white font-semibold px-5 shrink-0 shadow-sm rounded-xl"
             >
               {sending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

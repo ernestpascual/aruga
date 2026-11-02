@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeStepVideo, segmentStepVideo } from "@/lib/meta-ai";
 import { MetaApiError } from "@/lib/meta/errors";
-import { getMockStore } from "@/lib/supabase/mock-store";
+
+export const maxDuration = 90;
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,14 +38,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Persist to store if mock store is in use
-    const store = getMockStore();
-    const existingIndex = store.aiAnalyses.findIndex(
-      (a) => a.step_submission_id === stepSubmissionId
-    );
-
     const record = {
-      id: existingIndex >= 0 ? store.aiAnalyses[existingIndex].id : `ai-${Date.now()}`,
+      id: `ai-${Date.now()}`,
       step_submission_id: stepSubmissionId,
       analysis_kind: "full_review" as const,
       model_id: samSegmentation ? "muse-spark-1.3 + sam-3.1" : "muse-spark-1.3",
@@ -87,36 +82,35 @@ export async function POST(req: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
-    if (existingIndex >= 0) {
-      store.aiAnalyses[existingIndex] = record;
-    } else {
-      store.aiAnalyses.push(record);
-    }
-
     try {
       const { createAdminClient } = await import("@/lib/supabase/admin");
       const admin = createAdminClient();
-      if (admin) {
-        await admin.from("ai_analyses").upsert(
-          {
-            step_submission_id: stepSubmissionId,
-            analysis_kind: "full_review",
-            model_id: samSegmentation ? "muse-spark-1.3 + sam-3.1" : "muse-spark-1.3",
-            idempotency_key: `key-${stepSubmissionId}-v1`,
-            prompt_version: "v1",
-            processing_status: "completed",
-            spark_results: record.spark_results,
-            sam_results: record.sam_results,
-            artifact_path: record.artifact_path,
-            confirmed_observations: [],
-            timing_ms: record.timing_ms,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "step_submission_id" }
-        );
+      if (!admin) {
+        return NextResponse.json({ error: "Service unavailable: database not configured" }, { status: 503 });
       }
-    } catch {
-      // Database persist optional if offline
+      const { error: persistError } = await admin.from("ai_analyses").upsert(
+        {
+          step_submission_id: stepSubmissionId,
+          analysis_kind: "full_review",
+          model_id: samSegmentation ? "muse-spark-1.3 + sam-3.1" : "muse-spark-1.3",
+          idempotency_key: `key-${stepSubmissionId}-v1`,
+          prompt_version: "v1",
+          processing_status: "completed",
+          spark_results: record.spark_results,
+          sam_results: record.sam_results,
+          artifact_path: record.artifact_path,
+          confirmed_observations: [],
+          timing_ms: record.timing_ms,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "step_submission_id" }
+      );
+      if (persistError) {
+        console.warn("Failed to persist ai_analyses:", persistError);
+      }
+    } catch (e) {
+      console.warn("Database persist failed:", e);
+      return NextResponse.json({ error: "Service unavailable: database not configured" }, { status: 503 });
     }
 
     return NextResponse.json({

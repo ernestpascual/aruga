@@ -22,7 +22,6 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/supabase/auth-context";
-import { isDemoUser } from "@/lib/supabase/demo-helpers";
 import { SoapNote, SoapNoteAssessmentLink } from "@/types/database";
 import { SoapSummaryCard } from "@/components/ui/soap-summary-card";
 
@@ -59,13 +58,10 @@ interface HomeProgramDisplayItem {
 
 export default function ClientHistoryPage() {
   const { user, profile } = useAuth();
-  const isDemo = isDemoUser(user, profile);
 
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>("programs");
   const [activeTab, setActiveTab] = useState<FilterTab>("reviewed");
-  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({
-    "prog-demo": true,
-  });
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
 
   const [soapNotes, setSoapNotes] = useState<SoapNote[]>([]);
   const [soapNotesLoading, setSoapNotesLoading] = useState(true);
@@ -74,127 +70,12 @@ export default function ClientHistoryPage() {
     setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const demoPrograms: HomeProgramDisplayItem[] = [
-    {
-      id: "prog-demo",
-      title: "Tabletop Grasp & Precision Release Home Program",
-      status: "reviewed",
-      submittedDate: "Oct 27, 2026",
-      reviewedDate: "Oct 27, 2026",
-      overallFeedback:
-        "Great effort on the tabletop transfer, Marcus. Your wrist alignment during the cup release is noticeably improved. Good decision to rest your shoulder on step 3—honoring fatigue prevents compensatory shoulder hiking.",
-      sessionRecordingUrl: "https://meet.google.com/rec/aruga-marcus-telehealth",
-      subjective:
-        "Client completed home program in dining room. Reported feeling confident with cylindrical grasp, rating fatigue at 3/10. Noted slight stiffness during step 3 before resting.",
-      objective:
-        "Full completion of steps 1 & 2. 10/10 cup transfers with stable wrist neutral alignment. Step 3 forearm supination paused appropriately due to muscular fatigue.",
-      assessment:
-        "Notable progression in distal grasp strength and release control. Self-monitoring fatigue demonstrates excellent compensatory safety awareness.",
-      assessmentLinks: [
-        {
-          title: "Fugl-Meyer UE Motor Assessment (Baseline)",
-          url: "https://drive.google.com/file/d/marcus-fugl-meyer-baseline/view",
-        },
-        {
-          title: "Box and Blocks Test Protocol",
-          url: "https://drive.google.com/file/d/box-and-blocks-standardized/view",
-        },
-      ],
-      plan:
-        "Continue daily tabletop transfers. Re-test active supination at Friday live tele-rehab session.",
-      clientSummary:
-        "Marcus, fantastic dedication to your tabletop grasp home program! Your wrist stability and cup control are visibly stronger. Taking a break on step 3 when your shoulder felt tired was the exact right move. Keep up the daily practice and we will check your progress on Friday!",
-      therapistName: "Dr. Sarah Jenkins, OTR/L",
-      steps: [
-        {
-          position: 1,
-          title: "Cylindrical Cup Lift and Transfer",
-          videoPath: "/demo/cup_grasp_transfer.mp4",
-          comment: "Felt smoother than last week! Finger extension still feels stiff right before touching the cup.",
-          therapistNote: "Smooth cylindrical grasp observed. Minimal trunk compensation. Keep focusing on slow finger release.",
-          skipped: false,
-        },
-        {
-          position: 2,
-          title: "Small Block Lateral Stacking",
-          videoPath: "/demo/block_stacking.mp4",
-          comment: "Managed 4 repetitions with the small wooden block.",
-          therapistNote: "Clean pinch grasp. Noticeable control when crossing midline.",
-          skipped: false,
-        },
-        {
-          position: 3,
-          title: "Forearm Supination with Washcloth",
-          videoPath: null,
-          skipped: true,
-          skipReason: "Shoulder felt tight and fatigued after step 2; rested per precautions.",
-          therapistNote: "Appropriate skip. We will re-evaluate shoulder active range of motion during our next session.",
-        },
-      ],
-    },
-    {
-      id: "prog-demo-pediatric",
-      title: "Playful Pincer Grasp & Bilateral Toy Home Program",
-      status: "reviewed",
-      category: "pediatric",
-      clientName: "Leo Chen (Pediatric, 6y • Mom: Sarah)",
-      submittedDate: "Oct 28, 2026",
-      reviewedDate: "Oct 28, 2026",
-      overallFeedback:
-        "Fantastic progress, Leo! Sarah, his pincer grasp on the pegs showed wonderful isolated finger control with much less whole-hand raking. Great call on loosening the jar lid for step 3.",
-      sessionRecordingUrl: "https://meet.google.com/rec/aruga-leo-pediatric-telehealth",
-      subjective:
-        "Mom (Sarah) reports Leo was excited to play today. Notes he occasionally switches to a whole-hand fisted grasp when tired or rushing.",
-      objective:
-        "Completed 8/10 peg placements using neat pad-to-pad pincer grasp with right hand. Helper hand spontaneously stabilized the container edge on 6 trials without verbal prompting.",
-      assessment:
-        "Distal finger isolation and bilateral cooperative hand use show marked improvement. Hand dominance is consolidating on the right side.",
-      assessmentLinks: [
-        {
-          title: "Peabody Developmental Motor Scales (PDMS-2) Fine Motor Report",
-          url: "https://drive.google.com/file/d/leo-pdms2-scorecard/view",
-        },
-      ],
-      plan:
-        "Assigned Playful Pincer Grasp Home Program. Encourage positive verbal cues when Leo uses his helper hand. Next playful check-in Wednesday.",
-      clientSummary:
-        "Sarah, Leo had such a fun and focused session today! His little fingers are getting much better at pinching small pegs one by one instead of grabbing with his whole fist. Remember to give him a high-five whenever he uses his 'helper hand' to hold the container steady. Keep up the playful practice at home!",
-      therapistName: "Dr. Sarah Jenkins, OTR/L",
-      steps: [
-        {
-          position: 1,
-          title: "Colorful Peg Stacking Game",
-          videoPath: "/demo/cup_grasp_transfer.mp4",
-          comment: "Leo loved picking the green and yellow pegs today!",
-          therapistNote: "Clear index-thumb opposition. Helper hand stabilized the board well.",
-          skipped: false,
-        },
-        {
-          position: 2,
-          title: "Play-Doh Bead Roll & Squash",
-          videoPath: "/demo/block_stacking.mp4",
-          comment: "Used index finger to squash all 3 dough balls.",
-          therapistNote: "Good finger isolation when squashing the dough beads.",
-          skipped: false,
-        },
-        {
-          position: 3,
-          title: "Two-Handed Lid Unscrewing",
-          videoPath: null,
-          skipped: true,
-          skipReason: "Jar lid was too tight for tiny hands; will practice with a looser lid tomorrow.",
-          therapistNote: "Appropriate skip. Practice with a looser lid first.",
-        },
-      ],
-    },
-  ];
-
   const [realPrograms, setRealPrograms] = useState<HomeProgramDisplayItem[]>([]);
-  const [, setLoading] = useState(!isDemo && Boolean(user?.id));
+  const [, setLoading] = useState(Boolean(user?.id));
 
   // Fetch Home Program Submissions & Reviews
   useEffect(() => {
-    if (isDemo || !user?.id) {
+    if (!user?.id) {
       return;
     }
     fetch(`/api/client/submissions?clientUserId=${user.id}&isDemo=false`)
@@ -257,13 +138,13 @@ export default function ClientHistoryPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [user?.id, isDemo, profile?.clinician_name]);
+  }, [user?.id, profile?.clinician_name]);
 
   // Fetch Session Clinical Documentation
   useEffect(() => {
     const params = new URLSearchParams();
     if (user?.id) params.set("clientUserId", user.id);
-    params.set("isDemo", isDemo ? "true" : "false");
+    params.set("isDemo", "false");
 
     fetch(`/api/client/soap-notes?${params.toString()}`)
       .then((res) => res.json())
@@ -274,9 +155,9 @@ export default function ClientHistoryPage() {
       })
       .catch(() => {})
       .finally(() => setSoapNotesLoading(false));
-  }, [user?.id, isDemo]);
+  }, [user?.id]);
 
-  const programs = isDemo ? demoPrograms : realPrograms;
+  const programs = realPrograms;
 
   const filteredPrograms = programs.filter((p) => {
     if (activeTab === "all") return true;
@@ -554,7 +435,7 @@ export default function ClientHistoryPage() {
                         assessment={item.assessment}
                         plan={item.plan}
                         clientName={item.clientName}
-                        isDemo={isDemo}
+                        isDemo={false}
                       />
 
                       {/* 3. STEP-BY-STEP PUBLISHED NOTES */}
@@ -834,7 +715,7 @@ export default function ClientHistoryPage() {
                       assessment={note.assessment}
                       plan={note.plan}
                       clientName={profile?.display_name || user?.user_metadata?.name || "Client"}
-                      isDemo={isDemo}
+                      isDemo={false}
                     />
                   </Card>
                 );

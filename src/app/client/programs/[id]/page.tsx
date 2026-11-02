@@ -100,8 +100,9 @@ function ClientProgramRunnerContent({
       try {
         setLoading(true);
 
-        // 1. Fetch Program & Steps
-        const progRes = await fetch(`/api/therapist/programs?id=${programId}`);
+        // 1. Fetch Program & Steps — include requester proof so DB ownership gate passes
+        const progQs = user?.id ? `?id=${programId}&requesterId=${user.id}` : `?id=${programId}`;
+        const progRes = await fetch(`/api/therapist/programs${progQs}`);
         const progData = await progRes.json();
         let loadedProg: HomeProgram | null = null;
         let loadedSteps: ProgramStep[] = [];
@@ -1138,6 +1139,7 @@ function ClientProgramRunnerContent({
             {/* Linked coloring / image generation activity — download, color on screen, or print+photo */}
             {(activeStep as unknown as { generated_activity?: { id: string; title: string; instructions: string; base_image_url: string | null; age_band?: string; spark_spec?: { difficulty?: string; estimatedMinutes?: number } } | null; generated_activity_id?: string | null }).generated_activity?.base_image_url && (
               <StepActivityWorksheet
+                key={`${activeStep.id}-${(activeStep as unknown as { generated_activity?: { id: string } }).generated_activity?.id || ""}`}
                 step={activeStep}
                 activity={(activeStep as unknown as { generated_activity: never }).generated_activity}
                 patientId={(program as unknown as { patient_id?: string; patient?: { id: string } })?.patient_id || (program as unknown as { patient?: { id: string } })?.patient?.id || (submission as unknown as { patient_id?: string })?.patient_id || null}

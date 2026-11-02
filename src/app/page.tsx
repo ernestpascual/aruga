@@ -46,15 +46,32 @@ export default function LandingPage() {
     }
   }, [authLoading, user, dashboardHref, router]);
 
+  if (redirecting || (!authLoading && user)) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white space-y-4">
+        <div className="w-10 h-10 rounded-full border-2 border-white border-t-transparent animate-spin" />
+        <div className="text-center space-y-1">
+          <p className="text-sm font-semibold">Welcome to Aruga</p>
+          <p className="text-xs text-white/50">Redirecting to your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <LandingContent dashboardHref={dashboardHref} />;
+}
+
+function LandingContent({ dashboardHref }: { dashboardHref: string }) {
+  const { user } = useAuth();
   const heroRef = useRef<HTMLElement>(null);
+  // Only run useScroll when the hero element is mounted — avoids
+  // "Target ref is defined but not hydrated" from motion when the
+  // auth-redirect branch renders without the ref in the tree.
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"],
   });
 
-  const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "-18%"]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.75], [1, 0]);
-  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.94]);
   const arrowOpacity = useTransform(scrollYProgress, [0, 0.25], [1, 0]);
 
   const headerBg = useTransform(
@@ -67,18 +84,6 @@ export default function LandingPage() {
     [0.55, 0.85],
     ["rgba(255,255,255,0)", "rgba(255,255,255,0.12)"]
   );
-
-  if (redirecting || (!authLoading && user)) {
-    return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white space-y-4">
-        <div className="w-10 h-10 rounded-full border-2 border-white border-t-transparent animate-spin" />
-        <div className="text-center space-y-1">
-          <p className="text-sm font-semibold">Welcome to Aruga</p>
-          <p className="text-xs text-white/50">Redirecting to your dashboard...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#F6F3EF] text-black selection:bg-black selection:text-white scroll-smooth">

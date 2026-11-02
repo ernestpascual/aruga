@@ -13,6 +13,8 @@ export async function POST(req: NextRequest) {
       drawingDataUrl,
       drawingStrokes,
       photoUploadPath,
+      textResponse,
+      checklistState,
       completionMethod,
       scheduledDate,
       programId,
@@ -21,6 +23,7 @@ export async function POST(req: NextRequest) {
     if (!generatedActivityId || !patientId) {
       return NextResponse.json({ error: "generatedActivityId and patientId required" }, { status: 400 });
     }
+    let canonicalPatientId: string = String(patientId);
 
     const admin = createAdminClient();
     if (!admin) {
@@ -29,8 +32,17 @@ export async function POST(req: NextRequest) {
 
     // Verify ownership: clientId must own patientId, or therapist owns patient
     if (clientId) {
-      const { data: patient } = await admin.from("patients").select("id, client_user_id, therapist_id").eq("id", patientId).maybeSingle();
-      if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+      let patient: any = null;
+      {
+        const { data } = await admin.from("patients").select("id, client_user_id, therapist_id").eq("id", patientId).maybeSingle();
+        if (data) patient = data;
+        else {
+          const { data: byClient } = await admin.from("patients").select("id, client_user_id, therapist_id").eq("client_user_id", patientId).maybeSingle();
+          if (byClient) patient = byClient;
+        }
+      }
+      if (!patient) return NextResponse.json({ error: "Patient not found — no patient linked to this account" }, { status: 404 });
+      canonicalPatientId = patient.id;
       const isOwner = patient.client_user_id === clientId;
       // Also allow if patient is linked via invitation/does not yet have client_user_id but email matches — handled via therapist ownership fallback
       if (!isOwner) {
@@ -45,14 +57,14 @@ export async function POST(req: NextRequest) {
 
     // Verify activity is assigned to this patient's home program (prevents stray submissions to unassigned activities)
     {
-      const { data: programs } = await admin.from("home_programs").select("id").eq("patient_id", patientId);
+      const { data: programs } = await admin.from("home_programs").select("id").eq("patient_id", canonicalPatientId);
       const progIds = (programs || []).map(p => p.id);
       if (progIds.length > 0) {
         const { data: linked } = await admin.from("program_steps").select("id").in("program_id", progIds).eq("generated_activity_id", generatedActivityId).limit(1);
         // If not linked via program_steps, allow only if generated_activities.patient_id matches (origin) — still attached check via origin
         if (!linked || linked.length === 0) {
           const { data: act } = await admin.from("generated_activities").select("patient_id, creator_id").eq("id", generatedActivityId).maybeSingle();
-          if (act && act.patient_id !== patientId) {
+          if (act && act.patient_id !== canonicalPatientId) {
             // Not assigned via Home Program → block private data leak across patients
             return NextResponse.json({ error: "Activity not assigned to this home program" }, { status: 403 });
           }
@@ -65,16 +77,19 @@ export async function POST(req: NextRequest) {
     let effectiveStepSubId: string | null = stepSubmissionId || null;
 
     // Create/update activity_completion
+    const isWritten = typeof textResponse === "string" || Array.isArray(checklistState);
     const row: Record<string, unknown> = {
       generated_activity_id: generatedActivityId,
       step_submission_id: effectiveStepSubId,
-      patient_id: patientId,
+      patient_id: canonicalPatientId,
       client_id: clientId || null,
       drawing_data_url: drawingDataUrl ? String(drawingDataUrl).slice(0, 5000000) : null, // cap
       drawing_storage_path: drawingStoragePath || null,
       drawing_strokes: drawingStrokes || [],
       photo_upload_path: photoUploadPath || null,
-      completion_method: completionMethod || (photoUploadPath ? "photo" : "canvas"),
+      text_response: typeof textResponse === "string" ? String(textResponse).slice(0, 10000) : null,
+      checklist_state: Array.isArray(checklistState) ? checklistState : [],
+      completion_method: completionMethod || (photoUploadPath ? "photo" : isWritten ? "text" : "canvas"),
       completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -127,18 +142,31 @@ export async function GET(req: NextRequest) {
     const requesterId = searchParams.get("requesterId") || searchParams.get("clientUserId") || searchParams.get("clientId");
 
     const admin = createAdminClient();
-    if (!admin) return NextResponse.json({ completions: [] });
+    if (!admin) {
+      if (patientId || stepSubmissionId || generatedActivityId) {
+        return NextResponse.json({ error: "Database not configured — run Supabase migrations", code: "DB_NOT_CONFIGURED" }, { status: 503 });
+      }
+      return NextResponse.json({ completions: [] });
+    }
 
     // Ownership check when patientId is filtered: requester must own that patient
     if (patientId && requesterId) {
-      const { data: pat } = await admin.from("patients").select("client_user_id, therapist_id").eq("id", patientId).maybeSingle();
-      if (!pat) return NextResponse.json({ completions: [] });
+      let pat: any = null;
+      {
+        const { data } = await admin.from("patients").select("client_user_id, therapist_id").eq("id", patientId).maybeSingle();
+        if (data) pat = data;
+        else {
+          const { data: byClient } = await admin.from("patients").select("client_user_id, therapist_id").eq("client_user_id", patientId).maybeSingle();
+          if (byClient) pat = byClient;
+        }
+      }
+      if (!pat) return NextResponse.json({ error: "Patient not found — no patient linked to this account yet." }, { status: 404 });
       const owns = pat.client_user_id === requesterId || pat.therapist_id === requesterId;
       if (!owns) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     } else if (patientId && !requesterId) {
       // Require proof for patient-scoped listing — without requester, deny to prevent patientId guessing
       // Exception: stepSubmissionId path below will verify via submission ownership
-      if (!stepSubmissionId) return NextResponse.json({ error: "requesterId required for patient completions" }, { status: 403 });
+      if (!stepSubmissionId) return NextResponse.json({ error: "requesterId required — pass your user id as requesterId or clientUserId" }, { status: 403 });
     }
 
     // When stepSubmissionId is given, verify it belongs to requester’s patient if requester supplied

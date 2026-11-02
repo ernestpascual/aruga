@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { User } from "@supabase/supabase-js";
 import { createClient } from "./client";
 import { Profile, UserRole, ClientCategory, Discipline } from "@/types/database";
+import { isDemoUser } from "./demo-helpers";
 
 interface AuthContextType {
   user: User | null;
@@ -118,67 +119,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (error) {
-      if (email.endsWith("@aruga.local") || email.includes(".demo@")) {
-        // Robust demo bypass mode fallback: ensures demo accounts always work even if offline
-        const isTherapist = email.includes("therapist");
-        const isPedia = email.includes("pedia");
-        const isTeen = email.includes("teen") || email.includes("adolescent");
-        const isOld = email.includes("elderly") || email.includes("senior") || email.includes("old") || email.includes("arthur");
-        const clientCat: ClientCategory = isPedia ? "pedia" : isTeen ? "adolescent" : isOld ? "old_people" : "adult";
-        const demoId = isTherapist
-          ? "11111111-1111-4111-8111-111111111111"
-          : isPedia
-          ? "22222222-2222-4222-8222-222222222223"
-          : isOld
-          ? "22222222-2222-4222-8222-222222222224"
-          : "22222222-2222-4222-8222-222222222222";
-
-        const mockDemoUser = {
-          id: demoId,
-          email,
-          app_metadata: {},
-          user_metadata: {
-            is_demo: true,
-            role: isTherapist ? "therapist" : "client",
-            client_category: clientCat,
-            name: isTherapist
-              ? "Dr. Elena Ramos, OTR/L"
-              : isPedia
-              ? "Leo Chen"
-              : isTeen
-              ? "Maya Patel"
-              : isOld
-              ? "Arthur Pendelton"
-              : "Marcus Vance",
-          },
-          aud: "authenticated",
-          created_at: new Date().toISOString(),
-        } as unknown as User;
-
-        setUser(mockDemoUser);
-        setProfile({
-          id: demoId,
-          role: isTherapist ? "therapist" : "client",
-          display_name: isTherapist
-            ? "Dr. Elena Ramos, OTR/L"
-            : isPedia
-            ? "Leo Chen"
-            : isTeen
-            ? "Maya Patel"
-            : isOld
-            ? "Arthur Pendelton"
-            : "Marcus Vance",
-          discipline: isTherapist ? ("OT" as Discipline) : null,
-          client_category: clientCat,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-
-        return {
-          role: isTherapist ? ("therapist" as UserRole) : ("client" as UserRole),
-          clientCategory: clientCat,
-        };
-      }
       return { error: error.message };
     }
 
@@ -286,6 +226,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient();
     if (!supabase) return { error: "Authentication service not initialized" };
 
+    // Demo / mock users have no real auth session — update local state only
+    // (no DB row, RLS would reject empty auth.uid()).
+    if (isDemoUser(user, profile)) {
+      const localUpdates: Partial<Profile> & { updated_at: string } = {
+        ...updates,
+        updated_at: new Date().toISOString(),
+      };
+      setProfile((prev) => (prev ? { ...prev, ...localUpdates } : prev));
+      return {};
+    }
+
     // Ensure required columns are present — upsert path inserts a new row if none exists yet,
     // and Postgres rejects NULL for `role`/`display_name` (schema NOT NULL).
     const fallbackRole = (profile?.role || (user.user_metadata as Record<string, unknown>)?.role || "client") as UserRole;
@@ -304,8 +255,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       updated_at: new Date().toISOString(),
     };
 
-    // Prefer update (profile row should already exist via auth trigger). Fall back to upsert
+    // Prefer update (profile row should already exist via auth trigger). Fall back to insert
     // only if the update matched zero rows — preserves self-heal without risking null `role`.
+    // With 20261102 RLS fix, INSERT is now allowed for id = auth.uid().
     const { data: updatedRow, error: updateError } = await supabase
       .from("profiles")
       .update(cleanUpdates)
@@ -315,12 +267,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     let error = updateError;
     if (!updateError && !updatedRow) {
-      const upsertRes = await supabase.from("profiles").upsert(cleanUpdates);
-      error = upsertRes.error;
+      const { error: insertError } = await supabase.from("profiles").insert(cleanUpdates);
+      error = insertError ?? null;
+      // If insert failed due to conflict (row was created concurrently), retry update once
+      if (error && error.message.includes("duplicate key")) {
+        const retry = await supabase.from("profiles").update(cleanUpdates).eq("id", user.id).select("id").maybeSingle();
+        error = retry.error ?? null;
+      }
     }
 
     if (error) {
-      return { error: error.message };
+      // Surface actionable hint for stale local RLS
+      const hint = error.message.includes("row-level security")
+        ? `${error.message} — run supabase/RUN_ONCE_FIX_PROFILES_RLS.sql in Supabase SQL Editor, then retry.`
+        : error.message;
+      return { error: hint };
     }
 
     // Sync demographic changes to linked patients record

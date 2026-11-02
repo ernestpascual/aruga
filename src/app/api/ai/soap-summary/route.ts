@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMockStore } from "@/lib/supabase/mock-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createMetaOpenAiClient, getMetaConfig } from "@/lib/meta/client";
+
+export const maxDuration = 60;
 import { deidentifyClinicalText } from "@/lib/hipaa/de-identify";
 import { logAuditEvent } from "@/lib/hipaa/audit";
 
@@ -14,7 +15,6 @@ interface SoapSummaryPayload {
   plan?: string;
   clientName?: string;
   forceRegenerate?: boolean;
-  isDemo?: boolean;
 }
 
 function cleanText(txt?: string | null): string {
@@ -88,56 +88,34 @@ export async function GET(req: NextRequest) {
     }
 
     const admin = createAdminClient();
-
-    // 1. Check database cache
-    if (admin) {
-      if (targetType === "soap_note") {
-        const { data, error } = await admin
-          .from("soap_notes")
-          .select("id, client_summary")
-          .eq("id", targetId)
-          .maybeSingle();
-
-        if (!error && data?.client_summary) {
-          return NextResponse.json({
-            summary: data.client_summary,
-            cached: true,
-            source: "database_cache",
-          });
-        }
-      } else {
-        const { data, error } = await admin
-          .from("submission_reviews")
-          .select("id, client_summary")
-          .or(`id.eq.${targetId},submission_id.eq.${targetId}`)
-          .maybeSingle();
-
-        if (!error && data?.client_summary) {
-          return NextResponse.json({
-            summary: data.client_summary,
-            cached: true,
-            source: "database_cache",
-          });
-        }
-      }
+    if (!admin) {
+      return NextResponse.json({ error: "Service unavailable: database not configured" }, { status: 503 });
     }
 
-    // 2. Check fallback mockStore cache
-    const store = getMockStore();
     if (targetType === "soap_note") {
-      const note = store.soapNotes.find((n) => n.id === targetId);
-      if (note?.client_summary) {
+      const { data, error } = await admin
+        .from("soap_notes")
+        .select("id, client_summary")
+        .eq("id", targetId)
+        .maybeSingle();
+
+      if (!error && data?.client_summary) {
         return NextResponse.json({
-          summary: note.client_summary,
+          summary: data.client_summary,
           cached: true,
           source: "database_cache",
         });
       }
     } else {
-      const review = store.reviews.find((r) => r.id === targetId || r.submission_id === targetId);
-      if (review?.client_summary) {
+      const { data, error } = await admin
+        .from("submission_reviews")
+        .select("id, client_summary")
+        .or(`id.eq.${targetId},submission_id.eq.${targetId}`)
+        .maybeSingle();
+
+      if (!error && data?.client_summary) {
         return NextResponse.json({
-          summary: review.client_summary,
+          summary: data.client_summary,
           cached: true,
           source: "database_cache",
         });
@@ -170,60 +148,37 @@ export async function POST(req: NextRequest) {
     } = body;
 
     const admin = createAdminClient();
-    const store = getMockStore();
+    if (!admin) {
+      return NextResponse.json({ error: "Service unavailable: database not configured" }, { status: 503 });
+    }
 
     // STEP 1: Check Database Cache First (Zero AI credits!)
     if (!forceRegenerate && targetId) {
-      if (admin) {
-        if (targetType === "soap_note") {
-          const { data, error } = await admin
-            .from("soap_notes")
-            .select("id, client_summary")
-            .eq("id", targetId)
-            .maybeSingle();
-
-          if (!error && data?.client_summary && data.client_summary.trim().length > 0) {
-            return NextResponse.json({
-              summary: data.client_summary,
-              cached: true,
-              source: "database_cache",
-              message: "Loaded directly from database cache. Zero AI credits consumed.",
-            });
-          }
-        } else {
-          const { data, error } = await admin
-            .from("submission_reviews")
-            .select("id, client_summary")
-            .or(`id.eq.${targetId},submission_id.eq.${targetId}`)
-            .maybeSingle();
-
-          if (!error && data?.client_summary && data.client_summary.trim().length > 0) {
-            return NextResponse.json({
-              summary: data.client_summary,
-              cached: true,
-              source: "database_cache",
-              message: "Loaded directly from database cache. Zero AI credits consumed.",
-            });
-          }
-        }
-      }
-
-      // Check in-memory mock store
       if (targetType === "soap_note") {
-        const note = store.soapNotes.find((n) => n.id === targetId);
-        if (note?.client_summary && note.client_summary.trim().length > 0) {
+        const { data, error } = await admin
+          .from("soap_notes")
+          .select("id, client_summary")
+          .eq("id", targetId)
+          .maybeSingle();
+
+        if (!error && data?.client_summary && data.client_summary.trim().length > 0) {
           return NextResponse.json({
-            summary: note.client_summary,
+            summary: data.client_summary,
             cached: true,
             source: "database_cache",
             message: "Loaded directly from database cache. Zero AI credits consumed.",
           });
         }
       } else {
-        const rev = store.reviews.find((r) => r.id === targetId || r.submission_id === targetId);
-        if (rev?.client_summary && rev.client_summary.trim().length > 0) {
+        const { data, error } = await admin
+          .from("submission_reviews")
+          .select("id, client_summary")
+          .or(`id.eq.${targetId},submission_id.eq.${targetId}`)
+          .maybeSingle();
+
+        if (!error && data?.client_summary && data.client_summary.trim().length > 0) {
           return NextResponse.json({
-            summary: rev.client_summary,
+            summary: data.client_summary,
             cached: true,
             source: "database_cache",
             message: "Loaded directly from database cache. Zero AI credits consumed.",
@@ -286,31 +241,16 @@ export async function POST(req: NextRequest) {
 
     // STEP 3: Cache and Persist in Database so subsequent calls are 100% free
     if (targetId) {
-      if (admin) {
-        if (targetType === "soap_note") {
-          await admin
-            .from("soap_notes")
-            .update({ client_summary: generatedSummary, updated_at: new Date().toISOString() })
-            .eq("id", targetId);
-        } else {
-          await admin
-            .from("submission_reviews")
-            .update({ client_summary: generatedSummary, updated_at: new Date().toISOString() })
-            .or(`id.eq.${targetId},submission_id.eq.${targetId}`);
-        }
-      }
-
-      // Also update mock store for immediate client-side consistency
       if (targetType === "soap_note") {
-        const noteIdx = store.soapNotes.findIndex((n) => n.id === targetId);
-        if (noteIdx !== -1) {
-          store.soapNotes[noteIdx].client_summary = generatedSummary;
-        }
+        await admin
+          .from("soap_notes")
+          .update({ client_summary: generatedSummary, updated_at: new Date().toISOString() })
+          .eq("id", targetId);
       } else {
-        const revIdx = store.reviews.findIndex((r) => r.id === targetId || r.submission_id === targetId);
-        if (revIdx !== -1) {
-          store.reviews[revIdx].client_summary = generatedSummary;
-        }
+        await admin
+          .from("submission_reviews")
+          .update({ client_summary: generatedSummary, updated_at: new Date().toISOString() })
+          .or(`id.eq.${targetId},submission_id.eq.${targetId}`);
       }
     }
 

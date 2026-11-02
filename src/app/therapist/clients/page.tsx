@@ -29,12 +29,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/supabase/auth-context";
-import { isDemoUser } from "@/lib/supabase/demo-helpers";
 import { Patient } from "@/types/database";
 
 export default function TherapistClientsPage() {
-  const { user, profile } = useAuth();
-  const isDemo = isDemoUser(user, profile);
+  const { user } = useAuth();
+  const isDemo = false as const;
   const [clients, setClients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -240,7 +239,7 @@ Note: For client privacy and safety, temporary credentials are automatically del
     }
     try {
       setLoading(true);
-      const url = `/api/therapist/clients?therapistId=${user.id}&isDemo=${isDemo}`;
+      const url = `/api/therapist/clients?therapistId=${user.id}&isDemo=false`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.clients) {
@@ -261,7 +260,7 @@ Note: For client privacy and safety, temporary credentials are automatically del
     return () => {
       window.removeEventListener("aruga:notification-action", handleRefresh);
     };
-  }, [user?.id, isDemo]);
+  }, [user?.id]);
 
   const isPediatricInput = typeof age === "number" && age < 18;
 

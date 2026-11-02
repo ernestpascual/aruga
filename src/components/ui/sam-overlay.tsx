@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { Eye, EyeOff, Layers, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Layers, Sparkles, Activity, Settings2 } from "lucide-react";
 import { Button } from "./button";
+import { BiomechLiveHud, BiomechSkeletonOverlay, BiomechInVideoHud, BiomechMaskControls, BiomechMaskStyle, DEFAULT_BIOMECH_MASK } from "@/components/therapist/BiomechOverlay";
 
 interface SamBox {
   frame_index?: number;
@@ -27,6 +28,8 @@ interface SamOverlayProps {
   objectConcept?: string;
   modelProvenance?: string;
   className?: string;
+  mhr?: any | null;
+  onTimeUpdateExternal?: (t: number) => void;
 }
 
 export function SamOverlay({
@@ -36,6 +39,8 @@ export function SamOverlay({
   objectConcept,
   modelProvenance = "SAM 3.1: object segmentation",
   className = "",
+  mhr = null,
+  onTimeUpdateExternal,
 }: SamOverlayProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,6 +48,9 @@ export function SamOverlay({
   const [showOverlay, setShowOverlay] = useState(true);
   const [activeBox, setActiveBox] = useState<SamBox | null>(null);
   const [activeSvg, setActiveSvg] = useState<string | null>(null);
+  const [showBiomech, setShowBiomech] = useState(true);
+  const [biomechStyle, setBiomechStyle] = useState<BiomechMaskStyle>({ color: "#2dd4bf", ...DEFAULT_BIOMECH_MASK });
+  const [showBiomechControls, setShowBiomechControls] = useState(false);
 
   // Sync bounding boxes and masks to video currentTime
   useEffect(() => {
@@ -81,7 +89,9 @@ export function SamOverlay({
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
+      const t = videoRef.current.currentTime;
+      setCurrentTime(t);
+      onTimeUpdateExternal?.(t);
     }
   };
 
@@ -104,82 +114,79 @@ export function SamOverlay({
       {/* SAM 3.1 Overlay Layer */}
       {showOverlay && activeBox && (
         <div className="absolute inset-0 pointer-events-none">
-          {/* SVG Canvas for Masks and Boxes */}
           <svg className="w-full h-full absolute inset-0" viewBox="0 0 1 1" preserveAspectRatio="none">
-            {/* Segmentation mask if available */}
             {activeSvg && (
-              <path
-                d={activeSvg}
-                fill="rgba(20, 184, 166, 0.25)"
-                stroke="#14b8a6"
-                strokeWidth="0.003"
-              />
+              <path d={activeSvg} fill="rgba(20, 184, 166, 0.25)" stroke="#14b8a6" strokeWidth="0.003" />
             )}
-
-            {/* Bounding Box: normalized [ymin, xmin, ymax, xmax] 0-1 */}
             {(() => {
               const [ymin, xmin, ymax, xmax] = activeBox.box;
-              return (
-                <rect
-                  x={xmin}
-                  y={ymin}
-                  width={xmax - xmin}
-                  height={ymax - ymin}
-                  fill="rgba(20, 184, 166, 0.15)"
-                  stroke="#2dd4bf"
-                  strokeWidth="0.003"
-                  className="transition-all duration-100"
-                />
-              );
+              return <rect x={xmin} y={ymin} width={xmax - xmin} height={ymax - ymin} fill="rgba(20, 184, 166, 0.15)" stroke="#2dd4bf" strokeWidth="0.003" className="transition-all duration-100" />;
             })()}
           </svg>
-
-          {/* Bounding Box Label Tag */}
           {(() => {
             const [ymin, xmin] = activeBox.box;
             const top = `${ymin * 100}%`;
             const left = `${xmin * 100}%`;
-            const confidencePct = activeBox.confidence
-              ? Math.round(activeBox.confidence * 100)
-              : 95;
-
+            const confidencePct = activeBox.confidence ? Math.round(activeBox.confidence * 100) : 95;
             return (
-              <div
-                style={{ top, left }}
-                className="absolute -translate-y-full transform bg-teal-950/90 border border-teal-500/80 text-teal-200 text-[11px] font-mono px-1.5 py-0.5 rounded shadow flex items-center gap-1 z-10"
-              >
+              <div style={{ top, left }} className="absolute -translate-y-full transform bg-teal-950/90 border border-teal-500/80 text-teal-200 text-[11px] font-mono px-1.5 py-0.5 rounded shadow flex items-center gap-1 z-10">
                 <Layers className="w-3 h-3 text-teal-400" />
-                <span>
-                  {activeBox.label} ({confidencePct}%)
-                </span>
+                <span>{activeBox.label} ({confidencePct}%)</span>
               </div>
             );
           })()}
         </div>
       )}
 
-      {/* Control Bar Overlay for SAM */}
-      {hasSamData && (
+      {/* Biomech skeleton + in-video HUD — same clipping as SAM engine */}
+      {mhr?.frames?.length > 0 && (
+        <>
+          <BiomechSkeletonOverlay mhr={mhr} currentTime={currentTime} mediaSize={mhr?.samPerson?.mediaSize ?? (mhr?.samPerson?.mediaSize as any)} style={biomechStyle} />
+          {showBiomech && <BiomechInVideoHud mhr={mhr} currentTime={currentTime} />}
+        </>
+      )}
+
+      {/* Top control bar: SAM + Biomech toggles */}
+      {(hasSamData || mhr) && (
         <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => setShowOverlay(!showOverlay)}
-            className="h-8 bg-zinc-900/90 backdrop-blur-md border border-zinc-700/80 text-xs text-zinc-200 hover:bg-zinc-800 shadow"
-          >
-            {showOverlay ? (
-              <>
-                <Eye className="w-3.5 h-3.5 text-teal-400 mr-1.5" />
-                SAM Tracking On
-              </>
-            ) : (
-              <>
-                <EyeOff className="w-3.5 h-3.5 text-zinc-400 mr-1.5" />
-                SAM Tracking Off
-              </>
-            )}
-          </Button>
+          {hasSamData && (
+            <Button type="button" size="sm" variant="secondary" onClick={() => setShowOverlay(!showOverlay)} className="h-7 bg-zinc-900/90 backdrop-blur-md border border-zinc-700/80 text-xs text-zinc-200 hover:bg-zinc-800 shadow">
+              {showOverlay ? <><Eye className="w-3.5 h-3.5 text-teal-400 mr-1.5" /> SAM On</> : <><EyeOff className="w-3.5 h-3.5 text-zinc-400 mr-1.5" /> SAM Off</>}
+            </Button>
+          )}
+          {mhr?.frames?.length > 0 && (
+            <>
+              <Button type="button" size="sm" variant="secondary" onClick={() => setShowBiomech(!showBiomech)} className="h-7 bg-zinc-900/90 backdrop-blur-md border border-sky-700/40 text-xs text-sky-200 hover:bg-zinc-800 shadow">
+                <Activity className="w-3.5 h-3.5 text-sky-400 mr-1.5" /> {showBiomech ? "Measures On" : "Measures Off"}
+              </Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => setShowBiomechControls(!showBiomechControls)} className="h-7 w-7 p-0 bg-zinc-900/90 backdrop-blur-md border border-zinc-700/80 text-zinc-400 hover:bg-zinc-800">
+                <Settings2 className="w-3.5 h-3.5" />
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Biomech mask adjustments — like SAM engine */}
+      {mhr?.frames?.length > 0 && showBiomechControls && (
+        <div className="px-3 py-2 bg-zinc-900/95 border-t border-zinc-800 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-sky-300 flex items-center gap-1"><Settings2 className="w-3 h-3" /> Biomech mask appearance</span>
+            <span className="text-[10px] text-zinc-500">{mhr.frames.length} frames • t={currentTime.toFixed(2)}s</span>
+          </div>
+          <BiomechMaskControls value={biomechStyle} onChange={setBiomechStyle} />
+          <p className="text-[10px] text-zinc-500">Skeleton follows SAM segments in video — adjust color/opacity/thickness like SAM engine.</p>
+        </div>
+      )}
+
+      {/* Biomech live HUD + ranges — updates as segments move (below video, detailed) */}
+      {mhr?.frames?.length > 0 && (
+        <div className="px-3 py-2 bg-zinc-950/95 border-t border-zinc-800 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-sky-300 flex items-center gap-1"><Activity className="w-3 h-3" /> Live ranges — moves with video</span>
+            <span className="text-[10px] font-mono text-zinc-500">{mhr.modelId ?? "MHR"} • {mhr.frames.length} frames • t={currentTime.toFixed(2)}s</span>
+          </div>
+          <BiomechLiveHud mhr={mhr} currentTime={currentTime} />
         </div>
       )}
 
@@ -189,9 +196,7 @@ export function SamOverlay({
           <div className="flex items-center gap-1.5">
             <Sparkles className="w-3 h-3 text-teal-400" />
             <span className="font-mono text-zinc-300">{modelProvenance}</span>
-            {objectConcept && (
-              <span className="text-zinc-500">• Target: &quot;{objectConcept}&quot;</span>
-            )}
+            {objectConcept && <span className="text-zinc-500">• Target: &quot;{objectConcept}&quot;</span>}
           </div>
           <span className="text-zinc-500">{boxes.length} tracked frames</span>
         </div>

@@ -183,7 +183,7 @@ export function ActivityGeneratorModal({
               </Button>
             </div>
           </div>
-          <p className="text-[11px] text-zinc-500 text-center">{generateImage ? "Generation may take 10–20s for Muse Image. A mock SVG is shown when no API key is configured." : "Text-only mode — Spark spec only, no image generation."} </p>
+          <p className="text-[11px] text-zinc-500 text-center">{generateImage ? "Generation may take 10–20s for Muse Image." : "Text-only mode — Spark spec only, no image generation."} </p>
         </CardContent>
       </Card>
     </div>

@@ -6,7 +6,6 @@
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getMockStore } from "@/lib/supabase/mock-store";
 import { AuditEvent } from "@/types/database";
 
 export type HipaaAuditAction =
@@ -37,8 +36,8 @@ export interface LogAuditParams {
 }
 
 /**
- * Logs an ePHI audit event to the immutable public.audit_events table
- * and to the in-memory fallback store for offline/demo verification.
+ * Logs an ePHI audit event to the immutable public.audit_events table.
+ * No mock-store mirroring — audit events must persist to the DB or fail visibly.
  */
 export async function logAuditEvent(params: LogAuditParams): Promise<AuditEvent | null> {
   const effectiveActorId = params.actorId || params.userId || null;
@@ -75,12 +74,7 @@ export async function logAuditEvent(params: LogAuditParams): Promise<AuditEvent 
       });
     }
 
-    // Always mirror in mock store for predictable test auditing
-    const store = getMockStore();
-    if (store && Array.isArray(store.auditEvents)) {
-      store.auditEvents.push(eventPayload);
-    }
-
+    // DB is the single source of truth — no mock-store mirroring.
     return eventPayload;
   } catch (err) {
     // Fail-open for clinical continuity, but log warning

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { draftTherapistFeedback } from "@/lib/meta-ai";
 import { MetaApiError } from "@/lib/meta/errors";
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

@@ -24,11 +24,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { Discipline } from "@/types/database";
-import { isDemoUser } from "@/lib/supabase/demo-helpers";
 
 export default function TherapistProfilePage() {
   const { profile, user, updateProfile, changePassword } = useAuth();
-  const isDemo = isDemoUser(user, profile);
 
   const [displayName, setDisplayName] = useState("");
   const [discipline, setDiscipline] = useState<Discipline>("OT");
@@ -90,25 +88,15 @@ export default function TherapistProfilePage() {
     if (profile) {
       setDisplayName(profile.display_name || "");
       setDiscipline((profile.discipline as Discipline) || "OT");
-      setLicenseNumber(profile.license_number || (isDemo ? "OTR-109482-NY" : ""));
-      setFacilityName(profile.facility_name || (isDemo ? "Metro Neurological & Pediatric Center" : ""));
-      setSpecialties(
-        profile.specialties ||
-          (isDemo
-            ? "Upper Extremity Neurorehabilitation, Pediatric Fine Motor & Bilateral Integration"
-            : "")
-      );
-      setPhone(profile.phone || (isDemo ? "+1 (555) 234-8910" : ""));
-      setOfficeHours(profile.office_hours || (isDemo ? "Mon - Thu, 8:30 AM - 4:30 PM" : ""));
-      setCaseloadFocus(profile.caseload_focus || (isDemo ? "Both Pediatric and Adult Rehabilitation" : ""));
-      setBio(
-        profile.bio ||
-          (isDemo
-            ? "Licensed Occupational Therapist specializing in functional motor re-education, stroke recovery, and play-based pediatric developmental milestones."
-            : "")
-      );
+      setLicenseNumber(profile.license_number || "");
+      setFacilityName(profile.facility_name || "");
+      setSpecialties(profile.specialties || "");
+      setPhone(profile.phone || "");
+      setOfficeHours(profile.office_hours || "");
+      setCaseloadFocus(profile.caseload_focus || "");
+      setBio(profile.bio || "");
     }
-  }, [profile, isDemo]);
+  }, [profile]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

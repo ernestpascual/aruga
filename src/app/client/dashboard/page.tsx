@@ -28,8 +28,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { HighlightsStrip } from "@/components/client/HighlightsStrip";
 import { useAuth } from "@/lib/supabase/auth-context";
-import { isDemoUser } from "@/lib/supabase/demo-helpers";
 import { HomeProgram } from "@/types/database";
 
 interface TherapistLinkData {
@@ -61,7 +61,6 @@ export default function ClientDashboardPage() {
   const [cancellingLink, setCancellingLink] = useState(false);
   const [linkMessage, setLinkMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const isDemo = isDemoUser(user, profile);
   const category = profile?.client_category || "adult";
   const isPedia = category === "pedia";
   const isAdolescent = category === "adolescent";
@@ -81,7 +80,7 @@ export default function ClientDashboardPage() {
   useEffect(() => {
     fetchTherapistLink();
 
-    if (user?.id && !isDemo) {
+    if (user?.id) {
       fetch(`/api/client/submissions?clientUserId=${user.id}`)
         .then((res) => res.json())
         .then((data) => {
@@ -105,7 +104,7 @@ export default function ClientDashboardPage() {
 
     const handleRefresh = () => {
       fetchTherapistLink();
-      if (user?.id && !isDemo) {
+      if (user?.id) {
         fetch(`/api/client/submissions?clientUserId=${user.id}`)
           .then((res) => res.json())
           .then((data) => {
@@ -131,7 +130,7 @@ export default function ClientDashboardPage() {
     return () => {
       window.removeEventListener("aruga:notification-action", handleRefresh);
     };
-  }, [user?.id, isDemo]);
+  }, [user?.id]);
 
   const handleRespondInvitation = async (action: "accept" | "decline") => {
     if (!user?.id || respondingLink) return;
@@ -200,10 +199,9 @@ export default function ClientDashboardPage() {
   };
 
   useEffect(() => {
-    // In live or demo mode, load client program
     const params = new URLSearchParams();
     if (user?.id) params.set("clientUserId", user.id);
-    params.set("isDemo", isDemo ? "true" : "false");
+    params.set("isDemo", "false");
 
     fetch(`/api/therapist/programs?${params.toString()}`)
       .then((res) => res.json())
@@ -213,28 +211,15 @@ export default function ClientDashboardPage() {
             ? data.programs.find((p: HomeProgram) => p.title.toLowerCase().includes("playful") || p.title.toLowerCase().includes("pincer")) || data.programs[0]
             : data.programs[0];
           setActiveProgram(matched);
-        } else if (isDemo) {
-          // Demo fallback
-          setActiveProgram({
-            id: isPedia ? "44444444-4444-4444-8444-444444444445" : "44444444-4444-4444-8444-444444444444",
-            patient_id: isPedia ? "33333333-3333-4333-8333-333333333334" : "33333333-3333-4333-8333-333333333333",
-            title: isPedia ? "Playful Pincer Grasp & Bilateral Toy Home Program" : "Tabletop Grasp & Precision Release Home Program",
-            main_instructions: isPedia
-              ? "Engage in 3 fun play exercises using dough, pegs, and containers to strengthen finger dexterity."
-              : "Perform 3 structured tabletop repetitions focusing on smooth finger extension and controlled release.",
-            status: "active",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          } as unknown as HomeProgram);
         } else {
           setActiveProgram(null);
         }
       })
       .catch(() => {
-        if (!isDemo) setActiveProgram(null);
+        setActiveProgram(null);
       })
       .finally(() => setLoading(false));
-  }, [user?.id, isDemo, isPedia]);
+  }, [user?.id, isPedia]);
 
   // Ensure any temporary credentials provided by therapist are purged upon client session
   useEffect(() => {
@@ -370,14 +355,6 @@ export default function ClientDashboardPage() {
                 ? isPedia
                   ? `Hi ${profile.display_name}! Ready for Fun Practice?`
                   : `Welcome back, ${profile.display_name}!`
-                : isDemo
-                ? isPedia
-                  ? "Hi Leo! Ready for Fun Practice?"
-                  : isAdolescent
-                  ? "Welcome back, Maya!"
-                  : isGeriatric
-                  ? "Welcome back, Arthur!"
-                  : "Welcome back, Marcus!"
                 : "Welcome to your Care Portal"}
             </h1>
 
@@ -403,6 +380,9 @@ export default function ClientDashboardPage() {
         </div>
       </div>
 
+      {/* AGENT: Highlights — Monthly 7 adaptive (client view, read-only published) — prefer patients.id from linkData, fallback to user.id (API also accepts client_user_id) */}
+      <HighlightsStrip patientId={linkData?.patient?.id || user?.id} isTherapist={false} />
+
       {/* Gamification / Progress Highlights — even + extra padding */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-fr">
         {/* Practice Streak */}
@@ -413,21 +393,13 @@ export default function ClientDashboardPage() {
           </CardHeader>
           <CardContent className="p-4 sm:p-6 pt-0 flex-1 flex flex-col justify-center">
             <div className="text-2xl font-bold text-amber-400 flex items-center gap-2">
-              {isDemo ? "4 Days" : `${clientStats.streak} Days`}{" "}
+              {`${clientStats.streak} Days`}{" "}
               <span className="text-xs font-normal text-zinc-500">
-                {isDemo
-                  ? "🔥 In a row"
-                  : clientStats.streak > 0
-                  ? "Active streak"
-                  : "Start today"}
+                {clientStats.streak > 0 ? "Active streak" : "Start today"}
               </span>
             </div>
             <p className="text-[11px] text-zinc-500 mt-1">
-              {isDemo
-                ? "Next milestone: 5 day star"
-                : clientStats.streak > 0
-                ? "Consistency supports recovery"
-                : "Complete a home program to start streak"}
+              {clientStats.streak > 0 ? "Consistency supports recovery" : "Complete a home program to start streak"}
             </p>
           </CardContent>
         </Card>
@@ -442,14 +414,10 @@ export default function ClientDashboardPage() {
           </CardHeader>
           <CardContent className="p-4 sm:p-6 pt-0 flex-1 flex flex-col justify-center">
             <div className="text-2xl font-bold text-zinc-100">
-              {isDemo ? "12 Steps" : `${clientStats.stepsCompleted} Steps`}
+              {`${clientStats.stepsCompleted} Steps`}
             </div>
             <p className="text-[11px] text-zinc-500 mt-1">
-              {isDemo
-                ? "Supervised by Dr. Elena Ramos"
-                : clientStats.stepsCompleted > 0
-                ? "Recorded and submitted"
-                : "Awaiting first session"}
+              {clientStats.stepsCompleted > 0 ? "Recorded and submitted" : "Awaiting first session"}
             </p>
           </CardContent>
         </Card>
@@ -462,18 +430,10 @@ export default function ClientDashboardPage() {
           </CardHeader>
           <CardContent className="p-4 sm:p-6 pt-0 flex-1 flex flex-col justify-center">
             <div className="text-2xl font-bold text-teal-300">
-              {isDemo
-                ? "Reviewed"
-                : clientStats.reviewsCount > 0
-                ? `${clientStats.reviewsCount} Reviewed`
-                : "Pending"}
+              {clientStats.reviewsCount > 0 ? `${clientStats.reviewsCount} Reviewed` : "Pending"}
             </div>
             <p className="text-[11px] text-zinc-500 mt-1">
-              {isDemo
-                ? "Feedback published on last video"
-                : clientStats.reviewsCount > 0
-                ? "Clinician feedback received"
-                : "No clinician reviews yet"}
+              {clientStats.reviewsCount > 0 ? "Clinician feedback received" : "No clinician reviews yet"}
             </p>
           </CardContent>
         </Card>
@@ -488,21 +448,9 @@ export default function ClientDashboardPage() {
           </CardHeader>
           <CardContent className="p-4 sm:p-6 pt-0 flex-1 flex flex-col justify-center">
             <div className="text-2xl font-bold text-zinc-100">
-              {isDemo
-                ? isPedia
-                  ? "⭐ 18 Stars"
-                  : "85% Target"
-                : isPedia
-                ? `⭐ ${clientStats.submissionsCount * 3} Stars`
-                : `${Math.min(clientStats.submissionsCount * 25, 100)}% Target`}
+              {isPedia ? `⭐ ${clientStats.submissionsCount * 3} Stars` : `${Math.min(clientStats.submissionsCount * 25, 100)}% Target`}
             </div>
-            <p className="text-[11px] text-zinc-500 mt-1">
-              {isDemo
-                ? isPedia
-                  ? "Great job this week!"
-                  : "Upper extremity functional goal"
-                : "Active therapy plan target"}
-            </p>
+            <p className="text-[11px] text-zinc-500 mt-1">Active therapy plan target</p>
           </CardContent>
         </Card>
       </div>
@@ -548,27 +496,6 @@ export default function ClientDashboardPage() {
                         </span>
                       </div>
                     ))
-                  ) : isDemo ? (
-                    <>
-                      <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800 text-xs">
-                        <span className="font-semibold text-teal-400 block mb-0.5">Step 1</span>
-                        <span className="text-zinc-300 line-clamp-1">
-                          {isPedia ? "Peg Pick & Color Sort" : "Cylinder Cup Grasp & Lift"}
-                        </span>
-                      </div>
-                      <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800 text-xs">
-                        <span className="font-semibold text-teal-400 block mb-0.5">Step 2</span>
-                        <span className="text-zinc-300 line-clamp-1">
-                          {isPedia ? "Clay Pinch & Squash" : "Block Stacking Sequence"}
-                        </span>
-                      </div>
-                      <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800 text-xs">
-                        <span className="font-semibold text-teal-400 block mb-0.5">Step 3</span>
-                        <span className="text-zinc-300 line-clamp-1">
-                          {isPedia ? "Twist-Top Container" : "Forearm Supination"}
-                        </span>
-                      </div>
-                    </>
                   ) : (
                     <div className="sm:col-span-3 p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800 text-xs text-zinc-400 text-center">
                       Follow each prescribed exercise step in your active home program.
@@ -617,11 +544,7 @@ export default function ClientDashboardPage() {
                 <span>Therapist Note for Today:</span>
               </div>
               <p className="text-xs text-zinc-300 leading-relaxed">
-                {isDemo
-                  ? isPedia
-                    ? "Encourage Leo to use thumb and pointer finger tip-to-tip. Take breaks if his hands get tired!"
-                    : "Remember to keep your shoulder relaxed and elbow resting gently on the tabletop during forearm rotation."
-                  : activeProgram
+                {activeProgram
                   ? "Practice at a comfortable pace. Stop immediately if you experience pain or fatigue."
                   : "Once your clinician assigns your rehabilitation program, personalized daily reminders and precautions will appear here."}
               </p>
@@ -646,7 +569,7 @@ export default function ClientDashboardPage() {
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-zinc-100">
-                      {linkData.therapist?.display_name || (isDemo ? "Dr. Elena Ramos, OTR/L" : "Assigned Clinician")}
+                      {linkData.therapist?.display_name || "Assigned Clinician"}
                     </h4>
                     <p className="text-xs text-zinc-400">
                       {linkData.therapist?.discipline || "OT"}{linkData.therapist?.facility_name ? ` • ${linkData.therapist.facility_name}` : ""}

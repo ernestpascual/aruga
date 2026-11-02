@@ -36,6 +36,8 @@ export async function runSparkActivitySpec(params: {
     properties: {
       title: { type: "string" },
       instructions: { type: "string" },
+      worksheetKind: { type: "string", enum: ["drawable","written","mixed"] },
+      writtenTasks: { type: "array", items: { type: "object", properties: { step: { type: "integer" }, text: { type: "string" }, kind: { type: "string", enum: ["do","check","write"] } }, required: ["step","text","kind"], additionalProperties: false } },
       visualBrief: { type: "string" },
       refinedImagePrompt: { type: "string" },
       layoutSpec: {
@@ -60,7 +62,7 @@ export async function runSparkActivitySpec(params: {
       estimatedMinutes: { type: "integer" },
       warnings: { type: "array", items: { type: "string" } },
     },
-    required: ["title", "instructions", "visualBrief", "refinedImagePrompt", "layoutSpec", "difficulty", "estimatedMinutes", "warnings"],
+    required: ["title", "instructions", "worksheetKind", "writtenTasks", "visualBrief", "refinedImagePrompt", "layoutSpec", "difficulty", "estimatedMinutes", "warnings"],
     additionalProperties: false,
   };
 
@@ -99,7 +101,7 @@ export async function runSparkActivitySpec(params: {
     } else {
       body.response_format = { type: "json_object" };
     }
-    return client.chat.completions.create(body as never, { timeout: 30000, maxRetries: 1 } as never);
+    return client.chat.completions.create(body as never, { timeout: 55000, maxRetries: 1 } as never);
   }
 
   try {
@@ -255,6 +257,8 @@ export async function runSparkActivitySpec(params: {
       const patched: Record<string, unknown> = {
         title: partial.title ?? params.titleOverride ?? `Activity — ${params.ageBand}`,
         instructions: partial.instructions ?? "Complete the activity at your own pace.",
+        worksheetKind: (partial.worksheetKind as string) || "drawable",
+        writtenTasks: Array.isArray(partial.writtenTasks) ? partial.writtenTasks : [],
         visualBrief: partial.visualBrief ?? params.imagePrompt ?? `Therapy worksheet for ${params.ageBand}: ${(partial.instructions as string | undefined)?.slice(0, 200) ?? (partial.title as string | undefined) ?? "fine motor activity"} — black and white line art, bold outlines, A4 portrait, white background.`,
         refinedImagePrompt: partial.refinedImagePrompt ?? (partial.visualBrief as string | undefined) ?? (partial.title as string | undefined) ?? `Black and white line art therapy worksheet, thick clean outlines, A4 portrait, white background, no shading`,
         layoutSpec: {
@@ -326,13 +330,13 @@ export async function runSparkActivitySpec(params: {
   }
 }
 
-// Stage 2: Muse Image (or OpenAI-compatible image model) — line art generation
+// Stage 2: Muse Image — Meta-only line art generation via api.meta.ai
 export async function runMuseImage(prompt: string, opts?: { size?: string; model?: string }): Promise<{ imageUrl: string; revisedPrompt?: string; latencyMs: number; modelId: string }> {
   const config = getMetaConfig();
   const startTime = Date.now();
   const modelId = opts?.model || process.env.MUSE_IMAGE_MODEL_ID || process.env.IMAGE_MODEL_ID || DEFAULT_ACTIVITY_IMAGE_MODEL;
 
-  // Try OpenAI-compatible images.generate (works for OpenAI, Azure, and many Meta gateways exposing images API)
+  // Muse Image via Meta Model API (OpenAI SDK shape, Meta host api.meta.ai)
   try {
     const client = createMetaOpenAiClient();
     const result = await client.images.generate({
@@ -359,7 +363,14 @@ export async function runMuseImage(prompt: string, opts?: { size?: string; model
   }
 }
 
-// Mock fallback: deterministic SVG placeholder for AI_MODE=mock or no key
+/**
+ * @deprecated Mock fallback — do NOT use as a silent fallback in production code paths.
+ * This helper is retained only for isolated visual tests / Storybook snapshots.
+ * Callers MUST NOT silently fall back to this on API/DB failure; instead they
+ * should throw / propagate the error so the UI surfaces a failure state
+ * rather than rendering mock data as if it were real. If you are tempted to
+ * call this outside a test harness, throw an explicit error instead.
+ */
 export function buildMockActivitySvg(title: string, ageBand: string, category: string): { dataUrl: string; prompt: string } {
   const mockPrompt = `mock placeholder for ${ageBand}/${category}: ${title}`;
   // Simple A4-ish SVG with title + grid placeholder

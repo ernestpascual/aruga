@@ -29,11 +29,6 @@ import { Input } from "@/components/ui/input";
 import { MentionTextarea, ProgramMentionOption } from "@/components/ui/mention-textarea";
 import { Message, Patient } from "@/types/database";
 import { useAuth } from "@/lib/supabase/auth-context";
-import { isDemoUser } from "@/lib/supabase/demo-helpers";
-import {
-  DEMO_PATIENT_ID,
-  DEMO_PEDIATRIC_PATIENT_ID,
-} from "@/lib/supabase/mock-store";
 
 export default function TherapistMessagesPage() {
   return (
@@ -45,10 +40,9 @@ export default function TherapistMessagesPage() {
 
 function TherapistMessagesContent() {
   const { user, profile } = useAuth();
-  const isDemo = isDemoUser(user, profile);
 
   const searchParams = useSearchParams();
-  const initialPatientId = searchParams.get("patientId") || (isDemo ? DEMO_PATIENT_ID : "");
+  const initialPatientId = searchParams.get("patientId") || "";
 
   const [selectedPatientId, setSelectedPatientId] = useState(initialPatientId);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -68,6 +62,8 @@ function TherapistMessagesContent() {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
+  const unreadFetchRef = useRef<string | null>(null);
 
   // Helper to categorize patient demographic
   const getPatientCategory = (p: Patient): "pedia" | "adolescent" | "adult" | "geriatric" | "old_people" => {
@@ -86,7 +82,6 @@ function TherapistMessagesContent() {
     }
     const params = new URLSearchParams();
     params.set("therapistId", user.id);
-    params.set("isDemo", isDemo ? "true" : "false");
 
     fetch(`/api/therapist/clients?${params.toString()}`)
       .then((res) => res.json())
@@ -102,7 +97,7 @@ function TherapistMessagesContent() {
       })
       .catch(() => {})
       .finally(() => setLoadingCaseload(false));
-  }, [user?.id, isDemo, selectedPatientId]);
+  }, [user?.id, selectedPatientId]);
 
   const currentPatient =
     patients.find((p) => p.id === selectedPatientId) ||
@@ -116,11 +111,21 @@ function TherapistMessagesContent() {
       setMessages([]);
       return;
     }
+    if (!user?.id) {
+      setLoadingMessages(false);
+      return;
+    }
     try {
-      const res = await fetch(`/api/messages?patientId=${selectedPatientId}&isDemo=${isDemo}`);
+      const params = new URLSearchParams();
+      params.set("patientId", selectedPatientId);
+      params.set("requesterId", user.id);
+      const res = await fetch(`/api/messages?${params.toString()}`);
       const data = await res.json();
-      if (data.messages) {
+      if (res.ok && data.messages) {
         setMessages(data.messages);
+      } else if (data.error) {
+        // keep previous messages, surface empty only on 404 with no caseload
+        console.warn("messages fetch error", data.error);
       }
       if (data.availablePrograms) {
         setAvailablePrograms(data.availablePrograms);
@@ -132,12 +137,79 @@ function TherapistMessagesContent() {
     }
   };
 
+  const fetchUnread = async () => {
+    if (!user?.id) return;
+    // dedupe rapid polling
+    const key = user.id;
+    if (unreadFetchRef.current === key && document.hidden) return;
+    try {
+      const res = await fetch(`/api/messages/unread?requesterId=${user.id}`);
+      const data = await res.json();
+      if (res.ok && data.perPatient) {
+        setUnreadMap(data.perPatient);
+        // Broadcast total for nav badge
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("aruga:messages-unread", { detail: { totalUnread: data.totalUnread ?? 0, perPatient: data.perPatient } }));
+        }
+      }
+    } catch {}
+  };
+
+  const markRead = async (patientId: string) => {
+    if (!user?.id || !patientId) return;
+    // optimistic: zero out badge for this patient
+    setUnreadMap((prev) => {
+      if ((prev[patientId] ?? 0) === 0) return prev;
+      const next = { ...prev, [patientId]: 0 };
+      const total = Object.values(next).reduce((a, b) => a + b, 0);
+      if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("aruga:messages-unread", { detail: { totalUnread: total, perPatient: next } }));
+      return next;
+    });
+    try {
+      await fetch("/api/messages/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId, requesterId: user.id }),
+      });
+      // refresh unread counts after mark
+      fetchUnread();
+    } catch {}
+  };
+
   useEffect(() => {
+    if (!selectedPatientId || !user?.id) return;
     setLoadingMessages(true);
     fetchMessages();
-    const interval = setInterval(fetchMessages, 5000);
+    fetchUnread();
+    // mark read when opening thread
+    markRead(selectedPatientId);
+    const interval = setInterval(() => {
+      fetchMessages();
+      fetchUnread();
+    }, 5000);
     return () => clearInterval(interval);
-  }, [selectedPatientId, isDemo]);
+  }, [selectedPatientId, user?.id]);
+
+  // Also poll unread even when no patient selected (for badge)
+  useEffect(() => {
+    if (!user?.id) return;
+    fetchUnread();
+    const iv = setInterval(fetchUnread, 10000);
+    const onVis = () => { if (document.visibilityState === "visible") fetchUnread(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", onVis); };
+  }, [user?.id]);
+
+  // When messages are fetched, if latest message is from other party and thread is open, mark read
+  useEffect(() => {
+    if (!selectedPatientId || !user?.id || messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    if (last && last.sender_id !== user.id) {
+      // debounce mark read by 800ms to ensure user has seen content
+      const t = setTimeout(() => markRead(selectedPatientId), 800);
+      return () => clearTimeout(t);
+    }
+  }, [messages, selectedPatientId, user?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -190,6 +262,8 @@ function TherapistMessagesContent() {
         setInputText("");
         setSelectedMentionProgram(null);
         clearPending();
+        // therapist has now seen up to latest
+        markRead(selectedPatientId);
       }
     } catch {
     } finally {
@@ -415,6 +489,8 @@ function TherapistMessagesContent() {
               filteredPatients.map((p) => {
                 const isSelected = p.id === selectedPatientId;
                 const cat = getPatientCategory(p);
+                const unread = unreadMap[p.id] ?? 0;
+                const hasUnread = unread > 0;
 
                 return (
                   <button
@@ -427,6 +503,8 @@ function TherapistMessagesContent() {
                     className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-start gap-3 group relative ${
                       isSelected
                         ? "bg-teal-950/40 border-teal-500/50 shadow-sm"
+                        : hasUnread
+                        ? "bg-zinc-900 border-amber-500/40 hover:border-amber-500/60 hover:bg-zinc-800/50"
                         : "bg-zinc-900/60 border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-800/40"
                     }`}
                   >
@@ -457,9 +535,9 @@ function TherapistMessagesContent() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
                         <span
-                          className={`text-xs font-semibold truncate ${
-                            isSelected ? "text-teal-200" : "text-zinc-200 group-hover:text-zinc-100"
-                          }`}
+                          className={`text-xs truncate ${
+                            hasUnread ? "font-extrabold text-zinc-100" : "font-semibold"
+                          } ${isSelected ? "text-teal-200" : hasUnread ? "text-zinc-100" : "text-zinc-200 group-hover:text-zinc-100"}`}
                         >
                           {p.name}
                         </span>
@@ -493,7 +571,17 @@ function TherapistMessagesContent() {
                       )}
                     </div>
 
-                    {isSelected && (
+                    {hasUnread && !isSelected && (
+                      <span className="absolute right-2 top-2 flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-amber-500 text-[11px] font-bold text-zinc-950 shadow-md">
+                        {unread > 9 ? "9+" : unread}
+                      </span>
+                    )}
+                    {hasUnread && isSelected && (
+                      <span className="absolute right-2 top-2 flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-amber-500 text-[11px] font-bold text-zinc-950 shadow-md">
+                        {unread > 9 ? "9+" : unread}
+                      </span>
+                    )}
+                    {!hasUnread && isSelected && (
                       <span className="w-1.5 h-1.5 rounded-full bg-teal-400 absolute right-2 top-2" />
                     )}
                   </button>
@@ -625,7 +713,6 @@ function TherapistMessagesContent() {
               messages.map((msg) => {
                 const isMe =
                   msg.sender_id === user?.id ||
-                  (isDemo && msg.sender_id === "11111111-1111-4111-8111-111111111111") ||
                   (msg as any).sender_profile?.role === "therapist";
 
                 return (
@@ -637,11 +724,7 @@ function TherapistMessagesContent() {
                       {isMe ? (
                         <>
                           <span className="font-semibold text-teal-400">
-                            {profile?.display_name
-                              ? `${profile.display_name} (You)`
-                              : isDemo
-                              ? "Dr. Elena Ramos (You)"
-                              : "Clinician (You)"}
+                            {profile?.display_name ? `${profile.display_name} (You)` : "Clinician (You)"}
                           </span>
                           <Stethoscope className="w-3 h-3 text-teal-400" />
                         </>

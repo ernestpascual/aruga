@@ -50,6 +50,9 @@ import {
   SamKeywordItem,
   SamEngineMetadata,
 } from "@/lib/meta/sam-engines";
+import { BIOMECH_INTENT_PRESETS } from "@/lib/meta/biomech-prompt";
+import { BiomechPanel } from "@/components/therapist/BiomechPanel";
+import { BiomechLiveHud, BiomechSkeletonOverlay, BiomechInVideoHud, BiomechMaskControls, BiomechMaskStyle, DEFAULT_BIOMECH_MASK } from "@/components/therapist/BiomechOverlay";
 
 interface SamBoxOut {
   frameIndex: number;
@@ -242,6 +245,14 @@ export default function SamTestPage() {
   const [currentTime, setCurrentTime] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [savedToDb, setSavedToDb] = useState(false);
+  // Biomech (MHR via Modal) demo — works with same uploaded video, no DB submission needed
+  const [biomechIntent, setBiomechIntent] = useState("U1");
+  const [biomechMhr, setBiomechMhr] = useState<any | null>(null);
+  const [isBiomeching, setIsBiomeching] = useState(false);
+  const [biomechError, setBiomechError] = useState<string | null>(null);
+  const [biomechStyle, setBiomechStyle] = useState<BiomechMaskStyle>({ color: "#2dd4bf", ...DEFAULT_BIOMECH_MASK });
+  const [showBiomechInVideo, setShowBiomechInVideo] = useState(true);
+  const [showBiomechControls, setShowBiomechControls] = useState(false);
 
   // Multi-Run Test Comparison History
   const [testRuns, setTestRuns] = useState<TestRun[]>([]);
@@ -498,6 +509,22 @@ export default function SamTestPage() {
   }
 
   // Reload an old processed session from DB
+  async function handleBiomechDemo() {
+    if (!previewUrl) { setBiomechError("Upload a video first to check movement."); return; }
+    setIsBiomeching(true); setBiomechError(null); setBiomechMhr(null);
+    try {
+      const res = await fetch("/api/agent/biomech/demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent: biomechIntent, videoDataUrl, mediaWidth: videoSize?.width, mediaHeight: videoSize?.height }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Movement check failed.");
+      setBiomechMhr(data);
+    } catch (e) { setBiomechError(e instanceof Error ? e.message : String(e)); }
+    finally { setIsBiomeching(false); }
+  }
+
   function handleReloadSession(session: PastSessionRecord) {
     setPrompt(session.prompt);
     const parsedConcepts = session.prompt
@@ -539,9 +566,16 @@ export default function SamTestPage() {
     );
   }
 
+  // Unified SAM source: result from /api/sam-test OR biomechMhr.samBoxes from Check movement (so segmentation shows immediately after MHR)
+  const overlaySourceBoxes: SamBoxOut[] = result?.boxes?.length ? result.boxes : (biomechMhr?.samBoxes as SamBoxOut[] | undefined) ?? [];
+  const overlaySourcePaths: SamPathOut[] = result?.svgPaths?.length ? result.svgPaths : (biomechMhr?.samSvgPaths as SamPathOut[] | undefined) ?? [];
+  const overlayConcepts: string[] = result?.objectConcepts ?? biomechMhr?.samConcepts ?? biomechMhr?.concepts ?? [];
+
   function colorFor(label: string) {
-    const idx = result?.objectConcepts.indexOf(label) ?? -1;
-    return PALETTE[(idx >= 0 ? idx : 0) % PALETTE.length];
+    const idx = overlayConcepts.indexOf(label);
+    if (idx >= 0) return PALETTE[idx % PALETTE.length];
+    const fallback = result?.objectConcepts.indexOf(label) ?? -1;
+    return PALETTE[(fallback >= 0 ? fallback : Math.abs(label.split("").reduce((a,c)=>a+c.charCodeAt(0),0))) % PALETTE.length];
   }
 
   function styleFor(label: string): MaskStyle {
@@ -558,11 +592,11 @@ export default function SamTestPage() {
     }));
   }
 
-  // Active bounding boxes nearest playhead
+  // Active bounding boxes nearest playhead — from SAM track OR from MHR's SAM pass
   const activeBoxes: SamBoxOut[] = (() => {
-    if (!result) return [];
+    if (overlaySourceBoxes.length === 0) return [];
     const groups = new Map<string, SamBoxOut[]>();
-    for (const b of result.boxes) {
+    for (const b of overlaySourceBoxes) {
       const key = `${b.label}:${b.objectId ?? ""}`;
       const list = groups.get(key) ?? [];
       list.push(b);
@@ -590,7 +624,7 @@ export default function SamTestPage() {
     : activeBoxes.filter((b) => styleFor(b.label).visible);
   const visibleActiveBoxes = effectiveVisibleBoxes;
   const activeFrames = new Set(visibleActiveBoxes.map((b) => b.frameIndex));
-  const activePaths = (result?.svgPaths ?? []).filter((p) => {
+  const activePaths = overlaySourcePaths.filter((p) => {
     if (isolatedLabel) return p.label === isolatedLabel && activeFrames.has(p.frameIndex);
     return activeFrames.has(p.frameIndex) && styleFor(p.label ?? visibleActiveBoxes[0]?.label ?? "").visible;
   });
@@ -683,8 +717,9 @@ export default function SamTestPage() {
               <h1 className="text-sm font-semibold tracking-tight text-zinc-100 leading-none flex items-center gap-2">
                 SAM 3.1 Workspace
                 <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-950 border border-teal-500/30 text-teal-300">7 Engines • 100 targets</span>
+                <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-950 border border-sky-500/30 text-sky-300">+ Biomech MHR</span>
               </h1>
-              <p className="hidden sm:block text-[11px] text-zinc-500 leading-none mt-1 truncate">Pediatric → Geriatrics • Home • School • Kitchen</p>
+              <p className="hidden sm:block text-[11px] text-zinc-500 leading-none mt-1 truncate">Pediatric → Geriatrics • Home • School • Kitchen • Movement check (Modal)</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -897,9 +932,28 @@ export default function SamTestPage() {
           </Card>
         )}
 
-        {/* 3 + 4 — VIDEO & PAYLOAD in two-column sleek layout */}
-        <div id="video" className="scroll-mt-28 grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <Card className="lg:col-span-3 p-0 overflow-hidden border-zinc-800 bg-zinc-900/70">
+        {/* Payload above video — full-width video pane */}
+        <Card id="payload" className="p-0 overflow-hidden border-zinc-800 bg-zinc-900/70 flex flex-col scroll-mt-28">
+          <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between gap-2">
+            <h3 className="text-xs font-semibold tracking-wide uppercase text-zinc-300 flex items-center gap-2"><Target className="w-3.5 h-3.5 text-teal-400" /> Payload</h3>
+            <Badge variant="teal" className="font-mono text-[11px]">{activeTargetCount} targets</Badge>
+          </div>
+          <div className="p-4 space-y-3 flex flex-col">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleCopyPayload} className="h-7 text-xs gap-1.5 border-zinc-700 bg-zinc-800 text-zinc-300"><Copy className="w-3 h-3" />{copiedPayload ? "Copied!" : "Copy"}</Button>
+              {currentEngineMeta && <Button variant="ghost" size="sm" onClick={handleSelectAllEngineKeywords} className="h-7 text-xs gap-1.5 text-zinc-400"><RotateCcw className="w-3 h-3" />Reset 100</Button>}
+            </div>
+            <textarea rows={3} value={prompt} onChange={(e) => { setPrompt(e.target.value); const items = e.target.value.split(",").map((s) => s.trim()).filter(Boolean); setSelectedKeywords(new Set(items)); }} placeholder="cup, hand, fork, spoon…" className="min-h-[80px] rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 font-mono leading-relaxed resize-none" />
+            <Button onClick={handleTrack} disabled={!videoDataUrl || activeTargetCount === 0 || isTracking || isReading} className="w-full h-11 gap-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold shadow-sm">
+              {isTracking ? <><Loader2 className="w-4 h-4 animate-spin" /> Tracking…</> : <><Play className="w-4 h-4 fill-current" /> Test {selectedEngine === "custom" ? "Custom" : SAM_ENGINES[selectedEngine as SamEngineCategory]?.name} ({activeTargetCount})</>}
+            </Button>
+            {!videoDataUrl && <p className="text-xs text-zinc-500 flex items-center gap-1.5"><Info className="w-3.5 h-3.5" /> Upload video to enable tracking</p>}
+          </div>
+        </Card>
+
+        {/* Video — full width */}
+        <div id="video" className="scroll-mt-28">
+          <Card className="p-0 overflow-hidden border-zinc-800 bg-zinc-900/70">
             <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
               <h3 className="text-xs font-semibold tracking-wide uppercase text-zinc-300 flex items-center gap-2"><Film className="w-3.5 h-3.5 text-teal-400" /> Video</h3>
               {previewUrl && <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="h-7 text-xs border-zinc-700 bg-zinc-800 text-zinc-300">Change</Button>}
@@ -966,7 +1020,39 @@ export default function SamTestPage() {
                           <button type="button" onClick={() => setIsolatedLabel(null)} className="ml-1 px-2 py-0.5 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px]">Clear</button>
                         </div>
                       )}
+                      {/* Biomech skeleton + in-video HUD — same layering as SAM engine */}
+                      {biomechMhr?.frames?.length > 0 && !isolatedLabel && (
+                        <>
+                          <BiomechSkeletonOverlay mhr={biomechMhr} currentTime={currentTime} mediaSize={videoSize ? [videoSize.width, videoSize.height] : null} style={biomechStyle} />
+                          {showBiomechInVideo && <BiomechInVideoHud mhr={biomechMhr} currentTime={currentTime} />}
+                        </>
+                      )}
+                      {/* In-video top-right biomech toggles (mirrors SAM engine) */}
+                      {biomechMhr?.frames?.length > 0 && !isolatedLabel && (
+                        <div className="absolute top-2 right-2 z-20 flex items-center gap-1.5">
+                          <button type="button" onClick={() => setShowBiomechInVideo(!showBiomechInVideo)} className="h-7 px-2.5 rounded-lg bg-zinc-900/90 backdrop-blur border border-sky-700/40 text-xs font-medium text-sky-200 flex items-center gap-1">
+                            <Activity className="w-3.5 h-3.5 text-sky-400" /> {showBiomechInVideo ? "Measures On" : "Measures Off"}
+                          </button>
+                          <button type="button" onClick={() => setShowBiomechControls(!showBiomechControls)} className="h-7 w-7 rounded-lg bg-zinc-900/90 backdrop-blur border border-zinc-700 text-zinc-400 flex items-center justify-center"><Settings2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                      )}
                     </div>
+                    {/* Biomech mask adjustments + detailed ranges below video — like SAM engine appearance panel */}
+                    {biomechMhr?.frames?.length > 0 && showBiomechControls && (
+                      <div className="px-3 py-2.5 bg-zinc-900 border-t border-zinc-800 space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-sky-300"><Settings2 className="w-3.5 h-3.5" /> Biomech mask appearance</div>
+                        <BiomechMaskControls value={biomechStyle} onChange={setBiomechStyle} />
+                      </div>
+                    )}
+                    {biomechMhr?.frames?.length > 0 && (
+                      <div className="px-3 py-2 bg-zinc-950 border-t border-zinc-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-semibold text-sky-300 flex items-center gap-1"><Activity className="w-3 h-3" /> Live ranges — moves with video</span>
+                          <span className="text-[10px] font-mono text-zinc-500">{biomechMhr.modelId} • {biomechMhr.frames.length} frames • t={currentTime.toFixed(2)}s</span>
+                        </div>
+                        <BiomechLiveHud mhr={biomechMhr} currentTime={currentTime} />
+                      </div>
+                    )}
                     {/* Isolate custom controls — outside overlay so always clickable */}
                     {isolatedLabel && previewUrl && (
                       <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 bg-zinc-900 border-t border-zinc-800">
@@ -1008,24 +1094,6 @@ export default function SamTestPage() {
                   </div>
                 </div>
               )}
-            </div>
-          </Card>
-
-          <Card id="payload" className="lg:col-span-2 p-0 overflow-hidden border-zinc-800 bg-zinc-900/70 flex flex-col scroll-mt-28">
-            <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between gap-2">
-              <h3 className="text-xs font-semibold tracking-wide uppercase text-zinc-300 flex items-center gap-2"><Target className="w-3.5 h-3.5 text-teal-400" /> Payload</h3>
-              <Badge variant="teal" className="font-mono text-[11px]">{activeTargetCount} targets</Badge>
-            </div>
-            <div className="p-4 space-y-3 flex-1 flex flex-col">
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handleCopyPayload} className="h-7 text-xs gap-1.5 border-zinc-700 bg-zinc-800 text-zinc-300"><Copy className="w-3 h-3" />{copiedPayload ? "Copied!" : "Copy"}</Button>
-                {currentEngineMeta && <Button variant="ghost" size="sm" onClick={handleSelectAllEngineKeywords} className="h-7 text-xs gap-1.5 text-zinc-400"><RotateCcw className="w-3 h-3" />Reset 100</Button>}
-              </div>
-              <textarea rows={6} value={prompt} onChange={(e) => { setPrompt(e.target.value); const items = e.target.value.split(",").map((s) => s.trim()).filter(Boolean); setSelectedKeywords(new Set(items)); }} placeholder="cup, hand, fork, spoon…" className="flex-1 min-h-[120px] rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 font-mono leading-relaxed resize-none" />
-              <Button onClick={handleTrack} disabled={!videoDataUrl || activeTargetCount === 0 || isTracking || isReading} className="w-full h-11 gap-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold shadow-sm">
-                {isTracking ? <><Loader2 className="w-4 h-4 animate-spin" /> Tracking…</> : <><Play className="w-4 h-4 fill-current" /> Test {selectedEngine === "custom" ? "Custom" : SAM_ENGINES[selectedEngine as SamEngineCategory]?.name} ({activeTargetCount})</>}
-              </Button>
-              {!videoDataUrl && <p className="text-xs text-zinc-500 flex items-center gap-1.5"><Info className="w-3.5 h-3.5" /> Upload video to enable tracking</p>}
             </div>
           </Card>
         </div>
@@ -1077,7 +1145,7 @@ export default function SamTestPage() {
         )}
 
         {/* 6. DETECTION RESULTS */}
-        {result && (
+        {(result || overlaySourceBoxes.length > 0) && (
           <Card id="results" className="p-5 space-y-4 border-zinc-800 bg-zinc-900/70 scroll-mt-28">
             {savedToDb && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-950/60 border border-teal-500/40 text-teal-300 text-xs">
@@ -1090,19 +1158,20 @@ export default function SamTestPage() {
 
             <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-zinc-800">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-semibold text-zinc-100">Detections — {selectedEngine === "custom" ? "Custom" : SAM_ENGINES[selectedEngine as SamEngineCategory]?.name}</h3>
-                <Badge variant="teal" className="font-mono text-xs">{result.tracks.length} tracked</Badge>
-                <Badge variant="outline" className="font-mono text-xs border-zinc-700 text-zinc-400">{result.boxes.length} boxes</Badge>
+                <h3 className="text-sm font-semibold text-zinc-100">Detections — {result ? (selectedEngine === "custom" ? "Custom" : SAM_ENGINES[selectedEngine as SamEngineCategory]?.name) : `SAM via MHR (${(biomechMhr?.samConcepts ?? biomechMhr?.concepts ?? []).join(", ")})`}</h3>
+                <Badge variant="teal" className="font-mono text-xs">{(result?.tracks ?? biomechMhr?.samTracks ?? []).length} tracked</Badge>
+                <Badge variant="outline" className="font-mono text-xs border-zinc-700 text-zinc-400">{overlaySourceBoxes.length} boxes</Badge>
+                {!result && biomechMhr && <Badge variant="outline" className="font-mono text-[10px] border-sky-700/40 text-sky-300">from Check movement</Badge>}
               </div>
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-teal-950/60 border border-teal-500/30 text-teal-300 text-xs font-mono font-medium"><Timer className="w-3.5 h-3.5" /> {(result.latencyMs / 1000).toFixed(2)}s • {result.latencyMs} ms</span>
-                <span className="hidden sm:inline text-xs text-zinc-500">{result.modelId} • {result.billedRequests} req</span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-teal-950/60 border border-teal-500/30 text-teal-300 text-xs font-mono font-medium"><Timer className="w-3.5 h-3.5" /> {(((result?.latencyMs ?? biomechMhr?.samPersonMeta?.latencyMs ?? 0) / 1000).toFixed(2))}s • {(result?.latencyMs ?? biomechMhr?.samPersonMeta?.latencyMs ?? 0)} ms</span>
+                <span className="hidden sm:inline text-xs text-zinc-500">{result?.modelId ?? "sam-3.1 via MHR"} • {result?.billedRequests ?? biomechMhr?.samPersonMeta?.billedRequests ?? 0} req</span>
               </div>
             </div>
 
-            {result.tracks.length > 0 && (
+            {(result?.tracks?.length ?? biomechMhr?.samTracks?.length ?? 0) > 0 && (
               <div className="flex flex-wrap gap-2">
-                {result.tracks.map((t) => (
+                {(result?.tracks ?? biomechMhr?.samTracks ?? []).map((t: any) => (
                   <span key={t.trackId} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-zinc-950 border font-mono" style={{ borderColor: colorFor(t.label), color: colorFor(t.label) }}>
                     <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colorFor(t.label) }} /> {t.label} <span className="opacity-60 text-[11px]">• {t.frames.length} fr</span>
                   </span>
@@ -1110,14 +1179,14 @@ export default function SamTestPage() {
               </div>
             )}
 
-            {result.objectConcepts.length > 0 && (
+            {overlayConcepts.length > 0 && (
               <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300"><Settings2 className="w-3.5 h-3.5 text-zinc-500" /> Mask Appearance</div>
                   {isolatedLabel && <button type="button" onClick={() => setIsolatedLabel(null)} className="px-2.5 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-medium text-zinc-300">Clear isolate</button>}
                 </div>
                 <div className="divide-y divide-zinc-800">
-                  {result.objectConcepts.map((label) => {
+                  {overlayConcepts.map((label) => {
                     const style = styleFor(label);
                     const isIsolated = isolatedLabel === label;
                     return (
@@ -1144,12 +1213,12 @@ export default function SamTestPage() {
             )}
 
             {/* Zero detection or failures */}
-            {result.failures.length > 0 && (
+            {(result?.failures ?? biomechMhr?.samPersonMeta?.failures ?? []).length > 0 && (
               <div className="space-y-1 pt-1">
                 <span className="text-xs font-semibold text-red-400">
                   Concept Tracking Warnings:
                 </span>
-                {result.failures.map((f) => (
+                {(result?.failures ?? biomechMhr?.samPersonMeta?.failures ?? []).map((f: any) => (
                   <p key={f.concept} className="text-xs text-red-300">
                     • <strong>{f.concept}:</strong> {f.message}
                   </p>
@@ -1157,7 +1226,7 @@ export default function SamTestPage() {
               </div>
             )}
 
-            {result.boxes.length === 0 && result.failures.length === 0 && (
+            {overlaySourceBoxes.length === 0 && (result?.failures ?? biomechMhr?.samPersonMeta?.failures ?? []).length === 0 && (
               <div className="text-center py-6 text-xs text-zinc-500">
                 No target objects from the active payload were located in this video.
                 Try selecting a different engine or checking a video featuring therapy equipment.
@@ -1165,6 +1234,30 @@ export default function SamTestPage() {
             )}
           </Card>
         )}
+
+        {/* 6b. BIOMECH MHR — test Modal agent from same video (no submission needed) */}
+        <Card className="p-5 space-y-4 border-zinc-800 bg-zinc-900/70">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-800">
+            <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2"><Activity className="w-4 h-4 text-sky-400" /> Movement check (Biomech Engine) <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-sky-950 border border-sky-500/30 text-sky-300">via {process.env.NEXT_PUBLIC_APP_URL ? "Modal" : "MODAL_MHR_URL"}</span></h3>
+            <span className="text-xs text-zinc-500">Uses your uploaded video — no patient needed</span>
+          </div>
+          <p className="text-xs text-zinc-400">Flow: <span className="text-zinc-200">Meta SAM 3.1</span> segments <code className="px-1 py-0.5 rounded bg-zinc-800 text-zinc-300">{`{person + U intent}`}</code> → boxes/masks forwarded to <code className="px-1 py-0.5 rounded bg-zinc-800 text-sky-300">{`{MODAL_MHR_URL}/infer`}</code> (SAM3D) from env. No mock fallback — failures show with code.</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <select value={biomechIntent} onChange={(e) => setBiomechIntent(e.target.value)} className="h-9 rounded-xl bg-zinc-950 border border-zinc-800 px-3 text-xs text-zinc-100 focus:outline-none focus:border-sky-500">
+              {Object.keys(BIOMECH_INTENT_PRESETS).map((k) => (
+                <option key={k} value={k}>{k} — {(BIOMECH_INTENT_PRESETS as any)[k].join(", ")}</option>
+              ))}
+            </select>
+            <Button onClick={handleBiomechDemo} disabled={!previewUrl || isBiomeching} className="h-9 gap-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold">
+              {isBiomeching ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking…</> : <><Activity className="w-3.5 h-3.5" /> Check movement (MHR)</>}
+            </Button>
+            {!previewUrl && <span className="text-xs text-zinc-500 flex items-center gap-1"><Info className="w-3 h-3" /> Upload video above first</span>}
+          </div>
+          {biomechError && <div className="rounded-lg border border-red-800/60 bg-red-950/30 p-3 text-xs text-red-300 flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-red-400" /> {biomechError}</div>}
+          {biomechMhr && <BiomechPanel mhr={biomechMhr} />}
+          {biomechMhr?.samPersonMeta && <p className="text-[11px] text-zinc-500">SAM: <span className="font-mono text-teal-400">{biomechMhr.samPersonMeta.boxes} boxes</span> • {biomechMhr.samPersonMeta.billedRequests} billed • {biomechMhr.samPersonMeta.latencyMs}ms → Modal</p>}
+          {biomechMhr && <p className="text-[11px] text-zinc-500">Source: <span className="font-mono text-zinc-400">{biomechMhr.source}</span> • {biomechMhr.modelId} • {biomechMhr.processingMs}ms — Edit env: <code className="bg-zinc-800 px-1 rounded">MODAL_MHR_URL</code> in <code>.env.local</code> + Vercel</p>}
+        </Card>
 
         {/* 7. PREVIOUS PROCESSED SESSIONS */}
         <Card className="p-5 space-y-4 border-zinc-800 bg-zinc-900/60">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -12,6 +12,7 @@ import {
   Stethoscope,
   HeartHandshake,
   Scan,
+  Activity,
   Palette,
   Wrench,
   ChevronDown,
@@ -29,7 +30,31 @@ type NavItem = { label: string; icon: React.ElementType; href?: string; exact?: 
 export function TherapistNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, user } = useAuth();
+  const [msgUnread, setMsgUnread] = useState(0);
+
+  const fetchMsgUnread = React.useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const res = await fetch(`/api/messages/unread?requesterId=${user.id}`);
+      const data = await res.json();
+      if (res.ok && typeof data.totalUnread === "number") setMsgUnread(data.totalUnread);
+    } catch {}
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) { setMsgUnread(0); return; }
+    fetchMsgUnread();
+    const iv = setInterval(fetchMsgUnread, 12000);
+    const onCustom = (e: Event) => {
+      const d = (e as CustomEvent).detail;
+      if (d && typeof d.totalUnread === "number") setMsgUnread(d.totalUnread);
+    };
+    window.addEventListener("aruga:messages-unread", onCustom as EventListener);
+    const onVis = () => { if (document.visibilityState === "visible") fetchMsgUnread(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(iv); window.removeEventListener("aruga:messages-unread", onCustom as EventListener); document.removeEventListener("visibilitychange", onVis); };
+  }, [user?.id, fetchMsgUnread]);
 
   const navItems: NavItem[] = [
     { label: "Dashboard", icon: LayoutDashboard, href: "/therapist/dashboard" },
@@ -48,8 +73,9 @@ export function TherapistNav() {
       icon: Wrench,
       children: [
         { href: "/therapist/guide", label: "How to use Aruga", icon: BookOpen },
-        { href: "/aruga-guide", label: "Guide", icon: HeartHandshake },
+        { href: "/aruga-guide", label: "Aruga Guide AI Agent", icon: HeartHandshake },
         { href: "/sam-test", label: "SAM Test", icon: Scan },
+        { href: "/tools/biomech", label: "Biomechanic Agent", icon: Activity },
       ],
     },
   ];
@@ -72,9 +98,26 @@ export function TherapistNav() {
   }
 
   const handleSignOut = async () => {
-    await signOut();
-    router.push("/login");
+    try {
+      await signOut();
+    } finally {
+      if (typeof window !== "undefined") window.location.assign("/login");
+      else router.push("/login");
+    }
   };
+
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+      const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileOpen(false); };
+      window.addEventListener("keydown", onEsc);
+      return () => { document.body.style.overflow = ""; window.removeEventListener("keydown", onEsc); };
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+  useEffect(() => { setMobileOpen(false); setMobileOpenGroup(null); }, [pathname]);
 
   function isActiveItem(item: NavItem): boolean {
     if (item.href) {
@@ -161,12 +204,17 @@ export function TherapistNav() {
               <Link
                 key={item.label}
                 href={item.href!}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   active ? "bg-zinc-800 text-teal-400 font-semibold" : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
                 }`}
               >
                 <Icon className="w-4 h-4" />
                 {item.label}
+                {item.label === "Messages" && msgUnread > 0 && (
+                  <span className="ml-1 inline-flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-amber-500 text-[11px] font-bold text-zinc-950 shadow-sm">
+                    {msgUnread > 99 ? "99+" : msgUnread}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -217,11 +265,10 @@ export function TherapistNav() {
         </div>
       </div>
 
-      {/* Mobile Drawer Overlay */}
-      {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-40" aria-hidden="true">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <div className="absolute top-14 left-0 bottom-0 w-[300px] max-w-[85vw] bg-zinc-950 border-r border-zinc-800 shadow-2xl overflow-y-auto animate-in slide-in-from-left duration-200">
+      {/* Mobile Drawer — slide-in side sheet, always mounted for transition */}
+      <div className={`md:hidden pointer-events-none fixed inset-0 z-40 ${mobileOpen ? "pointer-events-auto" : ""}`} aria-hidden={!mobileOpen}>
+        <button type="button" aria-label="Close menu" tabIndex={mobileOpen ? 0 : -1} onClick={() => setMobileOpen(false)} className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${mobileOpen ? "opacity-100" : "opacity-0"}`} />
+        <div className={`absolute top-14 left-0 bottom-0 w-[300px] max-w-[85vw] bg-zinc-950 border-r border-zinc-800 shadow-2xl overflow-y-auto transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
             <nav className="p-3 space-y-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -285,6 +332,11 @@ export function TherapistNav() {
                       <Icon className="w-4 h-4" />
                     </span>
                     {item.label}
+                    {item.label === "Messages" && msgUnread > 0 && (
+                      <span className="ml-auto inline-flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-amber-500 text-[11px] font-bold text-zinc-950">
+                        {msgUnread > 99 ? "99+" : msgUnread}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -316,7 +368,6 @@ export function TherapistNav() {
             </nav>
           </div>
         </div>
-      )}
     </header>
   );
 }

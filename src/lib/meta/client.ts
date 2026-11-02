@@ -77,7 +77,7 @@ export function createMetaOpenAiClient(): OpenAI {
     apiKey: config.apiKey,
     baseURL: config.baseUrl,
     maxRetries: 2,
-    timeout: 30000,
+    timeout: 60000,
   });
 }
 

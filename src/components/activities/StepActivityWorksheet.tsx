@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Palette, Download, CheckCircle2, AlertCircle, Loader2, Save, Image as ImageIcon } from "lucide-react";
+import { Palette, Download, CheckCircle2, AlertCircle, Loader2, Save, Image as ImageIcon, ListChecks, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { ActivityCanvas } from "./ActivityCanvas";
 import { PdfPrintButton } from "./PdfPrintButton";
@@ -32,7 +33,10 @@ export function StepActivityWorksheet({
   readOnly,
   onSaved,
 }: Props) {
-  const [mode, setMode] = useState<"draw" | "print">("draw");
+  const [mode, setMode] = useState<"draw" | "print" | "guide">("guide");
+  const [checkState, setCheckState] = useState<Record<number, boolean>>({});
+  const [writeNotes, setWriteNotes] = useState<Record<number, string>>({});
+  const [textResponse, setTextResponse] = useState("");
   const [completion, setCompletion] = useState<Record<string, unknown> | null>(null);
   const [loadingCompletion, setLoadingCompletion] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -43,6 +47,23 @@ export function StepActivityWorksheet({
 
   const imageUrl = String(activity.base_image_url || "");
   const hasImage = Boolean(imageUrl);
+  const spec = activity.spark_spec as unknown as Record<string, unknown> | null;
+  const worksheetKind = (activity as unknown as Record<string, unknown>).worksheet_kind as string | undefined || (spec?.worksheetKind as string | undefined) || "drawable";
+  const writtenTasks = ((activity as unknown as Record<string, unknown>).written_tasks as Array<{ step: number; text: string; kind: string }> | undefined) || (spec?.writtenTasks as Array<{ step: number; text: string; kind: string }> | undefined) || [];
+  const isWrittenGuide = worksheetKind === "written" || (writtenTasks.length > 0 && worksheetKind !== "mixed" && !hasImage) || (writtenTasks.length > 2 && worksheetKind === "written");
+  const isMixed = worksheetKind === "mixed";
+
+  // Reset per-step so previous step's drawing never leaks into next step
+  useEffect(() => {
+    setCompletion(null);
+    setMode(isWrittenGuide ? "guide" : "draw");
+    setMsg(null);
+    setErr(null);
+    setPhotoFile(null);
+    setCheckState({});
+    setWriteNotes({});
+    setTextResponse("");
+  }, [stepSubmissionId, activity.id, isWrittenGuide]);
 
   // Load existing completion for this step submission
   useEffect(() => {
@@ -65,7 +86,9 @@ export function StepActivityWorksheet({
   // Also try lookup by generatedActivityId+patient when no stepSubmission yet
   useEffect(() => {
     if (completion || !activity.id || !patientId || stepSubmissionId) return;
-    const qs = clientId ? `&requesterId=${clientId}` : `&requesterId=${patientId}`;
+    // Only send requesterId when we have the actual client auth identity; never send patientId as requester (fails ownsPatient)
+    if (!clientId) return;
+    const qs = `&requesterId=${clientId}`;
     fetch(`/api/activity-completions?generatedActivityId=${activity.id}&patientId=${patientId}${qs}`)
       .then((r) => r.json())
       .then((d) => {
@@ -76,9 +99,26 @@ export function StepActivityWorksheet({
       .catch(() => {});
   }, [activity.id, patientId, stepSubmissionId, completion]);
 
+  // Hydrate written guide state from saved completion
+  useEffect(() => {
+    if (!completion) return;
+    if (completion.text_response) setTextResponse(String(completion.text_response));
+    if (Array.isArray(completion.checklist_state)) {
+      const m: Record<number, boolean> = {};
+      const n: Record<number, string> = {};
+      for (const row of completion.checklist_state as Array<{ index: number; done?: boolean; note?: string }>) {
+        if (typeof row.index === "number") {
+          if (row.done) m[row.index] = true;
+          if (row.note) n[row.index] = row.note;
+        }
+      }
+      setCheckState(m); setWriteNotes(n);
+    }
+  }, [completion]);
+
   // Notify parent when a saved completion exists (so step counts as done for Next/Submit validation)
   useEffect(() => {
-    if (completion && (completion.drawing_data_url || completion.photo_upload_path || (Array.isArray(completion.drawing_strokes) && completion.drawing_strokes.length > 0))) {
+    if (completion && (completion.drawing_data_url || completion.photo_upload_path || completion.text_response || (Array.isArray(completion.drawing_strokes) && completion.drawing_strokes.length > 0) || (Array.isArray(completion.checklist_state) && completion.checklist_state.length > 0))) {
       onSaved?.(true);
     }
   }, [completion]);
@@ -166,7 +206,33 @@ export function StepActivityWorksheet({
     }
   }
 
-  if (!hasImage) {
+  async function handleGuideSave() {
+    if (!patientId) { setErr("Patient not linked yet — please reload."); return; }
+    setErr(null); setSaving(true);
+    try {
+      const checklist = writtenTasks.map((t, idx) => ({ index: idx, done: Boolean(checkState[idx]), note: writeNotes[idx] || undefined }));
+      const res = await fetch("/api/activity-completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generatedActivityId: activity.id,
+          stepSubmissionId: stepSubmissionId || undefined,
+          patientId, clientId: clientId || undefined,
+          textResponse: textResponse || checklist.map(c=> `${writtenTasks[c.index]?.text}: ${c.done ? "done" : "not yet"}${c.note ? ` — ${c.note}` : ""}`).join("\n") || "Guide completed",
+          checklistState: checklist,
+          completionMethod: checklist.length ? "checklist" : "text",
+          programId, scheduledDate: scheduledDate || undefined,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed to save");
+      setCompletion(d.completion); setMsg("Guide saved — your therapist can now review it."); onSaved?.(true);
+      setTimeout(()=> setMsg(null), 4000);
+    } catch (e: unknown) { setErr(e instanceof Error ? e.message : String(e)); }
+    finally { setSaving(false); }
+  }
+
+  if (!hasImage && !isWrittenGuide && !isMixed) {
     return (
       <Card className="border-amber-800/40 bg-amber-950/20 p-4 space-y-2">
         <p className="text-xs font-semibold text-amber-300 flex items-center gap-1.5"><Palette className="w-3.5 h-3.5"/> Activity worksheet</p>
@@ -198,16 +264,40 @@ export function StepActivityWorksheet({
           </div>
         </div>
 
-        {/* Preview thumbnail */}
-        <div className="rounded-lg overflow-hidden border border-zinc-800 bg-white max-h-[22rem] flex items-center justify-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageUrl} alt={activity.title || "Worksheet"} className="w-full h-auto max-h-[22rem] object-contain" />
-        </div>
-        <p className="text-[11px] text-zinc-500 text-center">Download or print to complete on paper, or color directly below — both count as completion for this step.</p>
+        {/* Written guide steps — not a drawing: show checklist to follow */}
+        {(isWrittenGuide || isMixed) && writtenTasks.length > 0 && (
+          <div className="rounded-lg border border-sky-800/40 bg-sky-950/20 p-3 space-y-2">
+            <p className="text-xs font-semibold text-sky-300 flex items-center gap-1.5"><ListChecks className="w-3.5 h-3.5"/> What to do — follow these steps</p>
+            <ol className="space-y-1.5 list-decimal list-inside text-xs text-zinc-200">
+              {writtenTasks.map((t, idx) => (
+                <li key={idx} className="leading-relaxed"><span className="font-medium">{t.text}</span>{t.kind === "write" && <span className="text-zinc-500"> — write your answer below</span>}</li>
+              ))}
+            </ol>
+            <p className="text-[11px] text-zinc-500">This worksheet is a guide, not a coloring page — check off each step as you go.</p>
+          </div>
+        )}
+
+        {/* Preview thumbnail — only for drawable/mixed */}
+        {(hasImage) ? (
+          <>
+            <div className="rounded-lg overflow-hidden border border-zinc-800 bg-white max-h-[22rem] flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imageUrl} alt={activity.title || "Worksheet"} className="w-full h-auto max-h-[22rem] object-contain" />
+            </div>
+            <p className="text-[11px] text-zinc-500 text-center">{isWrittenGuide ? "Print this guide or use the checklist below — no drawing needed." : isMixed ? "This is a mixed worksheet: follow the steps and color the image." : "Download or print to complete on paper, or color directly below — both count as completion for this step."}</p>
+          </>
+        ) : isWrittenGuide ? (
+          <p className="text-[11px] text-zinc-500 text-center">No image needed — this is a written guide. Complete the checklist below.</p>
+        ) : null}
       </div>
 
-      {/* Mode tabs */}
+      {/* Mode tabs — written guides show Follow guide first */}
       <div className="flex gap-1 p-2 bg-zinc-900/60 border-b border-zinc-800">
+        {(isWrittenGuide || isMixed) && (
+          <button type="button" onClick={()=> setMode("guide")} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold border flex items-center justify-center gap-1.5 ${mode==="guide" ? "bg-teal-600 border-teal-500 text-white" : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"}`}>
+            <ListChecks className="w-3.5 h-3.5"/> Follow guide
+          </button>
+        )}
         <button type="button" onClick={()=> setMode("draw")} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold border flex items-center justify-center gap-1.5 ${mode==="draw" ? "bg-teal-600 border-teal-500 text-white" : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"}`}>
           <Palette className="w-3.5 h-3.5"/> Color on screen
         </button>
@@ -223,7 +313,32 @@ export function StepActivityWorksheet({
       {loadingCompletion && <div className="mx-3 mt-3 text-xs text-zinc-500 flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin"/> Loading saved progress...</div>}
 
       <div className="p-3 sm:p-4">
-        {mode === "draw" ? (
+        {mode === "guide" ? (
+          <div className="space-y-3">
+            <Card className="border-zinc-800 bg-zinc-900/80 p-4 space-y-3">
+              <h4 className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5"><ListChecks className="w-3.5 h-3.5 text-sky-400"/> Step-by-step guide — check as you go</h4>
+              <p className="text-[11px] text-zinc-500">Follow each step in order. Check the box when done. For "write" steps, add a short note.</p>
+              <div className="space-y-2">
+                {(writtenTasks.length ? writtenTasks : [{ step: 1, text: activity.instructions || "Complete the activity as described above.", kind: "do" }]).map((t, idx) => (
+                  <label key={idx} className="flex items-start gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-2.5">
+                    <input type="checkbox" checked={Boolean(checkState[idx])} onChange={(e)=> setCheckState(s=> ({ ...s, [idx]: e.target.checked }))} disabled={readOnly} className="mt-0.5 accent-teal-500" />
+                    <span className="flex-1 text-xs text-zinc-200 leading-relaxed">{t.step}. {t.text}{t.kind === "write" ? " — write below" : ""}</span>
+                    {t.kind === "write" && !readOnly && (
+                      <Input value={writeNotes[idx] || ""} onChange={(e)=> setWriteNotes(s=> ({ ...s, [idx]: e.target.value }))} placeholder="Your note" className="h-7 text-xs bg-zinc-900 border-zinc-800 max-w-[160px]" />
+                    )}
+                  </label>
+                ))}
+              </div>
+              <Textarea value={textResponse} onChange={(e)=> setTextResponse(e.target.value)} placeholder="How did it go? (optional)" rows={2} className="text-xs bg-zinc-950 border-zinc-800" disabled={readOnly} />
+              {!readOnly && (
+                <Button type="button" onClick={handleGuideSave} disabled={saving} className="bg-teal-600 hover:bg-teal-500 text-white text-xs h-8 gap-1.5">
+                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Save className="w-3.5 h-3.5"/>} Save progress
+                </Button>
+              )}
+              {Boolean((completion as Record<string, unknown>)?.text_response) && <p className="text-[11px] text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5"/> Saved: {String((completion as Record<string, unknown>).text_response).slice(0, 120)}</p>}
+            </Card>
+          </div>
+        ) : mode === "draw" ? (
           <div className="space-y-3">
             {readOnly ? (
               Boolean(completion?.drawing_data_url) ? (
@@ -235,7 +350,7 @@ export function StepActivityWorksheet({
                 <p className="text-xs text-zinc-500 text-center py-6">No drawing saved yet.</p>
               )
             ) : (
-              <ActivityCanvas imageUrl={imageUrl} initialStrokes={drawingStrokes as never} onSave={handleCanvasSave} />
+              <ActivityCanvas imageUrl={imageUrl || "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>"} initialStrokes={drawingStrokes as never} onSave={handleCanvasSave} />
             )}
             {saving && <p className="text-xs text-teal-400 flex items-center gap-2 justify-center"><Loader2 className="w-3.5 h-3.5 animate-spin"/> Saving to database...</p>}
             {hasSavedDrawing && !readOnly && Boolean(completion?.drawing_data_url) && (

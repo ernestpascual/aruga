@@ -71,6 +71,8 @@ export type SamResultParsed = z.infer<typeof SamResultSchema>;
 export const ActivitySpecSchema = z.object({
   title: z.string().min(3).max(200),
   instructions: z.string().min(10).max(2500),
+  worksheetKind: z.enum(["drawable","written","mixed"]).default("drawable").describe("drawable=trace/color/draw on canvas; written=step-by-step guide/checklist to follow, no drawing required; mixed=both"),
+  writtenTasks: z.array(z.object({ step: z.number().int().min(1), text: z.string().min(3).max(200), kind: z.enum(["do","check","write"]).default("do") })).max(12).default([]).describe("For written/mixed guides: ordered steps the client checks off or writes against. Empty for pure drawable."),
   visualBrief: z.string().min(10).max(2000),
   refinedImagePrompt: z.string().min(10).max(2000),
   layoutSpec: z.object({

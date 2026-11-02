@@ -3,6 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { generateActivity } from "@/lib/meta-ai";
 import { MetaApiError } from "@/lib/meta/errors";
+import { ownsPatient } from "@/lib/supabase/owner";
+
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
@@ -57,10 +60,16 @@ export async function POST(req: NextRequest) {
       if (!effectiveRequesterId) {
         return NextResponse.json({ error: "requesterId required" }, { status: 403 });
       }
-      const { data: pat } = await admin.from("patients").select("client_user_id, therapist_id").eq("id", patientId).maybeSingle();
-      if (!pat) return NextResponse.json({ error: "Not found" }, { status: 404 });
-      const owns = pat.client_user_id === effectiveRequesterId || pat.therapist_id === effectiveRequesterId;
-      if (!owns) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      const owns = await ownsPatient(admin, patientId, effectiveRequesterId);
+      if (!owns) {
+        // distinguish 404 vs 403: check existence
+        const { data: exists } = await admin.from("patients").select("id").eq("id", patientId).maybeSingle();
+        if (!exists) {
+          const { data: byClient } = await admin.from("patients").select("id").eq("client_user_id", patientId).maybeSingle();
+          if (!byClient) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        }
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
     const verifiedCreatorId = authenticatedCreatorId || effectiveRequesterId || (creatorId as string | null) || null;
     if (templateId && admin) {
@@ -101,6 +110,8 @@ export async function POST(req: NextRequest) {
 
       // For data URLs (mock), store as-is in base_image_url; for http URLs keep as URL
       // For generation, we want to persist spark_spec and prompts
+      const specKind = (result.sparkSpec as unknown as Record<string, unknown>)?.worksheetKind as string | undefined;
+      const specTasks = (result.sparkSpec as unknown as Record<string, unknown>)?.writtenTasks as unknown[] | undefined;
       const insertRow = {
         creator_id: verifiedCreatorId || null,
         patient_id: patientId || null,
@@ -113,6 +124,8 @@ export async function POST(req: NextRequest) {
         reference_links: Array.isArray(referenceLinks) ? referenceLinks.slice(0, 6) : [],
         reference_image_paths: [], // handled via storage separately if needed
         spark_spec: result.sparkSpec as unknown as Record<string, unknown>,
+        worksheet_kind: (specKind === "written" || specKind === "mixed" ? specKind : (specKind === "drawable" ? "drawable" : null)) || ((Array.isArray(specTasks) && specTasks.length > 0) ? "written" : "drawable"),
+        written_tasks: Array.isArray(specTasks) ? specTasks : [],
         base_image_path: baseImagePath,
         base_image_url: finalBaseImageUrl,
         model_ids: result.modelIds as unknown as Record<string, unknown>,

@@ -3,6 +3,8 @@ import { MetaApiError } from "@/lib/meta/errors";
 import { getMetaConfig } from "@/lib/meta/client";
 import { sam3Engine, normalizeConcepts } from "@/lib/meta/sam-engine";
 
+export const maxDuration = 90;
+
 const MAX_TARGETS = 100;
 const MAX_VIDEO_DATA_URL_CHARS = 140_000_000; // ~100MB binary as base64
 

@@ -104,10 +104,15 @@ export function ActivityCanvas({
     img.src = imageUrl;
   }
 
-  useEffect(() => { setupImage(); }, [imageUrl]);
+  useEffect(() => {
+    // Switching steps gives a new imageUrl — clear prior step's strokes/markings so steps are fully isolated
+    strokesRef.current = initialStrokes ? [...initialStrokes] : [];
+    setCanSave((initialStrokes?.length || 0) > 0);
+    setupImage();
+  }, [imageUrl]);
 
   useEffect(() => {
-    if (initialStrokes && initialStrokes.length) { strokesRef.current = [...initialStrokes]; redraw(); }
+    if (initialStrokes && initialStrokes.length) { strokesRef.current = [...initialStrokes]; setCanSave(true); redraw(); }
   }, [JSON.stringify(initialStrokes)]);
 
   // auto redraw loop on mount for initial load

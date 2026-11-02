@@ -31,11 +31,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { ClientCategory } from "@/types/database";
-import { isDemoUser } from "@/lib/supabase/demo-helpers";
 
 export default function ClientProfilePage() {
   const { profile, user, updateProfile, changePassword } = useAuth();
-  const isDemo = isDemoUser(user, profile);
 
   const [displayName, setDisplayName] = useState("");
   const [clientCategory, setClientCategory] = useState<ClientCategory>("adult");
@@ -192,61 +190,18 @@ export default function ClientProfilePage() {
       setDisplayName(profile.display_name || "");
       const cat = profile.client_category || "adult";
       setClientCategory(cat);
-      setAge(profile.age ?? (isDemo ? (cat === "pedia" ? 6 : cat === "adolescent" ? 14 : (cat === "geriatric" || cat === "old_people") ? 68 : 38) : ""));
-      setDateOfBirth(
-        profile.date_of_birth ||
-          (isDemo
-            ? cat === "pedia"
-              ? "2020-05-14"
-              : cat === "adolescent"
-              ? "2012-08-20"
-              : (cat === "geriatric" || cat === "old_people")
-              ? "1958-04-18"
-              : "1988-03-12"
-            : "")
-      );
-      setPrimaryCondition(
-        profile.primary_condition ||
-          (isDemo
-            ? cat === "pedia"
-              ? "Developmental Fine Motor & Bilateral Integration Delay"
-              : cat === "adolescent"
-              ? "Fine Motor Coordination & Postural Ergonomic Fatigue"
-              : (cat === "geriatric" || cat === "old_people")
-              ? "Osteoarthritis, Presbyphagia & Fall Prevention Post-Arthroplasty"
-              : "Post-Stroke Upper Extremity Hemiparesis (Right-Sided)"
-            : "")
-      );
-      setCaregiverName(profile.caregiver_name || (isDemo && cat === "pedia" ? "Sarah Chen" : ""));
-      setCaregiverRelationship(profile.caregiver_relationship || (isDemo ? (cat === "pedia" ? "Mother" : "Self / Spouse") : ""));
-      setEmergencyPhone(profile.emergency_phone || (isDemo ? "+1 (555) 789-2044" : ""));
-      setTherapyGoals(
-        profile.therapy_goals ||
-          (isDemo
-            ? cat === "pedia"
-              ? "Pincer grasp toy picking, unassisted buttoning, bilateral container twisting."
-              : cat === "adolescent"
-              ? "Handwriting stamina for 20 minutes, keyboard ergonomics, bilateral sports grip."
-              : (cat === "geriatric" || cat === "old_people")
-              ? "Safe feeding with weighted utensils, independent dressing with sock aid, and steady unassisted sit-to-stand."
-              : "Independent cup grasping, controlled tabletop block stacking, and functional door opening."
-            : "")
-      );
-      setPreferredSchedule(profile.preferred_schedule || (isDemo ? "Daily at 10:00 AM after breakfast (15 mins)" : ""));
-      setSensoryPreferences(
-        profile.sensory_preferences ||
-          (isDemo
-            ? cat === "pedia"
-              ? "Loves colorful pegs and play dough. Sensitive to abrupt loud noises."
-              : "Prefers quiet room with good lighting and tabletop surface."
-            : "")
-      );
-      setSchoolOrWorkplace(
-        profile.school_or_workplace ||
-          (isDemo ? (cat === "pedia" ? "Kindergarten" : cat === "adolescent" ? "High School - Grade 9" : "Retired") : "")
-      );
+      setAge(profile.age ?? "");
+      setDateOfBirth(profile.date_of_birth || "");
+      setPrimaryCondition(profile.primary_condition || "");
+      setCaregiverName(profile.caregiver_name || "");
+      setCaregiverRelationship(profile.caregiver_relationship || "");
+      setEmergencyPhone(profile.emergency_phone || "");
+      setTherapyGoals(profile.therapy_goals || "");
+      setPreferredSchedule(profile.preferred_schedule || "");
+      setSensoryPreferences(profile.sensory_preferences || "");
+      setSchoolOrWorkplace(profile.school_or_workplace || "");
     }
-  }, [profile, isDemo]);
+  }, [profile]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

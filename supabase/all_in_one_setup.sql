@@ -85,6 +85,7 @@ ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS invitation_sent_at TIMESTAM
 ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS previous_therapist_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
 ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS handover_notes TEXT;
 ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS pending_therapist_email TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS care_guide TEXT NOT NULL DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_patients_therapist ON public.patients(therapist_id);
 CREATE INDEX IF NOT EXISTS idx_patients_pending_therapist_email ON public.patients(LOWER(pending_therapist_email));
@@ -323,8 +324,11 @@ CREATE POLICY "Clients can view assigned therapist profile" ON public.profiles F
   EXISTS (SELECT 1 FROM public.patients WHERE therapist_id = profiles.id AND client_user_id = auth.uid())
 );
 DROP POLICY IF EXISTS "Users can update own display name" ON public.profiles;
-CREATE POLICY "Users can update own display name" ON public.profiles FOR UPDATE USING (id = auth.uid())
-  WITH CHECK (id = auth.uid() AND role = (SELECT role FROM public.profiles WHERE id = auth.uid()));
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT TO authenticated WITH CHECK (id = auth.uid());
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE TO authenticated USING (id = auth.uid())
+  WITH CHECK (id = auth.uid() AND (public.current_user_role() IS NULL OR role = public.current_user_role()));
 
 -- PATIENTS (note: temporary_password visible only to owning therapist via this policy; cleared on first login)
 DROP POLICY IF EXISTS "Therapists manage own patients" ON public.patients;
@@ -1324,4 +1328,147 @@ INSERT INTO public.activity_templates (owner_scope, title, description, age_band
  'Geriatric 65+y: "Draw childhood kitchen" frame border, large empty interior + faint cues (stove,table,window,kettle). Below: "My kitchen had ___" prompts.',
  'Kitchen memory frame border, empty interior + stove/table/window/kettle cues, writing prompts, A4 portrait, warm nostalgia, senior',
  '{"difficulty":"independent","theme":"memory","orientation":"portrait","estimatedMinutes":25}'::jsonb, false);
+
+-- ============================================================================
+-- WRITTEN WORKSHEETS: not always drawing — can be a step-by-step guide to follow
+-- (mirrors supabase/migrations/20261102000004_worksheet_kinds.sql)
+-- ============================================================================
+ALTER TABLE public.activity_templates ADD COLUMN IF NOT EXISTS worksheet_kind TEXT NOT NULL DEFAULT 'drawable' CHECK (worksheet_kind IN ('drawable','written','mixed'));
+ALTER TABLE public.generated_activities ADD COLUMN IF NOT EXISTS worksheet_kind TEXT NOT NULL DEFAULT 'drawable' CHECK (worksheet_kind IN ('drawable','written','mixed'));
+ALTER TABLE public.generated_activities ADD COLUMN IF NOT EXISTS written_tasks JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE public.activity_completions ADD COLUMN IF NOT EXISTS text_response TEXT;
+ALTER TABLE public.activity_completions ADD COLUMN IF NOT EXISTS checklist_state JSONB NOT NULL DEFAULT '[]'::jsonb;
+DO $$ BEGIN ALTER TABLE public.activity_completions DROP CONSTRAINT IF EXISTS activity_completions_completion_method_check; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+ALTER TABLE public.activity_completions ADD CONSTRAINT activity_completions_completion_method_check CHECK (completion_method IN ('canvas','photo','print_upload','text','checklist','mixed'));
+
+-- Written guide seeds — mixed across age bands to prove both kinds exist
+INSERT INTO public.activity_templates (owner_scope, title, description, age_band, category, spark_prompt, image_prompt, default_params, worksheet_kind, is_featured) VALUES
+('system','Morning Routine — Step-by-Step Guide','Follow the morning routine in order — check off each step','adult','adl_sim',
+ 'Adult ADL written guide: Morning routine 7 steps (sit up, sip water, ankle pumps 10×, stand at rail, brush teeth seated, shirt on, walk to chair). Each with large checkbox, clock icon, one-line tip. Clean checklist layout.',
+ 'Morning routine 7-step checklist, large checkboxes, clock icons, clean list layout, A4 portrait, adult ADL, high contrast',
+ '{"difficulty":"guided","estimatedMinutes":10,"worksheet_kind":"written"}'::jsonb,'written', false),
+('system','Kitchen Safety Checklist — Do & Check','Before cooking, check each safety item','adult','adl_sim',
+ 'Adult written guide 5–6 checks: stove off→on, hair tied, knife grip, hot pad ready, water nearby. Numbered, checkbox per item, "Stop if unsure" warning. Practical.',
+ 'Kitchen safety checklist 6 items, large checkboxes, knife/pot icons, warning footer, A4 portrait, practical style',
+ '{"difficulty":"guided","estimatedMinutes":8,"worksheet_kind":"written"}'::jsonb,'written', false),
+('system','Home Program Follow-Along — What to Do Today','Today''s 5 exercises with reps, rest, and "How did it feel?" write-in','geriatric','adl_sim',
+ 'Geriatric written guide 65+y: 5 exercises (marching, heel raises, seated trunk twist, grip squeezes, deep breaths) — per row: name, reps/time, rest 30s, checkbox Done + "How felt: ___". Large 14pt, landscape.',
+ '5-exercise guide rows with reps/rest/checkbox + How felt line, large 14pt, senior landscape checklist',
+ '{"difficulty":"guided","estimatedMinutes":15,"orientation":"landscape","worksheet_kind":"written"}'::jsonb,'written', false),
+('system','Speech Practice — Say & Check','Say each word 3×, then check "Clear / Needed help"','pedia','cognitive',
+ 'Pedia speech written guide 3–8y: 6 words (apple, banana, cup, help, more, thank you) with picture cues. Per word: Say 3× → check Clear/Needed help. Caregiver tip footer.',
+ '6 words with picture cues, Say 3× + Clear/Needed help checkboxes, child-friendly, A4 portrait',
+ '{"difficulty":"guided","estimatedMinutes":12,"worksheet_kind":"written"}'::jsonb,'written', false)
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- AGENT TABLES: highlights, goal_reviews, goals, biomech_jobs, agent_runs
+-- (mirrors supabase/migrations/20261102000003_agent_tables.sql for fresh installs)
+-- Highlights are saved in DB when generated (POST /api/agent/highlights/run persists draft)
+-- ============================================================================
+create table if not exists highlights (
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid not null references patients(id) on delete cascade,
+  month text not null,
+  highlights jsonb not null,
+  summary jsonb not null default '{}'::jsonb,
+  prior_compare jsonb,
+  trace jsonb not null default '[]'::jsonb,
+  status text not null check (status in ('draft','published')) default 'draft',
+  model_id text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(patient_id, month)
+);
+create index if not exists idx_highlights_patient_month on highlights(patient_id, month);
+create table if not exists goal_reviews (
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid not null references patients(id) on delete cascade,
+  therapist_id uuid references profiles(id) on delete set null,
+  verdicts jsonb not null,
+  summary jsonb not null,
+  suggestions jsonb not null default '[]'::jsonb,
+  trace jsonb not null default '[]'::jsonb,
+  warnings jsonb not null default '[]'::jsonb,
+  counts jsonb,
+  status text not null check (status in ('draft','published')) default 'draft',
+  model_id text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_goal_reviews_patient on goal_reviews(patient_id, created_at desc);
+create table if not exists goals (
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid not null references patients(id) on delete cascade,
+  therapist_id uuid not null references profiles(id) on delete cascade,
+  text text not null,
+  domain text not null check (domain in ('ue_rom','hand','gait','tug','trunk','adl','neck','soap_coherence')),
+  goal_type text not null check (goal_type in ('stg','ltg')),
+  target_value text, baseline text, deadline date,
+  status text not null default 'active' check (status in ('active','achieved','discontinued')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create table if not exists biomech_jobs (
+  id uuid primary key default gen_random_uuid(),
+  submission_id uuid not null references submissions(id) on delete cascade,
+  step_submission_id uuid not null references step_submissions(id) on delete cascade,
+  intent text not null,
+  concepts text[] not null,
+  status text not null check (status in ('queued','processing','completed','failed')) default 'queued',
+  modal_job_id text, mhr_result jsonb, timing_ms int, error text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create table if not exists agent_runs (
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid references patients(id) on delete cascade,
+  submission_id uuid references submissions(id) on delete cascade,
+  intent text not null, concepts text[],
+  trace jsonb not null default '[]'::jsonb,
+  status text not null default 'completed' check (status in ('queued','processing','completed','failed')),
+  model_id text, created_at timestamptz not null default now()
+);
+do $$ begin
+  alter table public.ai_analyses add column if not exists mhr_results jsonb;
+  alter table public.ai_analyses add column if not exists biomech_summary jsonb;
+exception when others then null; end $$;
+alter table public.highlights enable row level security;
+alter table public.goal_reviews enable row level security;
+alter table public.goals enable row level security;
+alter table public.biomech_jobs enable row level security;
+alter table public.agent_runs enable row level security;
+drop policy if exists "Therapists manage highlights" on public.highlights;
+create policy "Therapists manage highlights" on public.highlights for all to authenticated
+  using (therapist_owns_patient(patient_id) or exists (select 1 from patients p where p.id = highlights.patient_id and p.client_user_id = auth.uid()))
+  with check (therapist_owns_patient(patient_id));
+drop policy if exists "Therapists manage goal_reviews" on public.goal_reviews;
+create policy "Therapists manage goal_reviews" on public.goal_reviews for all to authenticated
+  using (therapist_owns_patient(patient_id) or exists (select 1 from patients p where p.id = goal_reviews.patient_id and p.client_user_id = auth.uid()))
+  with check (therapist_owns_patient(patient_id));
+drop policy if exists "Therapists manage goals" on public.goals;
+create policy "Therapists manage goals" on public.goals for all to authenticated using (therapist_owns_patient(patient_id)) with check (therapist_owns_patient(patient_id));
+drop policy if exists "Therapists manage biomech_jobs" on public.biomech_jobs;
+create policy "Therapists manage biomech_jobs" on public.biomech_jobs for all to authenticated using (exists (select 1 from submissions s where s.id = biomech_jobs.submission_id and therapist_owns_patient(s.patient_id)));
+drop policy if exists "Therapists manage agent_runs" on public.agent_runs;
+create policy "Therapists manage agent_runs" on public.agent_runs for all to authenticated using (patient_id is null or therapist_owns_patient(patient_id) or exists (select 1 from patients p where p.id = agent_runs.patient_id and p.client_user_id = auth.uid()));
+do $$ declare t text; begin for t in select unnest(array['highlights','goal_reviews','goals','biomech_jobs']) loop execute format('drop trigger if exists trigger_updated_at_%I on public.%I', t, t); execute format('create trigger trigger_updated_at_%I before update on public.%I for each row execute function public.handle_updated_at()', t, t); end loop; end $$;
+
+-- Message read states for unread badge per thread
+create table if not exists public.message_read_states (
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid not null references public.patients(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  last_read_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint uq_message_read_patient_user unique (patient_id, user_id)
+);
+create index if not exists idx_message_read_states_patient on public.message_read_states(patient_id);
+create index if not exists idx_message_read_states_user on public.message_read_states(user_id);
+alter table public.message_read_states enable row level security;
+drop policy if exists "Users manage own message read states" on public.message_read_states;
+create policy "Users manage own message read states" on public.message_read_states for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists "Therapists view read states for own patients" on public.message_read_states;
+create policy "Therapists view read states for own patients" on public.message_read_states for select using (exists (select 1 from public.patients p where p.id = message_read_states.patient_id and p.therapist_id = auth.uid()));
 

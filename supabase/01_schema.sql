@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS public.patients (
   client_category TEXT CHECK (client_category IN ('adult', 'adolescent', 'pedia', 'old_people') OR client_category IS NULL),
   invitation_status TEXT NOT NULL DEFAULT 'accepted',
   invitation_sent_at TIMESTAMPTZ DEFAULT NOW(),
+  long_term_goals JSONB NOT NULL DEFAULT '[]'::jsonb,
+  short_term_goals JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -315,8 +317,11 @@ CREATE POLICY "Clients can view assigned therapist profile" ON public.profiles F
   EXISTS (SELECT 1 FROM public.patients WHERE therapist_id = profiles.id AND client_user_id = auth.uid())
 );
 DROP POLICY IF EXISTS "Users can update own display name" ON public.profiles;
-CREATE POLICY "Users can update own display name" ON public.profiles FOR UPDATE USING (id = auth.uid())
-  WITH CHECK (id = auth.uid() AND role = (SELECT role FROM public.profiles WHERE id = auth.uid()));
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT TO authenticated WITH CHECK (id = auth.uid());
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE TO authenticated USING (id = auth.uid())
+  WITH CHECK (id = auth.uid() AND (public.current_user_role() IS NULL OR role = public.current_user_role()));
 
 -- PATIENTS
 DROP POLICY IF EXISTS "Therapists manage own patients" ON public.patients;

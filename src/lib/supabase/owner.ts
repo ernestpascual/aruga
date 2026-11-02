@@ -14,13 +14,40 @@ export async function ownsPatient(
   requesterId: string
 ): Promise<boolean> {
   if (!patientId || !requesterId) return false;
-  const { data: pat } = await admin
-    .from("patients")
-    .select("client_user_id, therapist_id")
-    .eq("id", patientId)
-    .maybeSingle();
+  let pat: any = null;
+  {
+    const { data } = await admin.from("patients").select("id, client_user_id, therapist_id, pending_therapist_email").eq("id", patientId).maybeSingle();
+    if (data) pat = data;
+    else {
+      const { data: byClient } = await admin.from("patients").select("id, client_user_id, therapist_id, pending_therapist_email").eq("client_user_id", patientId).maybeSingle();
+      if (byClient) pat = byClient;
+    }
+  }
   if (!pat) return false;
-  return pat.client_user_id === requesterId || pat.therapist_id === requesterId;
+  if (pat.client_user_id === requesterId || pat.therapist_id === requesterId) return true;
+  // Pending link: therapist invited by email but patient row still has pending_therapist_email (pre-accept) —
+  // allow if requester email matches pending_therapist_email (self-heal edge before GET clients runs)
+  if (pat.pending_therapist_email) {
+    try {
+      let reqEmail: string | null = null;
+      const { data: prof } = await admin.from("profiles").select("email").eq("id", requesterId).maybeSingle();
+      reqEmail = (prof as { email?: string | null } | null)?.email?.toLowerCase().trim() || null;
+      if (!reqEmail) {
+        try {
+          const { data: authUser } = await admin.auth.admin.getUserById(requesterId);
+          reqEmail = authUser?.user?.email?.toLowerCase().trim() || null;
+        } catch {}
+      }
+      if (reqEmail && pat.pending_therapist_email.toLowerCase().trim() === reqEmail) {
+        // Self-heal: claim the row so future checks hit therapist_id path
+        try {
+          await admin.from("patients").update({ therapist_id: requesterId, updated_at: new Date().toISOString() }).eq("id", pat.id || patientId);
+        } catch {}
+        return true;
+      }
+    } catch {}
+  }
+  return false;
 }
 
 export async function getRequesterId(req: Request, fallback?: string | null): Promise<string | null> {
@@ -76,6 +103,14 @@ export async function therapistOwnsProgramPatient(
   therapistId: string
 ): Promise<boolean> {
   if (!patientId || !therapistId) return false;
-  const { data: pat } = await admin.from("patients").select("therapist_id").eq("id", patientId).maybeSingle();
+  let pat: { therapist_id: string | null } | null = null;
+  {
+    const { data } = await admin.from("patients").select("therapist_id").eq("id", patientId).maybeSingle();
+    if (data) pat = data;
+    else {
+      const { data: byClient } = await admin.from("patients").select("therapist_id").eq("client_user_id", patientId).maybeSingle();
+      if (byClient) pat = byClient;
+    }
+  }
   return pat?.therapist_id === therapistId;
 }

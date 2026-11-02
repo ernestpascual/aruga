@@ -76,6 +76,8 @@ CREATE TABLE IF NOT EXISTS public.generated_activities (
   reference_image_paths TEXT[] NOT NULL DEFAULT '{}',
   -- Outputs
   spark_spec JSONB,
+  worksheet_kind TEXT NOT NULL DEFAULT 'drawable' CHECK (worksheet_kind IN ('drawable','written','mixed')),
+  written_tasks JSONB NOT NULL DEFAULT '[]'::jsonb,
   base_image_path TEXT,
   base_image_url TEXT,
   composed_pdf_path TEXT,
@@ -121,8 +123,11 @@ CREATE TABLE IF NOT EXISTS public.activity_completions (
   drawing_strokes JSONB NOT NULL DEFAULT '[]'::jsonb,
   -- Photo fallback
   photo_upload_path TEXT,
+  -- Written guide completion (text/checklist) — not always drawing
+  text_response TEXT,
+  checklist_state JSONB NOT NULL DEFAULT '[]'::jsonb,
   -- Metadata
-  completion_method TEXT NOT NULL DEFAULT 'canvas' CHECK (completion_method IN ('canvas','photo','print_upload')),
+  completion_method TEXT NOT NULL DEFAULT 'canvas' CHECK (completion_method IN ('canvas','photo','print_upload','text','checklist','mixed')),
   completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

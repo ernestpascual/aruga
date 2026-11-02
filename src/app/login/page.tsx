@@ -50,6 +50,41 @@ export default function LoginPage() {
     }
   }, []);
 
+  // Hard reset on mount: browser bfcache / Next router cache can restore stale inputs
+  // with loading=true ("Connecting…"). Mount effect clears it unconditionally.
+  React.useEffect(() => {
+    setLoading(false);
+    // If not a password-reset deep link, clear any Autofill/bfcache restored values
+    const p = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const isResetLink = p?.get("mode") === "reset" || (typeof window !== "undefined" && window.location.hash.includes("type=recovery"));
+    if (!isResetLink) {
+      // Small delay lets browser autofill settle then we clear stale cached values on logout path
+      // Only clear if we are in logged-out state — check via authLoading/user below
+    }
+  }, []);
+
+  // Whenever auth confirms logged-out, force form back to pristine initial state.
+  // This fires both on hard reload (initial !user) and on soft router.push("/login")
+  // after signOut; it bypasses the stale cache snapshot that still holds old email/password.
+  React.useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+      setName("");
+      setErrorMessage(null);
+      setSuccessMessage(null);
+      const p = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const isResetLink = p?.get("mode") === "reset" || window.location.hash.includes("type=recovery");
+      if (!isResetLink) setMode("signin");
+    } else {
+      // Leaving login — ensure cache never captures "Connecting…"
+      setLoading(false);
+    }
+  }, [authLoading, user]);
+
   // If already logged in, redirect immediately to appropriate dashboard (except when resetting password)
   React.useEffect(() => {
     if (mode === "reset") return;
@@ -85,6 +120,10 @@ export default function LoginPage() {
         }
 
         const targetRole = result.role || (email.includes("therapist") ? "therapist" : "client");
+        // React state flush is async — router.push can snapshot the old loading=true tree.
+        // Defer navigation to next tick so cache captures the clean (loading=false) frame.
+        setLoading(false);
+        await new Promise<void>((r) => setTimeout(r, 0));
         if (targetRole === "therapist") {
           router.push("/therapist/dashboard");
         } else {
@@ -566,6 +605,41 @@ export default function LoginPage() {
                   ? "Send Password Reset Link"
                   : "Update Password & Continue"}
               </Button>
+
+              {/* Switch account / Register helper — #1 of 6 */}
+              <div className="pt-2 flex items-center justify-center gap-2 text-xs flex-wrap">
+                {mode === "signin" ? (
+                  <>
+                    <span className="text-zinc-500">No account yet?</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode("register");
+                        setErrorMessage(null);
+                        setSuccessMessage(null);
+                      }}
+                      className="font-semibold text-teal-400 hover:text-teal-300 hover:underline underline-offset-4 transition-colors"
+                    >
+                      Create account & proceed to register
+                    </button>
+                  </>
+                ) : mode === "register" ? (
+                  <>
+                    <span className="text-zinc-500">Already have an account?</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode("signin");
+                        setErrorMessage(null);
+                        setSuccessMessage(null);
+                      }}
+                      className="font-semibold text-teal-400 hover:text-teal-300 hover:underline underline-offset-4 transition-colors"
+                    >
+                      Sign in
+                    </button>
+                  </>
+                ) : null}
+              </div>
             </form>
           </div>
         </div>

@@ -19,6 +19,10 @@ import {
   HelpCircle,
   Calendar,
   Palette,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Wand2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +69,50 @@ function NewHomeProgramContent({
   const [discipline, setDiscipline] = useState<"SLP" | "OT" | "PT">("OT");
   const [scheduledDates, setScheduledDates] = useState<string[]>([]);
   const [newDateInput, setNewDateInput] = useState("");
+
+  // Schedule builder — sessions + frequency + calendar pick
+  const [sessionsCount, setSessionsCount] = useState<number>(3);
+  const [frequency, setFrequency] = useState<"everyday" | "everyOtherDay" | "custom" | "pick">("everyday");
+  const [customInterval, setCustomInterval] = useState<number>(3);
+  const [startDate, setStartDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
+  const [calendarCursor, setCalendarCursor] = useState<Date>(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d;
+  });
+
+  const toISO = (d: Date) => d.toISOString().split("T")[0];
+  const addDaysISO = (iso: string, days: number) => {
+    const d = new Date(iso + "T12:00:00");
+    d.setDate(d.getDate() + days);
+    return toISO(d);
+  };
+  const buildDatesFromSchedule = (start: string, count: number, intervalDays: number) => {
+    const out: string[] = [];
+    for (let i = 0; i < count; i++) out.push(addDaysISO(start, i * intervalDays));
+    return out;
+  };
+  const intervalForFrequency = () => {
+    if (frequency === "everyday") return 1;
+    if (frequency === "everyOtherDay") return 2;
+    if (frequency === "custom") return Math.max(1, Math.min(30, customInterval || 1));
+    return 1;
+  };
+  const handleGenerateSchedule = () => {
+    const count = Math.max(1, Math.min(10, sessionsCount || 1));
+    const interval = intervalForFrequency();
+    if (!startDate) return;
+    const generated = buildDatesFromSchedule(startDate, count, interval);
+    setScheduledDates(generated);
+  };
+  const toggleCalendarDate = (iso: string) => {
+    setScheduledDates((prev) => {
+      if (prev.includes(iso)) return prev.filter((d) => d !== iso).sort();
+      const limit = Math.max(1, Math.min(10, sessionsCount || 10));
+      if (prev.length >= limit) return prev; // at cap — don't add
+      return [...prev, iso].sort();
+    });
+  };
   const [steps, setSteps] = useState<StepItem[]>([
     {
       id: "step-1",
@@ -218,16 +266,40 @@ function NewHomeProgramContent({
 
     setSubmitting(true);
     try {
-      // 1. Create program
+      // 1. Create program — include requester identity for RLS/owns check (route:165 reads x-requester-id/creatorId/requesterId)
+      let requesterId: string | null = user?.id || null;
+      if (!requesterId) {
+        try {
+          const { createClient: createSupabaseBrowserClient } = await import("@/lib/supabase/client");
+          const supabase = createSupabaseBrowserClient();
+          if (supabase) {
+            const { data } = await supabase.auth.getSession();
+            requesterId = data.session?.user?.id || null;
+            if (!requesterId) {
+              const { data: u } = await supabase.auth.getUser();
+              requesterId = u.user?.id || null;
+            }
+          }
+        } catch {}
+      }
+      if (!requesterId) {
+        throw new Error("Not authenticated — please wait for sign-in to finish and retry (requesterId required).");
+      }
       const res = await fetch("/api/therapist/programs", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-requester-id": requesterId,
+        },
         body: JSON.stringify({
           patientId,
           title,
           mainInstructions,
           scheduledDates,
           steps: steps.map((s) => ({ title: s.title, instructions: s.instructions, generated_activity_id: s.generatedActivityId || undefined, generatedActivityId: s.generatedActivityId || undefined })),
+          requesterId,
+          creatorId: requesterId,
+          therapistId: requesterId,
         }),
       });
 
@@ -242,10 +314,16 @@ function NewHomeProgramContent({
       if (action === "assign") {
         const assignRes = await fetch("/api/therapist/programs", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-requester-id": requesterId,
+          },
           body: JSON.stringify({
             action: "assign",
             programId: createdProgramId,
+            requesterId,
+            creatorId: requesterId,
+            therapistId: requesterId,
           }),
         });
 
@@ -288,16 +366,7 @@ function NewHomeProgramContent({
           </p>
         </div>
 
-        {/* Refine with Meta Action */}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleRefineWithMeta}
-          className="w-full sm:w-auto gap-2 border-teal-500/50 bg-teal-950/40 text-teal-300 hover:bg-teal-900/60 shadow-sm h-10 sm:h-8 justify-center text-xs"
-        >
-          <Sparkles className="w-4 h-4 text-teal-400" />
-          <span>Refine with Meta</span>
-        </Button>
+
       </div>
 
       {pageError && (
@@ -348,7 +417,7 @@ function NewHomeProgramContent({
         </div>
       </Card>
 
-      {/* Practice Schedule (Up to 10 Dates) */}
+      {/* Practice Schedule — sessions + frequency + calendar pick */}
       <Card className="border-zinc-800 bg-zinc-900/90 p-4 sm:p-5 space-y-4 overflow-hidden">
         <div className="flex flex-col gap-2 border-b border-zinc-800/80 pb-3">
           <div className="flex items-center justify-between gap-2">
@@ -357,39 +426,130 @@ function NewHomeProgramContent({
               Practice Schedule
             </h3>
             <Badge
-              variant={scheduledDates.length >= 10 ? "amber" : "teal"}
-              statusText={`${scheduledDates.length}/10`}
+              variant={scheduledDates.length >= sessionsCount ? "amber" : "teal"}
+              statusText={`${scheduledDates.length}/${Math.max(1, Math.min(10, sessionsCount || 1))} sessions`}
             />
           </div>
           <p className="text-xs text-zinc-400 leading-relaxed">
-            Specify dates for this home program (up to 10). Each date = 1 submission.
+            Choose how many sessions and how they recur, then auto-fill dates or tap the calendar to pick. Each date = 1 submission (max 10).
           </p>
         </div>
 
-        {/* Date Input & Quick Buttons */}
-        <div className="space-y-3">
+        {/* Builder controls: sessions + frequency + start */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 sm:p-3.5 space-y-3">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+            <div className="lg:col-span-3 space-y-1.5">
+              <label className="text-[11px] font-semibold tracking-wide uppercase text-zinc-400 flex items-center gap-1">
+                <Clock3 className="w-3 h-3 text-zinc-500" /> How many sessions?
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSessionsCount((v) => Math.max(1, (v || 1) - 1))}
+                  className="w-9 h-9 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700 grid place-items-center shrink-0"
+                  aria-label="Decrease sessions"
+                >
+                  −
+                </button>
+                <Input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={sessionsCount}
+                  onChange={(e) => {
+                    const n = parseInt(e.target.value, 10);
+                    setSessionsCount(Number.isFinite(n) ? Math.max(1, Math.min(10, n)) : 1);
+                  }}
+                  className="text-center font-mono text-sm h-9 bg-zinc-900 border-zinc-800"
+                />
+                <button
+                  type="button"
+                  onClick={() => setSessionsCount((v) => Math.min(10, (v || 1) + 1))}
+                  className="w-9 h-9 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700 grid place-items-center shrink-0"
+                  aria-label="Increase sessions"
+                >
+                  +
+                </button>
+              </div>
+              <p className="text-[10px] text-zinc-500">1–10 sessions.</p>
+            </div>
+
+            <div className="lg:col-span-5 space-y-1.5">
+              <label className="text-[11px] font-semibold tracking-wide uppercase text-zinc-400">Frequency</label>
+              <select
+                value={frequency}
+                onChange={(e) => setFrequency(e.target.value as never)}
+                className="flex h-9 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+              >
+                <option value="everyday">Every day</option>
+                <option value="everyOtherDay">Every other day</option>
+                <option value="custom">Every X days (custom)</option>
+                <option value="pick">Pick on calendar</option>
+              </select>
+              {frequency === "custom" && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-xs text-zinc-400">Every</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={30}
+                    value={customInterval}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value, 10);
+                      setCustomInterval(Number.isFinite(n) ? Math.max(1, Math.min(30, n)) : 1);
+                    }}
+                    className="w-20 h-8 text-center font-mono text-sm bg-zinc-900 border-zinc-800"
+                  />
+                  <span className="text-xs text-zinc-400">day(s)</span>
+                </div>
+              )}
+            </div>
+
+            <div className="lg:col-span-4 space-y-1.5">
+              <label className="text-[11px] font-semibold tracking-wide uppercase text-zinc-400">Start date</label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-zinc-900 border-zinc-800 text-xs h-9 text-zinc-200"
+              />
+              {frequency !== "pick" ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleGenerateSchedule}
+                  className="w-full gap-1.5 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold h-9 text-xs"
+                >
+                  <Wand2 className="w-3.5 h-3.5" />
+                  Generate {Math.max(1, Math.min(10, sessionsCount))} dates ({frequency === "everyday" ? "daily" : frequency === "everyOtherDay" ? "every 2 days" : `every ${Math.max(1, Math.min(30, customInterval))} days`})
+                </Button>
+              ) : (
+                <p className="text-[11px] text-zinc-500 pt-1 leading-relaxed">Tap dates on the calendar below — it stops at {sessionsCount} picks.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Quick manual add + quick presets retained */}
           <div className="flex gap-2">
             <Input
               type="date"
               value={newDateInput}
               onChange={(e) => setNewDateInput(e.target.value)}
               className="flex-1 bg-zinc-950 border-zinc-800 text-xs h-10 sm:h-9 text-zinc-200"
-              disabled={scheduledDates.length >= 10}
+              disabled={scheduledDates.length >= Math.max(1, Math.min(10, sessionsCount || 10))}
             />
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => handleAddDate()}
-              disabled={!newDateInput || scheduledDates.length >= 10}
+              disabled={!newDateInput || scheduledDates.length >= Math.max(1, Math.min(10, sessionsCount || 10))}
               className="shrink-0 h-10 sm:h-9 gap-1 text-xs border-teal-500/40 text-teal-300 hover:bg-teal-950/30 px-4"
             >
               <Plus className="w-3.5 h-3.5" />
               Add
             </Button>
           </div>
-
-          {/* Quick Date Presets — scrollable row */}
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none snap-x -mx-1 px-1 pb-1">
             <span className="text-[11px] text-zinc-500 shrink-0 mr-1">Quick:</span>
             {[
@@ -403,16 +563,15 @@ function NewHomeProgramContent({
               d.setDate(d.getDate() + preset.days);
               const dateStr = d.toISOString().split("T")[0];
               const alreadyAdded = scheduledDates.includes(dateStr);
+              const atCap = scheduledDates.length >= Math.max(1, Math.min(10, sessionsCount || 10));
               return (
                 <button
                   key={preset.label}
                   type="button"
-                  disabled={alreadyAdded || scheduledDates.length >= 10}
+                  disabled={alreadyAdded || atCap}
                   onClick={() => handleAddDate(dateStr)}
                   className={`snap-start shrink-0 px-2.5 py-2 sm:py-1.5 rounded-lg text-[11px] font-mono border transition-colors whitespace-nowrap ${
-                    alreadyAdded
-                      ? "opacity-40 border-zinc-800 text-zinc-600 cursor-not-allowed"
-                      : "border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-teal-500/50 hover:text-teal-300"
+                    alreadyAdded ? "opacity-40 border-zinc-800 text-zinc-600 cursor-not-allowed" : "border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-teal-500/50 hover:text-teal-300"
                   }`}
                 >
                   {preset.label}
@@ -422,31 +581,112 @@ function NewHomeProgramContent({
           </div>
         </div>
 
+        {/* Calendar — click to select exactly sessionsCount dates */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCalendarCursor((d) => { const n = new Date(d); n.setMonth(n.getMonth() - 1); return n; })}
+                className="w-7 h-7 grid place-items-center rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"
+                aria-label="Previous month"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-semibold text-zinc-100 min-w-[140px] text-center">
+                {calendarCursor.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCalendarCursor((d) => { const n = new Date(d); n.setMonth(n.getMonth() + 1); return n; })}
+                className="w-7 h-7 grid place-items-center rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"
+                aria-label="Next month"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 text-[11px]">
+              <span className="inline-flex items-center gap-1.5 text-zinc-400"><span className="w-3 h-3 rounded bg-teal-500/30 border border-teal-500/50 inline-block" /> Selected</span>
+              <button
+                type="button"
+                onClick={() => setScheduledDates([])}
+                disabled={scheduledDates.length === 0}
+                className="px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-200 disabled:opacity-40 text-xs"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          {/* Two-month grid on desktop, single on mobile */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[0, 1].map((offset) => {
+              const base = new Date(calendarCursor);
+              base.setMonth(base.getMonth() + offset);
+              const year = base.getFullYear();
+              const month = base.getMonth();
+              const firstDow = new Date(year, month, 1).getDay(); // 0 Sun
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+              const todayISO = new Date().toISOString().split("T")[0];
+              const cells: Array<number | null> = [];
+              for (let i = 0; i < firstDow; i++) cells.push(null);
+              for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+              // pad to 6 rows for stable height
+              while (cells.length < 42) cells.push(null);
+              // hide second month on very small screens via CSS — we handle with grid md:grid-cols-2, mobile will stack
+              return (
+                <div key={`${year}-${month}`} className={offset === 1 ? "hidden md:block" : "block"}>
+                  <div className="text-[11px] font-semibold text-zinc-300 text-center mb-2">
+                    {base.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1 text-[11px] text-zinc-500 text-center mb-1">
+                    {["S","M","T","W","T","F","S"].map((w, i) => <div key={`${w}-${i}-${offset}`} className="py-1 font-medium">{w}</div>)}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {cells.map((dayNum, idx) => {
+                      if (dayNum === null) return <div key={`e-${offset}-${idx}`} className="h-8 sm:h-7" />;
+                      const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+                      const isSelected = scheduledDates.includes(iso);
+                      const isToday = iso === todayISO;
+                      const atCap = scheduledDates.length >= Math.max(1, Math.min(10, sessionsCount || 10));
+                      const disabled = !isSelected && atCap;
+                      return (
+                        <button
+                          key={iso}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => toggleCalendarDate(iso)}
+                          className={`h-8 sm:h-7 rounded-lg text-xs font-mono border flex items-center justify-center transition-colors
+                            ${isSelected ? "bg-teal-500 text-zinc-950 border-teal-400 font-semibold shadow-[0_0_0_1px_rgba(20,184,166,0.5)]" : `bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-teal-500/40 hover:text-teal-200 ${disabled ? "opacity-30 cursor-not-allowed" : ""}`}
+                            ${isToday && !isSelected ? "ring-1 ring-teal-500/40 border-teal-500/20" : ""}`}
+                          title={iso}
+                        >
+                          {dayNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-zinc-500 text-center sm:hidden">Showing 1 month on mobile — use arrows to browse. Second month visible on tablet/desktop.</p>
+        </div>
+
         {/* Selected Dates Badges */}
         {scheduledDates.length > 0 ? (
-          <div className="flex flex-wrap gap-2 pt-2">
+          <div className="flex flex-wrap gap-2 pt-1">
             {scheduledDates.map((dateStr, idx) => (
-              <div
-                key={dateStr}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-950 border border-teal-500/30 text-xs text-zinc-200"
-              >
+              <div key={dateStr} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-950 border border-teal-500/30 text-xs text-zinc-200">
                 <span className="font-semibold text-teal-400">Date {idx + 1}:</span>
                 <span className="font-mono">{dateStr}</span>
                 <span className="text-[10px] text-zinc-500">(1 submission)</span>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveDate(dateStr)}
-                  className="text-zinc-500 hover:text-red-400 transition-colors ml-1"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                <button type="button" onClick={() => handleRemoveDate(dateStr)} className="text-zinc-500 hover:text-red-400 transition-colors ml-1"><X className="w-3.5 h-3.5" /></button>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-zinc-500 italic pt-1">
-            No specific dates scheduled yet. If no dates are specified, the client submits 1 submission for this home program.
-          </p>
+          <p className="text-xs text-zinc-500 italic pt-1">No dates selected yet. Generate from frequency above or tap the calendar — empty schedule means 1 submission for the whole program.</p>
         )}
       </Card>
 
