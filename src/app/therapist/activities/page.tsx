@@ -10,7 +10,7 @@ import { ActivityTemplate } from "@/types/database";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Palette, Sparkles, BookOpen, Library } from "lucide-react";
+import { Palette, Sparkles, BookOpen, Library, Loader2 } from "lucide-react";
 
 export default function TherapistActivitiesPage() {
   const { user } = useAuth();
@@ -41,7 +41,7 @@ export default function TherapistActivitiesPage() {
   const myTemplates = useMemo(() => templates.filter(t => t.owner_scope === "therapist" && t.therapist_id === user?.id), [templates, user?.id]);
   const myPromptCount = myTemplates.length;
 
-  if (loading) return <div className="p-8 text-center text-zinc-500 text-xs">Loading activities library...</div>;
+  if (loading) return <div className="p-8 flex flex-col items-center gap-3 text-xs text-zinc-400"><Loader2 className="w-6 h-6 animate-spin text-teal-400" /><p>Loading activities library...</p></div>;
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-6xl mx-auto pb-12">

@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
       patientId,
       creatorId,
       generateImage,
+      usageInstructions,
       // legacy aliases from UI
       customSpark,
       customImage,
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest) {
     // Efficient: cap custom prompts at source to avoid finish_reason=length
     const effectiveSparkPrompt = (customSparkPrompt || customSpark || undefined)?.toString().slice(0, 800) || undefined;
     const effectiveImagePrompt = (customImagePrompt || customImage || undefined)?.toString().slice(0, 600) || undefined;
+    const usageInstructionsClean = typeof usageInstructions === "string" ? usageInstructions.trim().slice(0, 500) : undefined;
 
     // If templateId provided, hydrate template prompts as base
     let templateSpark: string | undefined = effectiveSparkPrompt;
@@ -87,13 +89,14 @@ export async function POST(req: NextRequest) {
       ageBand,
       category: (templateCategory as never) || "other",
       titleOverride: titleOverride || dbTemplateTitle,
-      theme,
+      theme: usageInstructionsClean ? `${theme || ""} Usage guide: ${usageInstructionsClean}`.trim().slice(0, 1000) : theme,
       difficulty,
       lineStyle,
       customSparkPrompt: templateSpark,
       customImagePrompt: templateImage,
       referenceLinks: Array.isArray(referenceLinks) ? referenceLinks.filter(Boolean).slice(0, 6) : undefined,
       referenceImages: Array.isArray(referenceImages) ? referenceImages.filter(Boolean).slice(0, 4) : undefined,
+      usageInstructions: usageInstructionsClean,
       patientId,
       generateImage: generateImage === false || generateImage === "false" ? false : true,
     });

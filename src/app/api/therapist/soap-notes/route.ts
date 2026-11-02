@@ -5,17 +5,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { logAuditEvent } from "@/lib/hipaa/audit";
 
 async function ownsPatientCheck(admin: NonNullable<ReturnType<typeof createAdminClient>>, patientId: string, requesterId: string) {
-  let pat: any = null;
-  {
-    const { data } = await admin.from("patients").select("client_user_id, therapist_id").eq("id", patientId).maybeSingle();
-    if (data) pat = data;
-    else {
-      const { data: byClient } = await admin.from("patients").select("client_user_id, therapist_id").eq("client_user_id", patientId).maybeSingle();
-      if (byClient) pat = byClient;
-    }
-  }
-  if (!pat) return false;
-  return pat.client_user_id === requesterId || pat.therapist_id === requesterId;
+  return ownsPatient(admin, patientId, requesterId);
 }
 export async function GET(req: NextRequest) {
   try {

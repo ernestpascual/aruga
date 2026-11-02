@@ -25,6 +25,7 @@ import {
   Loader2,
   Link2,
 } from "lucide-react";
+import { InlineLoader, PageLoader } from "@/components/ui/page-loader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -169,6 +170,13 @@ export default function TherapistDashboardPage() {
           </div>
         </div>
       </div>
+
+      {loading && (
+        <div className="py-8 flex items-center justify-center gap-3">
+          <Loader2 className="w-5 h-5 animate-spin text-teal-400" />
+          <span className="text-xs text-zinc-400">Loading caseload &amp; clinic stats...</span>
+        </div>
+      )}
 
       {/* Pending requests now auto-activate on first login — no approve/decline UI. See "Pending Activation" pill in caseload. */}
 

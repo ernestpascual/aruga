@@ -37,6 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { BiomechSkeletonOverlay, BiomechInVideoHud, BiomechLiveHud, BiomechMaskControls, BiomechMaskStyle, DEFAULT_BIOMECH_MASK, findActiveFrame } from "@/components/therapist/BiomechOverlay";
+import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface SamBoxOut {
   frameIndex: number;
@@ -80,6 +81,7 @@ export default function BiomechPlaygroundPage() {
   const [fileName, setFileName] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [videoDataUrl, setVideoDataUrl] = useState<string | null>(null);
+  const [rawFile, setRawFile] = useState<File | null>(null);
   const [durationSeconds, setDurationSeconds] = useState<number | undefined>(undefined);
   const [videoSize, setVideoSize] = useState<{width:number;height:number}|null>(null);
   const [isReading, setIsReading] = useState(false);
@@ -107,7 +109,7 @@ export default function BiomechPlaygroundPage() {
   const dragCounter = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Handle video upload
+  // Handle video upload — keep File for direct Supabase upload bypassing Vercel λ limit
   async function handleVideo(file: File | null) {
     if (!file) return;
     setError(null);
@@ -116,6 +118,7 @@ export default function BiomechPlaygroundPage() {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(file));
     setFileName(file.name);
+    setRawFile(file);
     setIsReading(true);
     try { setVideoDataUrl(await fileToDataUrl(file)); } catch { setError("Could not read video."); setVideoDataUrl(null); } finally { setIsReading(false); }
   }
@@ -124,22 +127,62 @@ export default function BiomechPlaygroundPage() {
   function handleDragLeave(e: React.DragEvent){ e.preventDefault(); e.stopPropagation(); dragCounter.current=Math.max(0,dragCounter.current-1); if(dragCounter.current===0) setIsDragging(false); }
   async function handleDrop(e: React.DragEvent){ e.preventDefault(); e.stopPropagation(); dragCounter.current=0; setIsDragging(false); if(isRunning||isReading) return; const f=e.dataTransfer.files?.[0]??null; if(f) await handleVideo(f); }
 
-  // Run agentic loop
+  // Run agentic loop — prefers Supabase Storage upload to bypass Vercel 4.5 MB λ limit
   async function handleRun() {
-    if (!videoDataUrl) { setError("Upload a video first."); return; }
+    if (!videoDataUrl && !rawFile) { setError("Upload a video first."); return; }
     if (!prescribedTitle.trim() && !prescribedInstructions.trim()) { setError("Describe the prescribed activity — AI uses this to decide what to track."); return; }
     setIsRunning(true); setError(null); setResult(null); setActiveStep(2);
     try {
+      let payload: Record<string, unknown> = { prescribedTitle, prescribedInstructions, therapistNeed, ageBand, durationSeconds, mediaWidth: videoSize?.width, mediaHeight: videoSize?.height, previousMhr: previousRun?.mhr || null };
+      let usedStorage = false;
+
+      // Prefer Storage path when file >~2 MB or any file when authenticated — bypasses Vercel body limit
+      if (rawFile) {
+        try {
+          const supabase = createSupabaseBrowserClient();
+          if (supabase) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user?.id) {
+              const ext = (rawFile.name.split(".").pop() || "mp4").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0,4) || "mp4";
+              const storagePath = `playground/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+              const { error: upErr } = await supabase.storage.from("program-videos").upload(storagePath, rawFile, { contentType: rawFile.type || `video/${ext}`, upsert: false });
+              if (!upErr) {
+                payload.videoStoragePath = storagePath;
+                usedStorage = true;
+              } else {
+                console.warn("[biomech] storage upload failed, fallback to data URL:", upErr.message);
+              }
+            }
+          }
+        } catch (e) { console.warn("[biomech] storage upload exception:", e); }
+      }
+      if (!usedStorage) {
+        // Fallen back to data URL — enforce Vercel cap
+        if (!videoDataUrl) throw new Error("Upload failed — no video data available.");
+        const approxPayloadMb = (videoDataUrl.length * 0.75) / (1024 * 1024);
+        if (approxPayloadMb > 4.2) {
+          throw new Error(`Clip too large for direct upload (${approxPayloadMb.toFixed(1)} MB). Sign in and retry — signed-in users upload via Storage (up to 100 MB). Or use a shorter clip ≤15s / <3 MB.`);
+        }
+        payload.videoDataUrl = videoDataUrl;
+      }
+
       const res = await fetch("/api/tools/biomech/run", {
         method: "POST",
         headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ prescribedTitle, prescribedInstructions, therapistNeed, ageBand, videoDataUrl, durationSeconds, mediaWidth: videoSize?.width, mediaHeight: videoSize?.height, previousMhr: previousRun?.mhr || null }),
+        body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const ct = res.headers.get("content-type") || "";
+      let data: any;
+      if (ct.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const txt = await res.text();
+        if (!res.ok) throw new Error(txt.slice(0, 800) || `Request failed (${res.status})`);
+        try { data = JSON.parse(txt); } catch { throw new Error(txt.slice(0, 800)); }
+      }
       if (!res.ok) throw new Error(data.error || "Biomech run failed.");
       setResult(data);
       setActiveStep(4);
-      // init mask styles from concepts
       const init: Record<string, {color:string; visible:boolean}> = {};
       (data.concepts||[]).forEach((label:string,i:number)=> { init[label] = { color: PALETTE[i % PALETTE.length], visible: true }; });
       setMaskStyles(init);

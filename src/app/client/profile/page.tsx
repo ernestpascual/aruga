@@ -576,17 +576,17 @@ export default function ClientProfilePage() {
                       variant="outline"
                       size="sm"
                       onClick={handleCancelLink}
-                      disabled={linkActionLoading}
+                      isLoading={linkActionLoading}
                       className="border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs h-8"
                     >
-                      {linkActionLoading ? "Canceling..." : "Cancel Request"}
+                      Cancel Request
                     </Button>
                   ) : (
                     <>
                       <Button
                         size="sm"
                         onClick={() => handleRespondInvitation("accept")}
-                        disabled={linkActionLoading}
+                        isLoading={linkActionLoading}
                         className="bg-teal-500 hover:bg-teal-400 text-zinc-950 font-semibold text-xs h-8"
                       >
                         Accept
@@ -595,7 +595,7 @@ export default function ClientProfilePage() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleRespondInvitation("decline")}
-                        disabled={linkActionLoading}
+                        isLoading={linkActionLoading}
                         className="border-zinc-700 text-zinc-400 hover:text-zinc-200 text-xs h-8"
                       >
                         Decline
@@ -630,7 +630,7 @@ export default function ClientProfilePage() {
                   className="bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold text-xs h-9 shrink-0 gap-1.5"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
-                  {linkActionLoading ? "Sending..." : "Connect Clinician"}
+                  Connect Clinician
                 </Button>
               </form>
             </div>

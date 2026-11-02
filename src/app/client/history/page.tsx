@@ -17,6 +17,7 @@ import {
   UserCheck,
   Activity,
   ExternalLink,
+  Loader2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -71,7 +72,7 @@ export default function ClientHistoryPage() {
   };
 
   const [realPrograms, setRealPrograms] = useState<HomeProgramDisplayItem[]>([]);
-  const [, setLoading] = useState(Boolean(user?.id));
+  const [loading, setLoading] = useState(Boolean(user?.id));
 
   // Fetch Home Program Submissions & Reviews
   useEffect(() => {
@@ -246,7 +247,32 @@ export default function ClientHistoryPage() {
 
           {/* Home Program Cards List */}
           <div className="space-y-4">
-            {filteredPrograms.map((item) => {
+            {loading ? (
+              <div className="py-12 flex flex-col items-center gap-3">
+                <Loader2 className="w-6 h-6 animate-spin text-teal-400" />
+                <p className="text-xs text-zinc-400">Loading your program history...</p>
+              </div>
+            ) : filteredPrograms.length === 0 ? (
+              <Card className="border-dashed border-zinc-800 bg-zinc-900/60 p-12 text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-zinc-950 border border-zinc-800 text-teal-400 mx-auto flex items-center justify-center">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-bold text-zinc-100">No Home Program History in this Tab</h3>
+                  <p className="text-xs text-zinc-400 max-w-md mx-auto">
+                    Once you submit home program recordings, clinician evaluations and SOAP breakdowns will be displayed here.
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <Link href="/client">
+                    <Button size="sm" className="bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-xs gap-1.5">
+                      Go to Exercises
+                    </Button>
+                  </Link>
+                </div>
+              </Card>
+            ) : (
+              <>{filteredPrograms.map((item) => {
               const isExpanded = expandedCards[item.id] ?? false;
               const hasSoapNotes = Boolean(item.subjective || item.objective || item.assessment || item.plan);
               const friendlySummary = item.clientSummary || null;
@@ -487,27 +513,7 @@ export default function ClientHistoryPage() {
                   )}
                 </Card>
               );
-            })}
-
-            {filteredPrograms.length === 0 && (
-              <Card className="border-dashed border-zinc-800 bg-zinc-900/60 p-12 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-zinc-950 border border-zinc-800 text-teal-400 mx-auto flex items-center justify-center">
-                  <Sparkles className="w-6 h-6" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-base font-bold text-zinc-100">No Home Program History in this Tab</h3>
-                  <p className="text-xs text-zinc-400 max-w-md mx-auto">
-                    Once you submit home program recordings, clinician evaluations and SOAP breakdowns will be displayed here.
-                  </p>
-                </div>
-                <div className="pt-2">
-                  <Link href="/client">
-                    <Button size="sm" className="bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-xs gap-1.5">
-                      Go to Exercises
-                    </Button>
-                  </Link>
-                </div>
-              </Card>
+            })}</>
             )}
           </div>
         </div>
@@ -531,8 +537,9 @@ export default function ClientHistoryPage() {
           </div>
 
           {soapNotesLoading ? (
-            <div className="p-8 text-center text-xs text-zinc-400">
-              Loading clinician session notes...
+            <div className="p-8 flex flex-col items-center gap-3 text-xs text-zinc-400">
+              <Loader2 className="w-6 h-6 animate-spin text-teal-400" />
+              <p>Loading clinician session notes...</p>
             </div>
           ) : soapNotes.length === 0 ? (
             <Card className="border-dashed border-zinc-800 bg-zinc-900/40 p-8 text-center space-y-3">

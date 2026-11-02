@@ -4,7 +4,8 @@ import React, { useEffect, useState } from "react";
 import { GenerateActivityAgentModal } from "./GenerateActivityAgentModal";
 import { Button } from "@/components/ui/button";
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { Palette, Image as ImageIcon, Sparkles, Wand2, CheckCircle2, Pencil, RefreshCw, XCircle, Loader2, Clock } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Palette, Image as ImageIcon, Sparkles, Wand2, CheckCircle2, Pencil, RefreshCw, XCircle, Loader2, Clock, Eye, FileText, Send } from "lucide-react";
 
 type StepItem = {
   id: string;
@@ -76,6 +77,10 @@ export function StepActivityControl({
   const [stg, setStg] = useState<string[]>([]);
   const [selectedGoalKind, setSelectedGoalKind] = useState<"ltg" | "stg" | "">("");
   const [selectedGoalIndex, setSelectedGoalIndex] = useState<number>(-1);
+  const [reviseNotes, setReviseNotes] = useState("");
+  const [usageGuide, setUsageGuide] = useState("");
+  const [draftInstructionsEdit, setDraftInstructionsEdit] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,7 +129,7 @@ export function StepActivityControl({
     return null;
   }
 
-  async function runAgent(feedback?: string) {
+  async function runAgent(feedback?: string, usageInstructionsOverride?: string) {
     if (!step.title.trim() && !step.instructions.trim()) return;
     if (!patientId) return;
     // Resolve creatorId: prop > browser session fallback (covers authContext loading window where cookie exists but user?.id is still null)
@@ -148,6 +153,7 @@ export function StepActivityControl({
     }
     const goalText = selectedGoalText();
     const goalKind = goalText ? selectedGoalKind : null;
+    const effectiveUsage = (usageInstructionsOverride !== undefined ? usageInstructionsOverride : usageGuide).trim() || null;
     setAgentLoading(true);
     setAgentError(null);
     try {
@@ -161,8 +167,9 @@ export function StepActivityControl({
           patientId,
           creatorId: effectiveCreatorId,
           step: { title: step.title, instructions: step.instructions, position: step.position },
-          action: feedback ? "regenerate" : "auto_draft",
-          feedback,
+          action: feedback || effectiveUsage ? "regenerate" : "auto_draft",
+          feedback: feedback || (reviseNotes.trim() ? reviseNotes.trim() : undefined),
+          usageInstructions: effectiveUsage || undefined,
           generateImage: true,
           targetGoalKind: goalKind,
           targetGoalText: goalText,
@@ -171,6 +178,9 @@ export function StepActivityControl({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Agent failed");
       setAgentDraft(data as AgentDraft);
+      // sync editable instructions to new draft
+      setDraftInstructionsEdit((data as AgentDraft).instructions);
+      if (feedback || reviseNotes.trim()) setReviseNotes("");
     } catch (e: unknown) {
       setAgentError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -180,8 +190,21 @@ export function StepActivityControl({
 
 
 
-  function handleApproveDraft() {
+  async function handleApproveDraft() {
     if (!agentDraft) return;
+    const finalInstructions = usageGuide.trim()
+      ? `${(draftInstructionsEdit || agentDraft.instructions).trim()}\n\nHow to use: ${usageGuide.trim().slice(0, 500)}`
+      : (draftInstructionsEdit || agentDraft.instructions);
+    // Persist edited instructions + usage guide to DB if changed
+    if (finalInstructions !== agentDraft.instructions) {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        if (supabase) {
+          await supabase.from("generated_activities").update({ instructions: finalInstructions }).eq("id", agentDraft.draftId);
+          agentDraft.instructions = finalInstructions;
+        }
+      } catch {}
+    }
     const copy = [...steps];
     copy[stepIndex] = {
       ...copy[stepIndex],
@@ -190,6 +213,7 @@ export function StepActivityControl({
     };
     setSteps(copy);
     setAgentDraft(null);
+    setReviseNotes("");
   }
 
   function handleRemove() {
@@ -228,16 +252,15 @@ export function StepActivityControl({
     <div className="mt-2 space-y-2">
       {/* Pending approval draft card */}
       {agentDraft && (
-        <div className="rounded-xl border border-amber-800/40 bg-amber-950/20 p-3 space-y-2">
+        <div className="rounded-xl border border-amber-800/40 bg-amber-950/20 p-3 space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <Wand2 className="w-3.5 h-3.5 text-amber-300 shrink-0" />
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-300">Agent draft — pending approval</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400">{agentDraft.ageBand} • {agentDraft.category}</span>
               </div>
               <p className="text-xs font-semibold text-zinc-100 mt-1 truncate">{agentDraft.title}</p>
-              <p className="text-[11px] text-zinc-400 mt-0.5 line-clamp-2">{agentDraft.instructions}</p>
               {agentDraft.reasoning && <p className="text-[11px] text-violet-300 mt-1">💡 {agentDraft.reasoning}</p>}
               <div className="flex flex-wrap gap-1 mt-1.5">
                 {agentDraft.sources.map((s) => (
@@ -245,30 +268,133 @@ export function StepActivityControl({
                 ))}
               </div>
             </div>
-            {agentDraft.base_image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={agentDraft.base_image_url} alt={agentDraft.title} className="w-16 h-16 object-cover rounded-lg border border-zinc-700 bg-white shrink-0" />
-            ) : (
-              <div className="w-16 h-16 rounded-lg bg-zinc-900 border border-zinc-800 grid place-items-center shrink-0">
-                <ImageIcon className="w-5 h-5 text-zinc-600" />
-              </div>
+            <button
+              type="button"
+              onClick={() => setShowPreview(true)}
+              className="shrink-0 group relative overflow-hidden rounded-lg border border-zinc-700 bg-white"
+              title="View worksheet"
+            >
+              {agentDraft.base_image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={agentDraft.base_image_url} alt={agentDraft.title} className="w-20 h-20 object-cover" />
+              ) : (
+                <div className="w-20 h-20 grid place-items-center bg-zinc-900">
+                  <ImageIcon className="w-5 h-5 text-zinc-600" />
+                </div>
+              )}
+              <span className="absolute inset-0 grid place-items-center bg-zinc-950/60 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Eye className="w-5 h-5 text-white" />
+              </span>
+            </button>
+          </div>
+
+          {/* Editable instructions */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-zinc-400 flex items-center gap-1.5">
+              <FileText className="w-3 h-3" /> Worksheet instructions (editable)
+            </label>
+            <Textarea
+              value={draftInstructionsEdit}
+              onChange={(e) => setDraftInstructionsEdit(e.target.value)}
+              rows={3}
+              placeholder="Instructions shown to client…"
+              className="text-xs bg-zinc-950 border-zinc-800"
+            />
+          </div>
+
+          {/* Usage guide textbox */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-zinc-300 flex items-center gap-1.5">
+              <Send className="w-3 h-3 text-teal-400" /> How-to-use guide (instructions textbox)
+              <span className="font-normal text-zinc-500">— optional, added to generation when filled</span>
+            </label>
+            <Textarea
+              value={usageGuide}
+              onChange={(e) => setUsageGuide(e.target.value)}
+              rows={2}
+              placeholder="e.g., Have the client trace with a thick marker, do 3 reps, then check off each row…"
+              className="text-xs bg-zinc-950 border-zinc-800 placeholder:text-zinc-600"
+            />
+            {usageGuide.trim() && (
+              <p className="text-[11px] text-teal-300/80">Will be woven into next generation as additional context + appended on Approve as &quot;How to use&quot;.</p>
             )}
           </div>
+
+          {/* Revision notes */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-zinc-400 flex items-center gap-1.5">
+              <Pencil className="w-3 h-3" /> Notes for regeneration / revision
+            </label>
+            <Textarea
+              value={reviseNotes}
+              onChange={(e) => setReviseNotes(e.target.value)}
+              rows={2}
+              placeholder="e.g., Make targets larger, use simpler words, add 2 more items…"
+              className="text-xs bg-zinc-950 border-zinc-800 placeholder:text-zinc-600"
+            />
+          </div>
+
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <Button type="button" size="sm" onClick={handleApproveDraft} className="h-7 gap-1.5 text-xs bg-teal-600 hover:bg-teal-500 text-white font-semibold">
               <CheckCircle2 className="w-3.5 h-3.5" /> Approve & Attach
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setAgentOpen(true)} className="h-7 gap-1.5 text-xs border-zinc-700 bg-zinc-900 text-zinc-200">
-              <Pencil className="w-3 h-3" /> Edit
+            <Button type="button" variant="outline" size="sm" onClick={() => setShowPreview(true)} className="h-7 gap-1.5 text-xs border-zinc-700 bg-zinc-900 text-zinc-200">
+              <Eye className="w-3 h-3" /> View Worksheet
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => runAgent("make larger targets / clearer")} className="h-7 gap-1 text-xs border-zinc-700 bg-zinc-800 text-zinc-300">
-              <RefreshCw className="w-3 h-3" /> Regenerate
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => runAgent(reviseNotes.trim() || undefined, usageGuide)}
+              disabled={agentLoading}
+              className="h-7 gap-1 text-xs border-amber-700/50 bg-zinc-900 text-amber-200 hover:bg-amber-950/30"
+            >
+              <RefreshCw className={`w-3 h-3 ${agentLoading ? "animate-spin" : ""}`} /> Regenerate with notes
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => setAgentDraft(null)} className="h-7 gap-1 text-xs text-zinc-500 hover:text-red-400">
               <XCircle className="w-3 h-3" /> Reject
             </Button>
             <span className="text-[11px] text-zinc-500 ml-auto hidden sm:inline">{agentDraft.latencyMs}ms • {agentDraft.modelIds.spark}</span>
           </div>
+
+          {/* Preview modal */}
+          {showPreview && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <button type="button" aria-label="Close preview" onClick={() => setShowPreview(false)} className="absolute inset-0 bg-zinc-950/70 backdrop-blur-sm" />
+              <div className="relative w-full max-w-3xl max-h-[88vh] overflow-auto rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl">
+                <div className="sticky top-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-zinc-800 bg-zinc-950">
+                  <h3 className="text-sm font-semibold text-zinc-100 truncate">{agentDraft.title}</h3>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setShowPreview(false)} className="h-7 text-zinc-400">Close</Button>
+                </div>
+                <div className="p-4 space-y-4">
+                  {agentDraft.base_image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={agentDraft.base_image_url} alt={agentDraft.title} className="w-full h-auto rounded-xl border border-zinc-800 bg-white" />
+                  )}
+                  <div className="rounded-xl bg-zinc-900 border border-zinc-800 p-3 space-y-2">
+                    <p className="text-xs font-semibold text-zinc-200">Instructions</p>
+                    <p className="text-xs text-zinc-300 whitespace-pre-wrap">{draftInstructionsEdit || agentDraft.instructions}</p>
+                    {usageGuide.trim() && (
+                      <div className="pt-2 border-t border-zinc-800">
+                        <p className="text-xs font-semibold text-teal-300">How to use</p>
+                        <p className="text-xs text-zinc-400 whitespace-pre-wrap">{usageGuide}</p>
+                      </div>
+                    )}
+                  </div>
+                  {agentDraft.sparkSpec && (
+                    <details className="text-xs text-zinc-500">
+                      <summary className="cursor-pointer text-zinc-400">Worksheet spec</summary>
+                      <pre className="mt-2 p-3 rounded-lg bg-zinc-900 border border-zinc-800 overflow-auto text-[11px]">{JSON.stringify(agentDraft.sparkSpec, null, 2)}</pre>
+                    </details>
+                  )}
+                </div>
+                <div className="sticky bottom-0 flex justify-end gap-2 px-4 py-3 border-t border-zinc-800 bg-zinc-950">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setShowPreview(false)} className="border-zinc-700 text-zinc-300">Close</Button>
+                  <Button type="button" size="sm" onClick={() => { setShowPreview(false); handleApproveDraft(); }} className="bg-teal-600 hover:bg-teal-500 text-white">Approve & Attach</Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -281,6 +407,23 @@ export function StepActivityControl({
         <div className="text-[11px] text-amber-300 bg-amber-950/20 border border-amber-800/30 rounded-lg p-2 flex items-center gap-2">
           <XCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" /> {agentError}
           <Button type="button" variant="ghost" size="sm" onClick={() => runAgent()} className="h-6 text-xs ml-auto text-zinc-300">Retry</Button>
+        </div>
+      )}
+
+      {/* Pre-draft usage guide — visible before first draft so therapist can seed generation */}
+      {!agentDraft && (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 space-y-1.5">
+          <label className="text-[11px] font-medium text-zinc-300 flex items-center gap-1.5">
+            <Send className="w-3 h-3 text-teal-400" /> How-to-use guide (optional)
+            <span className="font-normal text-zinc-500">— added as additional context when generating</span>
+          </label>
+          <Textarea
+            value={usageGuide}
+            onChange={(e) => setUsageGuide(e.target.value)}
+            rows={2}
+            placeholder="e.g., Do with thick marker, 3 reps, check off each row, parent helps with…"
+            className="text-xs bg-zinc-950 border-zinc-800 placeholder:text-zinc-600"
+          />
         </div>
       )}
 

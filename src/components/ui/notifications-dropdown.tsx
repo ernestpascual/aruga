@@ -54,6 +54,7 @@ export function NotificationsDropdown({ role: propRole }: NotificationsDropdownP
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const fetchNotifications = useCallback(async () => {
+    setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("role", effectiveRole);
@@ -68,6 +69,8 @@ export function NotificationsDropdown({ role: propRole }: NotificationsDropdownP
       }
     } catch {
       // ignore network errors
+    } finally {
+      setLoading(false);
     }
   }, [effectiveRole, user?.id]);
 
@@ -209,7 +212,12 @@ export function NotificationsDropdown({ role: propRole }: NotificationsDropdownP
 
           {/* Notification List */}
           <div className="max-h-[380px] overflow-y-auto divide-y divide-zinc-800/60">
-            {notifications.length === 0 ? (
+            {loading ? (
+              <div className="py-8 flex flex-col items-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-teal-400" />
+                <p className="text-xs text-zinc-400">Loading notifications...</p>
+              </div>
+            ) : notifications.length === 0 ? (
               <div className="py-8 px-4 text-center">
                 <div className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto mb-2.5">
                   <CheckCircle2 className="w-5 h-5 text-teal-400/70" />

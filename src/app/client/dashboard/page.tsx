@@ -23,7 +23,9 @@ import {
   UserPlus,
   AlertCircle,
   Mail,
+  Loader2,
 } from "lucide-react";
+import { InlineLoader } from "@/components/ui/page-loader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,6 +53,7 @@ export default function ClientDashboardPage() {
   const { user, profile } = useAuth();
   const [activeProgram, setActiveProgram] = useState<HomeProgram | null>(null);
   const [loading, setLoading] = useState(true);
+  const [linkLoading, setLinkLoading] = useState(true);
 
   // Clinician linking state
   const [linkData, setLinkData] = useState<TherapistLinkData | null>(null);
@@ -68,12 +71,15 @@ export default function ClientDashboardPage() {
 
   const fetchTherapistLink = async () => {
     if (!user?.id) return;
+    setLinkLoading(true);
     try {
       const res = await fetch(`/api/client/therapist-link?clientUserId=${user.id}`);
       const data = await res.json();
       setLinkData(data);
     } catch (err) {
       console.warn("Failed to fetch therapist link:", err);
+    } finally {
+      setLinkLoading(false);
     }
   };
 
@@ -260,7 +266,7 @@ export default function ClientDashboardPage() {
           <div className="flex flex-col sm:flex-row items-center gap-2.5 shrink-0 self-stretch sm:self-auto md:self-auto">
             <Button
               onClick={() => handleRespondInvitation("accept")}
-              disabled={respondingLink}
+              isLoading={respondingLink}
               className="h-9 px-4 text-xs gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold shadow-sm"
             >
               <CheckCircle2 className="w-4 h-4" />
@@ -269,7 +275,7 @@ export default function ClientDashboardPage() {
             <Button
               variant="outline"
               onClick={() => handleRespondInvitation("decline")}
-              disabled={respondingLink}
+              isLoading={respondingLink}
               className="h-9 px-4 text-xs gap-2 border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200"
             >
               Decline
@@ -305,10 +311,10 @@ export default function ClientDashboardPage() {
               variant="outline"
               size="sm"
               onClick={handleCancelRequest}
-              disabled={cancellingLink}
+              isLoading={cancellingLink}
               className="h-9 px-4 text-xs gap-2 border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200"
             >
-              {cancellingLink ? "Canceling..." : "Cancel Request"}
+              Cancel Request
             </Button>
           </div>
         </div>
@@ -473,7 +479,12 @@ export default function ClientDashboardPage() {
             )}
           </CardHeader>
           <CardContent className="space-y-4 p-4 sm:p-6 pt-0 flex-1">
-            {activeProgram ? (
+            {loading ? (
+              <div className="p-8 flex flex-col items-center gap-3">
+                <Loader2 className="w-6 h-6 animate-spin text-teal-400" />
+                <p className="text-xs text-zinc-400">Loading your home program...</p>
+              </div>
+            ) : activeProgram ? (
               <div className="p-4 sm:p-6 rounded-xl bg-zinc-950/70 border border-zinc-800 space-y-3">
                 <div>
                   <h3 className="text-base font-bold text-zinc-100">
@@ -555,7 +566,14 @@ export default function ClientDashboardPage() {
         {/* Quick Tools & Assistants — even column */}
         <div className="flex flex-col gap-4 h-full">
           {/* Clinician Connection Card */}
-          {linkData?.linked ? (
+          {linkLoading ? (
+            <Card className="bg-zinc-900/60 border-zinc-800 flex flex-col">
+              <CardContent className="p-8 flex flex-col items-center gap-3">
+                <Loader2 className="w-6 h-6 animate-spin text-teal-400" />
+                <p className="text-xs text-zinc-400">Loading connection...</p>
+              </CardContent>
+            </Card>
+          ) : linkData?.linked ? (
             <Card className="bg-teal-950/20 border-teal-500/30 flex flex-col h-full">
               <CardContent className="p-4 sm:p-6 pt-4 sm:pt-6 space-y-3">
                 <div className="flex items-center">
@@ -621,14 +639,14 @@ export default function ClientDashboardPage() {
                     disabled={cancellingLink}
                     className="w-full h-9 px-4 text-xs gap-2 border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200"
                   >
-                    {cancellingLink ? "Canceling..." : "Cancel Connection Request"}
+                    Cancel Connection Request
                   </Button>
                 ) : (
                   <div className="flex gap-2">
                     <Button
                       size="sm"
                       onClick={() => handleRespondInvitation("accept")}
-                      disabled={respondingLink}
+                      isLoading={respondingLink}
                       className="flex-1 h-9 px-4 text-xs gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold"
                     >
                       Accept
@@ -637,7 +655,7 @@ export default function ClientDashboardPage() {
                       size="sm"
                       variant="outline"
                       onClick={() => handleRespondInvitation("decline")}
-                      disabled={respondingLink}
+                      isLoading={respondingLink}
                       className="h-9 px-4 text-xs gap-2 border-zinc-700 text-zinc-400 hover:text-zinc-200"
                     >
                       Decline
@@ -669,10 +687,11 @@ export default function ClientDashboardPage() {
                   />
                   <Button
                     type="submit"
-                    disabled={requestingLink || !inputTherapistEmail.trim()}
+                    isLoading={requestingLink}
+                    disabled={!inputTherapistEmail.trim()}
                     className="w-full h-9 px-4 text-xs gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold"
                   >
-                    {requestingLink ? "Sending..." : "Send Link Request"}
+                    Send Link Request
                   </Button>
                 </form>
 

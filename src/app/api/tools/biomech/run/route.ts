@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { BIOMECH_KEYWORDS } from "@/lib/meta/biomech-prompt";
 import { sam3Engine } from "@/lib/meta/sam-engine";
 import { planBiomechConcepts, deriveExpectation, thresholdBand } from "@/lib/meta/biomech-planner";
@@ -23,21 +24,41 @@ export async function POST(req: NextRequest) {
     const prescribedInstructions = String(body?.prescribedInstructions || body?.activityInstructions || body?.instructions || "").trim();
     const therapistNeed = String(body?.therapistNeed || "").trim();
     const ageBand = String(body?.ageBand || "adult").trim();
-    const videoDataUrl: string | null = typeof body?.videoDataUrl === "string" && body.videoDataUrl ? String(body.videoDataUrl) : (typeof body?.videoUrl === "string" ? String(body.videoUrl) : null);
     const durationSeconds = typeof body?.durationSeconds === "number" && Number.isFinite(body.durationSeconds) ? body.durationSeconds : undefined;
     const mediaWidth = Number(body?.mediaWidth);
     const mediaHeight = Number(body?.mediaHeight);
     const mediaSize = Number.isFinite(mediaWidth) && mediaWidth>0 && Number.isFinite(mediaHeight) && mediaHeight>0 ? { width: Math.round(mediaWidth), height: Math.round(mediaHeight)} : undefined;
     const previousMhr = body?.previousMhr || null;
+    const videoStoragePath: string | null = typeof body?.videoStoragePath === "string" && body.videoStoragePath.trim() ? String(body.videoStoragePath).trim() : null;
+    const rawVideoDataUrl: string | null = typeof body?.videoDataUrl === "string" && body.videoDataUrl ? String(body.videoDataUrl) : (typeof body?.videoUrl === "string" ? String(body.videoUrl) : null);
 
     if (!prescribedTitle && !prescribedInstructions) {
       return NextResponse.json({ error: "Prescribed activity title or instructions required — AI uses this to decide what to track." }, { status: 400 });
     }
-    if (!videoDataUrl) {
-      return NextResponse.json({ error: "Upload a video first (videoDataUrl)." }, { status: 400 });
+    // Resolve video URL: prefer Storage path (bypasses Vercel 4.5 MB) else data URL
+    let videoDataUrlResolved: string | null = rawVideoDataUrl;
+    if (videoStoragePath) {
+      const admin = createAdminClient();
+      if (!admin) return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+      // Validate path is inside expected prefix to prevent arbitrary bucket reads
+      if (!videoStoragePath.startsWith("playground/") && !videoStoragePath.startsWith("submissions/")) {
+        return NextResponse.json({ error: "Invalid videoStoragePath prefix." }, { status: 400 });
+      }
+      const { data: signed, error: sErr } = await admin.storage.from("program-videos").createSignedUrl(videoStoragePath, 600);
+      if (sErr || !signed?.signedUrl) return NextResponse.json({ error: `Failed to sign Storage path: ${sErr?.message || "unknown"}` }, { status: 500 });
+      videoDataUrlResolved = signed.signedUrl;
     }
+    if (!videoDataUrlResolved) {
+      return NextResponse.json({ error: "Upload a video first (videoDataUrl or videoStoragePath)." }, { status: 400 });
+    }
+    const videoDataUrl: string = videoDataUrlResolved;
     if (videoDataUrl.length > 140_000_000) {
       return NextResponse.json({ error: "Video too large (>100MB as data URL)." }, { status: 413 });
+    }
+    // Vercel Hobby/Pro λ body cap is 4.5 MB — if we got here the body already parsed, but guard still helps self-hosted
+    if (!videoStoragePath && videoDataUrl.length > 6_000_000) {
+      // ~4.5 MB file ≈ 6 MB data URL; return JSON so client doesn't hit "Unexpected token 'R'" on plain text 413
+      return NextResponse.json({ error: `Video data URL is ${(videoDataUrl.length/1_000_000).toFixed(1)} MB — exceeds Vercel function payload (4.5 MB). Sign in to use Storage upload (up to 100 MB) or use a shorter clip ≤15s / <3 MB.`, code: "PAYLOAD_TOO_LARGE" }, { status: 413 });
     }
 
     // Step 1: Determine — Spark planner picks 2-8 concepts from BIOMECH_KEYWORDS 16 only
@@ -173,7 +194,7 @@ export async function POST(req: NextRequest) {
     }
 
     const processingMs = Date.now() - t0;
-
+    // Cleanup playground file best-effort (optional, keep for replay) — delete after 24h via Supabase retention; no immediate delete
     // Return full agentic trace
     return NextResponse.json({
       plan, concepts,
@@ -181,10 +202,15 @@ export async function POST(req: NextRequest) {
       mhr,
       insights, adherence, trend,
       expectations,
-      meta: { processingMs, source: "playground:spark→sam3.1→modal", prescribedTitle, prescribedInstructions, ageBand },
+      meta: { processingMs, source: videoStoragePath ? "playground:storage→spark→sam3.1→modal" : "playground:spark→sam3.1→modal", prescribedTitle, prescribedInstructions, ageBand },
     });
 
   } catch (e: unknown) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
+    const msg = e instanceof Error ? e.message : String(e);
+    // Body too large before JSON parse throws SyntaxError — ensure JSON response, not plain text
+    if (msg.includes("Body exceeded") || msg.includes("request entity") || msg.includes("Payload Too Large")) {
+      return NextResponse.json({ error: "Request too large for Vercel (limit 4.5 MB). Use a shorter clip ≤15s / <3 MB on deployed site.", code: "PAYLOAD_TOO_LARGE" }, { status: 413 });
+    }
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -332,6 +332,7 @@ export async function generateActivity(
     referenceLinks: input.referenceLinks,
     referenceImageNotes,
     referenceImages: input.referenceImages,
+    usageInstructions: input.usageInstructions,
   });
 
   // Live: image gen — checklist flag; skip when generateImage === false

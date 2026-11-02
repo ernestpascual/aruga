@@ -21,6 +21,7 @@ import {
   Trash2,
   ImagePlus,
   X,
+  Loader2,
 } from "lucide-react";
 import { compressImageFile, isImageFile } from "@/lib/image-compress";
 import { Button } from "@/components/ui/button";
@@ -312,6 +313,14 @@ function TherapistMessagesContent() {
     return matchesSearch && matchesCategory;
   });
 
+  if (loadingCaseload) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-teal-400" /></div>
+        <p className="text-xs text-zinc-400">Loading caseload &amp; conversations...</p>
+      </div>
+    );
+  }
   if (!loadingCaseload && patients.length === 0) {
     return (
       <div className="space-y-4 max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col justify-center items-center text-center p-8">
@@ -696,8 +705,9 @@ function TherapistMessagesContent() {
           >
             {dragOver && <div className="text-center text-xs text-teal-300 py-1 border border-dashed border-teal-500/40 rounded-lg bg-teal-950/30">Drop photo to attach</div>}
             {loadingMessages ? (
-              <div className="h-full flex items-center justify-center text-xs text-zinc-500">
-                Loading client conversation thread...
+              <div className="h-full flex flex-col items-center justify-center gap-2 text-xs text-zinc-400">
+                <Loader2 className="w-5 h-5 animate-spin text-teal-400" />
+                Loading conversation...
               </div>
             ) : messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-8 text-zinc-500 space-y-2">

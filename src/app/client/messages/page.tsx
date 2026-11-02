@@ -11,6 +11,7 @@ import {
   Trash2,
   ImagePlus,
   X,
+  Loader2,
 } from "lucide-react";
 import { compressImageFile, isImageFile } from "@/lib/image-compress";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ function ClientMessagesContent() {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [availablePrograms, setAvailablePrograms] = useState<ProgramMentionOption[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(true);
   const [inputText, setInputText] = useState("");
   const [selectedMentionProgram, setSelectedMentionProgram] = useState<ProgramMentionOption | null>(null);
   const [sending, setSending] = useState(false);
@@ -46,7 +48,7 @@ function ClientMessagesContent() {
 
   const fetchMessages = async () => {
     try {
-      if (!user?.id) return;
+      if (!user?.id) { setLoadingMessages(false); return; }
       const endpoint = `/api/messages?clientUserId=${user.id}`;
 
       const res = await fetch(endpoint);
@@ -88,7 +90,7 @@ function ClientMessagesContent() {
       }
     } catch {
       // error
-    }
+    } finally { setLoadingMessages(false); }
   };
 
   useEffect(() => {
@@ -229,7 +231,12 @@ function ClientMessagesContent() {
         onDrop={(e) => { e.preventDefault(); setDragOver(false); if (e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files); }}
       >
         {dragOver && <div className="text-center text-xs text-teal-300 py-1 border border-dashed border-teal-500/40 rounded-lg bg-teal-950/30">Drop photo to attach</div>}
-        {messages.length === 0 && (
+        {loadingMessages ? (
+          <div className="h-full flex flex-col items-center justify-center gap-3 py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-teal-400" />
+            <p className="text-xs text-zinc-400">Loading conversation...</p>
+          </div>
+        ) : messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-8 text-zinc-500 space-y-2">
             <MessageSquare className="w-8 h-8 text-zinc-600" />
             <div className="font-semibold text-zinc-300 text-sm">No Messages Yet</div>
@@ -237,7 +244,7 @@ function ClientMessagesContent() {
               Send a message below to start communicating with your occupational therapist about your home exercises or daily progress.
             </p>
           </div>
-        )}
+        ) : null}
 
         {messages.map((msg) => {
           const isMe =

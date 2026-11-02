@@ -186,6 +186,7 @@ export function buildActivitySparkPrompt(params: {
   lineStyle?: string;
   referenceLinks?: string[];
   referenceImageNotes?: string;
+  usageInstructions?: string;
 }): { system: string; user: string } {
   const ageBandGuidance: Record<string, string> = {
     pedia: "2–12y: large targets, bold outlines, playful, caregiver-friendly, wide spacing, minimal clutter.",
@@ -198,6 +199,7 @@ export function buildActivitySparkPrompt(params: {
   const tp = params.templatePrompt ? params.templatePrompt.slice(0, 420).trim() : undefined;
   const ip = params.imagePrompt ? params.imagePrompt.slice(0, 320).trim() : undefined;
   const th = params.theme ? params.theme.slice(0, 100).trim() : undefined;
+  const ui = params.usageInstructions ? params.usageInstructions.slice(0, 300).trim() : undefined;
 
   const system = `${SPARK_PROMPT_SYSTEM_BASE}
 YOUR TASK: Design one printable OT worksheet spec (A4). Worksheets are NOT always drawing — choose the right kind:
@@ -216,6 +218,7 @@ Pick based on ageBand+category: e.g., adl_sim/cognitive/speech for adults/geriat
     `Age band: ${params.ageBand}`,
     `Category: ${params.category || "other"}`,
     th ? `Theme: "${th}"` : null,
+    ui ? `Usage guide (therapist instructions for client — weave into instructions + visualBrief, keep plain words): """${ui}"""` : null,
     params.difficulty ? `Difficulty: ${params.difficulty}` : null,
     params.lineStyle ? `lineStyle: ${params.lineStyle}` : null,
     params.titleOverride ? `Title: "${params.titleOverride.slice(0, 80)}"` : null,

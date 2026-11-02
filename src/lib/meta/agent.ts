@@ -34,6 +34,7 @@ export type AgentRunInput = {
   step: { title: string; instructions: string; position: number };
   action?: "auto_draft" | "regenerate";
   feedback?: string;
+  usageInstructions?: string | null;
   generateImage?: boolean;
   targetGoalKind?: "ltg" | "stg" | null;
   targetGoalText?: string | null;
@@ -114,7 +115,9 @@ export async function runActivityAgent(input: AgentRunInput): Promise<AgentDraft
   if (!patient) throw new Error("Patient not found");
   const ageBand = patient.ageBand;
   const themeHint = deriveTheme(input.step.title, input.step.instructions);
-  const feedbackSuffix = input.feedback ? ` Feedback: ${input.feedback.slice(0, 120)}.` : "";
+  const feedbackSuffix = input.feedback ? ` Feedback: ${input.feedback.slice(0, 180)}.` : "";
+  const usageInstructions = input.usageInstructions?.trim().slice(0, 500) || null;
+  const usageSuffix = usageInstructions ? ` Usage guide: ${usageInstructions.slice(0, 300)}.` : "";
   const targetGoalKind = input.targetGoalKind || null;
   const targetGoalText = input.targetGoalText?.trim().slice(0, 500) || null;
   const goalSuffix = targetGoalText ? ` Target ${targetGoalKind === "ltg" ? "LTG" : "STG"}: ${targetGoalText.slice(0, 200)}.` : "";
@@ -138,14 +141,16 @@ export async function runActivityAgent(input: AgentRunInput): Promise<AgentDraft
     const chosen = matched || pick;
     targetTemplateId = chosen.id;
     targetCategory = chosen.category;
-    reasoning = `Picked ${chosen.title} — tailored for ${patient.ageBand} ${patient.condition ? `(${String(patient.condition).slice(0, 48)})` : ""} step "${input.step.title.slice(0, 32)}"${goalSuffix ? ` • ${goalSuffix.slice(0, 80)}` : ""}${feedbackSuffix ? " with feedback" : ""}`;
+    reasoning = `Picked ${chosen.title} — tailored for ${patient.ageBand} ${patient.condition ? `(${String(patient.condition).slice(0, 48)})` : ""} step "${input.step.title.slice(0, 32)}"${goalSuffix ? ` • ${goalSuffix.slice(0, 80)}` : ""}${feedbackSuffix ? " with feedback" : ""}${usageSuffix ? " + usage guide" : ""}`;
     sources.push(`system:${chosen.title}`);
     if (targetGoalText) sources.push(`${targetGoalKind}:${targetGoalText.slice(0, 32)}`);
+    if (usageInstructions) sources.push(`guide:${usageInstructions.slice(0, 24)}`);
   } else {
-    customSparkPrompt = `Create a ${ageBand} ${targetCategory} worksheet for ${input.step.title || "therapy step"}: ${input.step.instructions.slice(0, 220)}${goalSuffix}${feedbackSuffix} Theme: ${themeHint}. Keep tokens efficient.`;
-    reasoning = `Custom prompt for ${patient.ageBand} ${patient.condition ? String(patient.condition).slice(0, 32) : ""} — ${themeHint.slice(0, 40)}${goalSuffix ? ` • ${targetGoalText!.slice(0, 40)}` : ""}`;
+    customSparkPrompt = `Create a ${ageBand} ${targetCategory} worksheet for ${input.step.title || "therapy step"}: ${input.step.instructions.slice(0, 220)}${goalSuffix}${feedbackSuffix}${usageSuffix} Theme: ${themeHint}. Keep tokens efficient.`;
+    reasoning = `Custom prompt for ${patient.ageBand} ${patient.condition ? String(patient.condition).slice(0, 32) : ""} — ${themeHint.slice(0, 40)}${goalSuffix ? ` • ${targetGoalText!.slice(0, 40)}` : ""}${usageSuffix ? " + guide" : ""}`;
     sources.push(`patient:${patient.displayName || patient.id.slice(0, 8)} ${patient.ageBand}`);
     if (targetGoalText) sources.push(`${targetGoalKind}:${targetGoalText.slice(0, 32)}`);
+    if (usageInstructions) sources.push(`guide:${usageInstructions.slice(0, 24)}`);
   }
   sources.push(`patient:${patient.id.slice(0, 8)} ${ageBand}`);
 
@@ -160,8 +165,8 @@ export async function runActivityAgent(input: AgentRunInput): Promise<AgentDraft
       const sparkPrompt = templateRow.spark_prompt || undefined;
       const imagePrompt = templateRow.image_prompt || undefined;
       const themeOverride = themeHint || input.step.title;
-      // Append feedback into theme/craft
-      const finalTheme = `${themeOverride}${goalSuffix}${feedbackSuffix}`;
+      // Append feedback + usage guide into theme/craft
+      const finalTheme = `${themeOverride}${goalSuffix}${feedbackSuffix}${usageSuffix}`;
       const { result, latencyMs } = await runSparkActivitySpec({
         ageBand,
         category: targetCategory,
@@ -170,6 +175,7 @@ export async function runActivityAgent(input: AgentRunInput): Promise<AgentDraft
         titleOverride: input.step.title || templateRow.title,
         theme: finalTheme,
         difficulty: "guided",
+        usageInstructions: usageInstructions || undefined,
       });
       let baseImageUrl: string | null = null;
       let imageModelId: string | null = null;
@@ -190,7 +196,8 @@ export async function runActivityAgent(input: AgentRunInput): Promise<AgentDraft
       category: targetCategory,
       templatePrompt: customSparkPrompt!,
       titleOverride: input.step.title || `Step ${input.step.position} Activity`,
-      theme: `${themeHint}${goalSuffix}${feedbackSuffix}`,
+      theme: `${themeHint}${goalSuffix}${feedbackSuffix}${usageSuffix}`,
+      usageInstructions: usageInstructions || undefined,
     });
     let baseImageUrl: string | null = null;
     let imageModelId: string | null = null;

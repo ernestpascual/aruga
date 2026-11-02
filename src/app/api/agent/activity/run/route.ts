@@ -11,7 +11,7 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { patientId, creatorId, step, action, feedback, generateImage, patientContextHint, targetGoalKind, targetGoalText } = body;
+    const { patientId, creatorId, step, action, feedback, usageInstructions, generateImage, patientContextHint, targetGoalKind, targetGoalText } = body;
 
     if (!patientId || typeof patientId !== "string") return NextResponse.json({ error: "patientId required" }, { status: 400 });
     if (!step || typeof step.title !== "string" || typeof step.instructions !== "string") {
@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
       step: { title: String(step.title), instructions: String(step.instructions), position: Number(step.position) || 1 },
       action: action || "auto_draft",
       feedback: feedback ? String(feedback) : undefined,
+      usageInstructions: typeof usageInstructions === "string" ? usageInstructions : null,
       generateImage: generateImage === false ? false : true,
       targetGoalKind: targetGoalKind === "ltg" || targetGoalKind === "stg" ? targetGoalKind : null,
       targetGoalText: typeof targetGoalText === "string" ? targetGoalText : null,

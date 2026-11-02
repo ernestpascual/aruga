@@ -25,6 +25,7 @@ export async function runSparkActivitySpec(params: {
   referenceLinks?: string[];
   referenceImageNotes?: string;
   referenceImages?: string[]; // data URLs for multimodal path
+  usageInstructions?: string;
 }): Promise<{ result: ActivitySpecParsed; latencyMs: number }> {
   const config = getMetaConfig();
   const client = createMetaOpenAiClient();

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { HomeProgram, Submission } from "@/types/database";
-import { Layers, FileCheck, Clock, CheckCircle2, Edit3, ChevronRight, Calendar, Archive, Eye, AlertCircle, Video, Palette } from "lucide-react";
+import { Layers, FileCheck, Clock, CheckCircle2, Edit3, ChevronRight, Calendar, Archive, Eye, AlertCircle, Video, Palette, Loader2 } from "lucide-react";
 
 type Tab = "all" | "active" | "drafts" | "completed";
 
@@ -38,7 +38,7 @@ export default function ClientActivitiesPage() {
     ]).finally(() => setLoading(false));
   }, [user?.id, isDemo]);
 
-  if (loading) return <div className="p-8 text-center text-xs text-zinc-500">Loading your home programs…</div>;
+  if (loading) return <div className="p-8 flex flex-col items-center gap-3 text-xs text-zinc-400"><Loader2 className="w-6 h-6 animate-spin text-teal-400" /><p>Loading your home programs…</p></div>;
 
   // Derive per-program status from program.status + submissions
   function programStatus(p: HomeProgram & { submissions?: Submission[] }): { label: string; variant: "teal" | "amber" | "emerald" | "outline"; desc: string } {
