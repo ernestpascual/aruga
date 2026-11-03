@@ -1,0 +1,34 @@
+{
+  "functions": {
+    "src/app/api/tools/biomech/run/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/agent/biomech/run/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/agent/activity/run/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/activities/generate/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/ot-chat/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/meta/draft-program/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/meta/analyze-video/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/ai/soap-summary/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/agent/goal-tracking/run/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/agent/highlights/run/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

@@ -232,7 +232,6 @@ describe("Meta AI Service Application Interface (Live Calling)", () => {
   it("throws clear MetaApiError when MODEL_API_KEY is missing", async () => {
     delete process.env.MODEL_API_KEY;
     delete process.env.META_API_KEY;
-    delete process.env.OPENAI_API_KEY;
 
     await expect(
       draftHomeProgram({

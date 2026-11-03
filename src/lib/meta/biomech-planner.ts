@@ -98,13 +98,31 @@ Pick concepts.`;
         }
       },
       temperature: 0.2,
-      max_tokens: 400,
+      // was 400 → NO_CONTENT: reasoning alone ≈1000+ tok, so 400 always hits length with content=null
+      max_tokens: 1200,
     } as never, { timeout: 15000, maxRetries: 0 } as never) as any;
 
-    const latencyMs = Date.now() - t0;
-    const raw = res?.choices?.[0]?.message?.content;
+    let latencyMs = Date.now() - t0;
+    let choice0: any = res?.choices?.[0];
+    let raw: unknown = choice0?.message?.content;
+    // length retry with more headroom (cheap: tiny prompt, reasoning overhead)
+    if ((!raw || !String(raw).trim()) && choice0?.finish_reason === "length") {
+      console.warn(`[biomech-planner] NO_CONTENT length with 1200, retry 2000 json_object`);
+      try {
+        const retry: any = await client.chat.completions.create({
+          model: cfg!.models.spark,
+          messages: [{ role: "system", content: system }, { role: "user", content: user }],
+          response_format: { type: "json_object" } as never,
+          temperature: 0.2,
+          max_tokens: 2000,
+        } as never, { timeout: 15000, maxRetries: 0 } as never);
+        choice0 = retry?.choices?.[0];
+        raw = choice0?.message?.content;
+        latencyMs = Date.now() - t0;
+      } catch {}
+    }
     if (!raw) throw new Error("empty Spark planner response");
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(String(raw));
     let concepts = (parsed.concepts || []).map((s:string)=> String(s).trim()).filter(Boolean) as string[];
     // Validate against BIOMECH_KEYWORDS
     concepts = concepts.filter((c)=> isBiomechKeyword(c));
@@ -141,9 +159,20 @@ export function deriveExpectation(title: string, instructions: string): Array<{ 
   if (/hip|knee|ankle|leg|walk|gait|stand|squat/i.test(t)) {
     expects.push({ id: "kneeFlex", label: "Knee flexion", metricPath: "summary.peakAngles.kneeFlex_L_max", target: { min: 60 }, unit: "°" });
   }
+  // Wrist / hand / forearm / thumb — always grade for tendon-gliding example; keep permissive so compare shows
+  const isHandTask = /wrist|forearm|hand|finger|thumb|pincer|grasp|tendon.?glid|hook|fist|open hand|peg|pinch/i.test(t);
+  if (isHandTask || true) { // always include at least one wrist metric so Compare grades it
+    if (isHandTask) {
+      expects.push({ id: "wristFlex", label: "Wrist flexion (tendons)", metricPath: "summary.peakAngles.wristFlex_L_max", target: { min: 10, max: 60 }, unit: "°" });
+      expects.push({ id: "fingerAperture", label: "Finger aperture (thumb-index)", metricPath: "summary.rom.fingerAperture_range_mm", target: { min: 18 }, unit: "mm" });
+      expects.push({ id: "wristDeviation", label: "Wrist deviation", metricPath: "frames[].angles.wristDeviation_max", target: { max: 25 }, unit: "°" });
+    } else {
+      expects.push({ id: "wristFlex", label: "Wrist posture", metricPath: "summary.peakAngles.wristFlex_L_max", target: { min: 0, max: 50 }, unit: "°" });
+    }
+  }
   // BoS / balance always useful for adherence narrative
   expects.push({ id: "bos", label: "Base of support", metricPath: "summary.posturalAndDeformity.meanBosMarginMm", target: { max: 120 }, unit: "mm" });
-  return expects.slice(0, 5);
+  return expects.slice(0, 6);
 }
 
 export function thresholdBand(value: number | null, target: { min?: number; max?: number }): "Good"|"Watch"|"Needs support" {

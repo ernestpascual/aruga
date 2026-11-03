@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { runHighlightsAgent } from "@/lib/meta/highlights-agent";
+import { MetaApiError } from "@/lib/meta/errors";
 
 export const maxDuration = 60;
 
+const SPARK_REQUIRED_MSG_MISSING = "Requires Meta Spark API — MODEL_API_KEY missing. Set MODEL_API_KEY (or META_API_KEY) and META_API_BASE_URL=https://api.meta.ai/v1 with AI_MODE=live to enable Highlights.";
+const SPARK_REQUIRED_MSG_FAILED = "Requires Meta Spark API — call failed. Check MODEL_API_KEY validity, META_API_BASE_URL, and api.meta.ai credits, then retry with AI_MODE=live.";
 const SLOT_LABELS = ["Goals","Movement","Steady progress","Keep going","Neck & posture","Program fit","Next step"] as const;
-
 function monthKey(d = new Date()) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
 
 export async function POST(req: NextRequest) {
@@ -17,8 +20,6 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient();
     if (!admin) return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
 
-    // Resolve patient — dashboard passes user.id (profiles.id / client_user_id) while therapist passes patients.id
-    // Accept either; also handles demo users where patients rows may be seeded via client_user_id.
     async function resolvePatientId(raw: string): Promise<string | null> {
       const { data: byId } = await admin!.from("patients").select("id").eq("id", raw).maybeSingle();
       if (byId?.id) return byId.id;
@@ -28,14 +29,12 @@ export async function POST(req: NextRequest) {
     }
     const resolvedPatientId = await resolvePatientId(patientId);
     if (!resolvedPatientId) return NextResponse.json({ error: "Patient not found — no patient linked to this account yet. Ask your therapist to link your profile, or re-login." }, { status: 404 });
-    // For downstream evidence queries use the canonical patients.id
     const effectivePatientId = resolvedPatientId;
 
-    // Ownership check — fetch goals for summary (best effort)
     const { data: pat } = await admin.from("patients").select("id, long_term_goals, short_term_goals").eq("id", effectivePatientId).maybeSingle();
     if (!pat) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 
-    // Fetch evidence for period
+    // Gather evidence for LLM
     let soapNotes: any[] = [];
     let submissions: any[] = [];
     let mhrResults: any[] = [];
@@ -56,137 +55,98 @@ export async function POST(req: NextRequest) {
 
     const counts = { soapCount: soapNotes.length, subCount: submissions.length, mhrCount: mhrResults.length, goalReviewCount: goalReviews.length };
 
-    // Build 7 highlights — never invent numbers; use placeholders when insufficient
-    const hasAnyEvidence = counts.soapCount + counts.subCount + counts.mhrCount + counts.goalReviewCount > 0;
+    // Build adherence metrics for LLM
+    const completionRate = submissions.length ? Math.round((submissions.filter((s:any)=> s.state==="submitted"||s.state==="reviewed").length / submissions.length)*100) : 0;
+    // Trend: compare first half vs second half of 30d
+    const halfPoint = Date.now() - 15*24*60*60*1000;
+    const firstHalf = submissions.filter((s:any)=> new Date(s.created_at).getTime() < halfPoint).length;
+    const secondHalf = submissions.filter((s:any)=> new Date(s.created_at).getTime() >= halfPoint).length;
+    const trend = secondHalf - firstHalf;
 
-    // Helper to make placeholder
-    const placeholder = (slot: number, reason: string) => ({
-      slot,
-      slotLabel: SLOT_LABELS[slot-1],
-      title: "Not enough info yet",
-      story: reason.slice(0, 100),
-      delta: { quanti: "—", quali: "No info this month" },
-      arrow: "→",
-      weight: 0,
-      evidenceIds: [] as string[],
-    });
+    const goalReviewLatest = goalReviews[0] || null;
 
-    const highlights: Array<{ slot:number; slotLabel:string; title:string; story:string; delta:{quanti:string; quali:string}; arrow:string; weight:number; evidenceIds:string[] }> = [];
+    // Prior month highlights for comparison
+    let priorHighlights: any = null;
+    try {
+      const ym = month.split("-");
+      const d = new Date(Number(ym[0]), Number(ym[1])-2, 1);
+      const priorMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+      const { data: prior } = await admin.from("highlights").select("highlights, summary").eq("patient_id", effectivePatientId).eq("month", priorMonth).maybeSingle();
+      if (prior) priorHighlights = prior;
+    } catch {}
 
-    // Slot 1: Goal Progress — requires goal_reviews
-    if (goalReviews[0]) {
-      const gr = goalReviews[0] as any;
-      const summary = gr.summary || {};
-      const onTrack = summary.onTrack ?? 0;
-      const total = Array.isArray(gr.verdicts) ? gr.verdicts.length : 0;
-      highlights.push({
-        slot: 1, slotLabel: SLOT_LABELS[0],
-        title: `${onTrack} of ${total} goals on track`,
-        story: `We checked ${total} goals — ${onTrack} on track, ${summary.atRisk ?? 0} need attention.`,
-        delta: { quanti: `${onTrack}/${total} on track`, quali: "From your goal review" },
-        arrow: onTrack > 0 ? "↑" : "→",
-        weight: total > 0 ? 0.7 : 0,
-        evidenceIds: [`goal_review:${String(gr.id).slice(0,8)}`],
-      });
-    } else {
-      highlights.push(placeholder(1, "No goal check yet. Tap Check goals above, then generate highlights again."));
-    }
-
-    // Slot 2: Top ROM gain — requires mhrResults
-    if (mhrResults.length >= 1) {
-      const latest = mhrResults[0] as any;
-      const conf = latest.biomech_summary?.confidenceOverall ?? latest.mhr_results?.summary?.confidenceOverall ?? 0;
-      highlights.push({
-        slot: 2, slotLabel: SLOT_LABELS[1],
-        title: `${mhrResults.length} movement video${mhrResults.length>1?"s":""} this month`,
-        story: mhrResults.length >=2 ? "We have enough videos to compare with last month." : "Add one more video to see your change over time.",
-        delta: { quanti: `${mhrResults.length} video${mhrResults.length>1?"s":""}`, quali: latest.biomech_summary?.risk ? `${latest.biomech_summary.risk} risk` : "Movement data available" },
-        arrow: mhrResults.length >=2 ? "↑" : "→",
-        weight: mhrResults.length >=2 ? 0.6 : 0.2,
-        evidenceIds: mhrResults.slice(0,2).map((r:any)=> `mhr:${String(r.id).slice(0,8)}`),
-      });
-    } else {
-      highlights.push(placeholder(2, "No movement videos yet this month. Add a video to track progress."));
-    }
-
-    // Slot 3: Compensation shift
-    if (mhrResults.length >= 1) {
-      const flags = (mhrResults[0] as any)?.mhr_results?.flags || (mhrResults[0] as any)?.biomech_summary?.flags || [];
-      const hasFlags = Array.isArray(flags) && flags.length>0;
-      highlights.push({
-        slot: 3, slotLabel: SLOT_LABELS[2],
-        title: hasFlags ? "Small balance tip seen" : "Movement looked steady",
-        story: hasFlags ? "We noticed a small shift in posture to take a look at." : "No extra leaning or strain noticed this month.",
-        delta: { quanti: hasFlags ? `${flags.length} tip${flags.length>1?"s":""}` : "Steady", quali: hasFlags ? "Therapist will review" : "Looking good" },
-        arrow: hasFlags ? "↓" : "→",
-        weight: hasFlags ? 0.5 : 0.15,
-        evidenceIds: mhrResults.slice(0,1).map((r:any)=> `mhr:${String(r.id).slice(0,8)}`),
-      });
-    } else highlights.push(placeholder(3, "No movement data to check posture yet. Add a video."));
-
-    // Slot 4: Adherence
-    if (submissions.length > 0) {
-      const rate = submissions.filter((s:any)=> s.state==="submitted"||s.state==="reviewed").length;
-      highlights.push({
-        slot: 4, slotLabel: SLOT_LABELS[3],
-        title: `${rate} of ${submissions.length} tasks done`,
-        story: `You completed ${rate} of ${submissions.length} assigned tasks this month.`,
-        delta: { quanti: `${rate}/${submissions.length} done`, quali: rate>0 ? "Great job" : "No tasks yet" },
-        arrow: rate>0 ? "↑" : "→",
-        weight: submissions.length>0 ? 0.4 : 0,
-        evidenceIds: submissions.slice(0,2).map((s:any)=> `submission:${String(s.id).slice(0,8)}`),
-      });
-    } else highlights.push(placeholder(4, "No homework done in the last 30 days."));
-
-    // Slot 5: Neck / cross-age
-    if (mhrResults.length >=1) {
-      highlights.push({
-        slot: 5, slotLabel: SLOT_LABELS[4],
-        title: "Neck and head control checked",
-        story: "We checked head and neck posture in your latest video.",
-        delta: { quanti: "Posture checked", quali: "All ages" },
-        arrow: "→", weight: 0.25,
-        evidenceIds: mhrResults.slice(0,1).map((r:any)=> `mhr:${String(r.id).slice(0,8)}`),
-      });
-    } else highlights.push(placeholder(5, "No neck posture video yet. Add one to check it."));
-
-    // Slot 6: Program fit
-    if (submissions.length>0 || soapNotes.length>0) {
-      highlights.push({
-        slot: 6, slotLabel: SLOT_LABELS[5],
-        title: submissions.length>0 ? "Homework progress saved" : "Session notes saved",
-        story: submissions.length>0 ? "Your homework progress was saved this month." : "Your therapist saved session notes to review with you.",
-        delta: { quanti: `${submissions.length} update${submissions.length!==1?"s":""}`, quali: submissions.length>0 ? "Progress noted" : "Notes saved" },
-        arrow: "→", weight: 0.2,
-        evidenceIds: [...(submissions.slice(0,1).map((s:any)=> `submission:${String(s.id).slice(0,8)}`)), ...(soapNotes.slice(0,1).map((n:any)=> `soap:${String(n.id).slice(0,8)}`))],
-      });
-    } else highlights.push(placeholder(6, "No homework linked yet. Connect it to your program."));
-
-    // Slot 7: Next focus
-    if (goalReviews[0] || soapNotes[0]) {
-      const next = (goalReviews[0] as any)?.suggestions?.[0]?.text || soapNotes[0]?.plan?.slice(0,80) || "Continue current plan.";
-      highlights.push({
-        slot: 7, slotLabel: SLOT_LABELS[6],
-        title: "Next step",
-        story: String(next).slice(0,100),
-        delta: { quanti: goalReviews[0] ? "Based on your goals" : "From your plan", quali: "Therapist set this" },
-        arrow: "→", weight: 0.3,
-        evidenceIds: goalReviews[0] ? [`goal_review:${String(goalReviews[0].id).slice(0,8)}`] : soapNotes[0] ? [`soap:${String(soapNotes[0].id).slice(0,8)}`] : [],
-      });
-    } else highlights.push(placeholder(7, "No next step yet. Your therapist will set one after the goal check."));
-
-    const summary = {
-      trend: hasAnyEvidence ? "mixed" : "insufficient",
-      topDriver: highlights.find(h=> h.weight>0)?.title || "Awaiting evidence",
+    const evidence = {
+      patientId: effectivePatientId,
+      month,
+      soapNotes,
+      homeProgramFeedback: submissions.slice(0,10).map((s:any)=> ({ id: s.id, feedback: s.state } as any)),
+      goalReviewLatest,
+      adherence: { completionRate, streak: secondHalf, trend },
+      activity: mhrResults,
+      counts,
+      priorHighlights,
     };
-    const priorCompare = { lastMonthTrend: "—", deltaVsPrior: hasAnyEvidence ? "new period" : "no prior" };
 
+    // Real LLM — if Spark unavailable, return 7 placeholders with Requires Meta Spark API warning (degraded, like before)
+    let llm: Awaited<ReturnType<typeof runHighlightsAgent>> | null = null;
+    let sparkWarning: string | null = null;
+    try {
+      llm = await runHighlightsAgent(evidence);
+    } catch (llmErr: unknown) {
+      const msg = llmErr instanceof MetaApiError ? llmErr.message : llmErr instanceof Error ? llmErr.message : String(llmErr);
+      const code = llmErr instanceof MetaApiError ? llmErr.code : "SPARK_CALL_FAILED";
+      const isMissing = code === "MISSING_API_KEY";
+      sparkWarning = `${isMissing ? SPARK_REQUIRED_MSG_MISSING : SPARK_REQUIRED_MSG_FAILED} (${code}: ${msg})`;
+    }
+    if (!llm) {
+      const hasAnyEvidence = counts.soapCount + counts.subCount + counts.mhrCount + counts.goalReviewCount > 0;
+      const mk = (slot:number, title:string, story:string, delta:{quanti:string;quali:string}) => ({
+        slot,
+        slotLabel: SLOT_LABELS[slot-1],
+        title,
+        story: story.slice(0,100),
+        delta,
+        arrow: "→" as const,
+        weight: 0,
+        evidenceIds: [] as string[],
+      });
+      const highlights = [
+        mk(1, "Requires Meta Spark API", sparkWarning || SPARK_REQUIRED_MSG_FAILED, { quanti: "—", quali: "Add MODEL_API_KEY + AI_MODE=live" }),
+        mk(2, hasAnyEvidence ? `${counts.mhrCount} video(s) this month` : "No movement videos yet", hasAnyEvidence ? "LLM curation disabled — Spark needed for Top ROM" : "Add a video + enable Spark", { quanti: `${counts.mhrCount} video(s)`, quali: hasAnyEvidence ? "Evidence exists" : "No data" }),
+        mk(3, "Compensation — Spark needed", "Spark reasoning:high picks compensation shift; currently gap", { quanti: "—", quali: "Requires Meta Spark API" }),
+        mk(4, `${completionRate}% completion`, hasAnyEvidence ? "Adherence computed — Spark picks story" : "No homework 30d", { quanti: `${completionRate}%`, quali: hasAnyEvidence ? "Computed" : "No data" }),
+        mk(5, "Neck & posture — Spark needed", "Spark needed for neck cross-age highlight", { quanti: "—", quali: "Requires Meta Spark API" }),
+        mk(6, hasAnyEvidence ? "Program fit computed" : "No program data", sparkWarning || SPARK_REQUIRED_MSG_FAILED, { quanti: `${counts.subCount} updates`, quali: hasAnyEvidence ? "Computed" : "No data" }),
+        mk(7, "Next step — Spark needed", "Spark picks next focus by risk×deadline; currently gap", { quanti: "—", quali: "Requires Meta Spark API" }),
+      ];
+      const summary = { trend: hasAnyEvidence ? "mixed" : "insufficient", topDriver: "Requires Meta Spark API — degraded placeholders" };
+      const priorCompare = { lastMonthTrend: "—", deltaVsPrior: sparkWarning ? "degraded" : "no prior" };
+      const trace = [
+        { thought: "Fetched month window", tool: "fetch_month", observation: `SOAP ${counts.soapCount}, subs ${counts.subCount}, MHR ${counts.mhrCount}, goalReviews ${counts.goalReviewCount}` },
+        { thought: sparkWarning || SPARK_REQUIRED_MSG_FAILED, tool: "highlights-curation", observation: "degraded — 7 placeholders" },
+      ];
+      return NextResponse.json({
+        highlights,
+        summary,
+        priorCompare,
+        counts,
+        trace,
+        modelId: `degraded — ${sparkWarning || SPARK_REQUIRED_MSG_FAILED}`.slice(0, 180),
+        warnings: [sparkWarning || SPARK_REQUIRED_MSG_FAILED],
+        degraded: true,
+        sparkRequired: true,
+      });
+    }
+
+    const highlights = llm.result.highlights;
+    const summary = llm.result.summary;
+    const priorCompare = llm.result.priorCompare;
     const trace = [
       { thought: "Fetched month window", tool: "fetch_month", observation: `SOAP ${counts.soapCount}, subs ${counts.subCount}, MHR ${counts.mhrCount}, goalReviews ${counts.goalReviewCount}` },
-      { thought: "Weighted 7 slots by |Δ|×consistency×confidence — no invention", tool: "highlights-curation", observation: `${highlights.filter(h=> h.weight>0).length}/7 with evidence, rest placeholders` },
+      { thought: "Spark reasoning discerned evidence-backed slots by |Δ|×consistency×confidence", tool: "highlights-curation", observation: `${llm.modelId} ${llm.latencyMs}ms — ${highlights.length} slots with evidence` },
     ];
 
-    // Persist to DB (upsert patient_id+month) — draft status, require therapist publish to expose to client
+    // Persist draft
     let saved: any = null;
     try {
       const { data: existing } = await admin.from("highlights").select("id").eq("patient_id", effectivePatientId).eq("month", month).maybeSingle();
@@ -198,7 +158,7 @@ export async function POST(req: NextRequest) {
         prior_compare: priorCompare,
         trace,
         status: "draft" as const,
-        model_id: "highlights draft",
+        model_id: llm.modelId,
       };
       if (existing?.id) {
         const { data: upd, error: updErr } = await admin.from("highlights").update(payload).eq("id", existing.id).select("id, patient_id, month, status").single();
@@ -209,17 +169,19 @@ export async function POST(req: NextRequest) {
         if (insErr) throw insErr;
         saved = ins;
       }
-      // Log agent run
       try {
         await admin.from("agent_runs").insert({ patient_id: effectivePatientId, intent: "highlights", concepts: SLOT_LABELS as unknown as string[], trace, status: "completed", model_id: payload.model_id });
       } catch {}
     } catch (dbErr:any) {
-      // If table not migrated yet, return highlights without saving but warn
-      return NextResponse.json({ highlights, summary, priorCompare, counts, trace, modelId: "Highlights ready — save needs a quick database update", warning: dbErr.message || String(dbErr) });
+      return NextResponse.json({ highlights, summary, priorCompare, counts, trace, latencyMs: llm.latencyMs, modelId: `${llm.modelId} — save needs a quick database update`, warning: dbErr.message || String(dbErr) });
     }
 
-    return NextResponse.json({ highlights, summary, priorCompare, counts, trace, saved, modelId: "Highlights saved as draft" });
+    return NextResponse.json({ highlights, summary, priorCompare, counts, trace, saved, latencyMs: llm.latencyMs, modelId: llm.modelId });
   } catch (e: unknown) {
+    if (e instanceof MetaApiError) {
+      const isMissing = e.code === "MISSING_API_KEY";
+      return NextResponse.json({ error: isMissing ? SPARK_REQUIRED_MSG_MISSING : SPARK_REQUIRED_MSG_FAILED, code: e.code, detail: e.message }, { status: isMissing ? 503 : 502 });
+    }
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 }
@@ -230,7 +192,6 @@ export async function GET(req: NextRequest) {
   if (!rawPatientId) return NextResponse.json({ error: "patientId required" }, { status: 400 });
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
-  // Resolve client_user_id → patients.id
   let patientId = rawPatientId;
   const { data: byId } = await admin.from("patients").select("id").eq("id", rawPatientId).maybeSingle();
   if (!byId?.id) {

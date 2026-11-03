@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       customImagePrompt,
       referenceLinks,
       referenceImages,
+      referenceImagePaths,
       patientId,
       creatorId,
       generateImage,
@@ -74,6 +75,20 @@ export async function POST(req: NextRequest) {
       }
     }
     const verifiedCreatorId = authenticatedCreatorId || effectiveRequesterId || (creatorId as string | null) || null;
+    // Resolve referenceImagePaths (Supabase Storage) → signed URLs to bypass Vercel 4.5 MB
+    let resolvedReferenceImages: string[] | undefined = Array.isArray(referenceImages) ? referenceImages.filter(Boolean).slice(0, 4) : undefined;
+    if (Array.isArray(referenceImagePaths) && referenceImagePaths.length && admin) {
+      try {
+        const signed: string[] = [];
+        for (const p of referenceImagePaths.slice(0, 4)) {
+          const path = String(p).trim();
+          if (!path.startsWith("references/") && !path.startsWith("activity-assets/")) continue;
+          const { data } = await admin.storage.from("activity-assets").createSignedUrl(path, 600);
+          if (data?.signedUrl) signed.push(data.signedUrl);
+        }
+        if (signed.length) resolvedReferenceImages = signed;
+      } catch {}
+    }
     if (templateId && admin) {
       const { data: tmpl } = await admin.from("activity_templates").select("*").eq("id", templateId).maybeSingle();
       if (tmpl) {
@@ -95,7 +110,7 @@ export async function POST(req: NextRequest) {
       customSparkPrompt: templateSpark,
       customImagePrompt: templateImage,
       referenceLinks: Array.isArray(referenceLinks) ? referenceLinks.filter(Boolean).slice(0, 6) : undefined,
-      referenceImages: Array.isArray(referenceImages) ? referenceImages.filter(Boolean).slice(0, 4) : undefined,
+      referenceImages: resolvedReferenceImages,
       usageInstructions: usageInstructionsClean,
       patientId,
       generateImage: generateImage === false || generateImage === "false" ? false : true,

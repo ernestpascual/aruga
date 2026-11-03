@@ -30,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { MediaUploader } from "@/components/ui/media-uploader";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { HomeProgram, ProgramStep, StepSubmission, Submission } from "@/types/database";
-import { SoapSummaryCard } from "@/components/ui/soap-summary-card";
+import { OverallFeedbackCard } from "@/components/ui/overall-feedback-card";
 import { StepActivityWorksheet } from "@/components/activities/StepActivityWorksheet";
 
 export default function ClientProgramRunnerPage({
@@ -68,6 +68,7 @@ function ClientProgramRunnerContent({
 
   const initialEditParam = searchParams.get("edit") === "true";
   const initialDateParam = searchParams.get("date") || "";
+  const initialSubmissionIdParam = searchParams.get("submissionId") || "";
 
   const [program, setProgram] = useState<HomeProgram | null>(null);
   const [steps, setSteps] = useState<ProgramStep[]>([]);
@@ -87,10 +88,90 @@ function ClientProgramRunnerContent({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [uploadingStepId, setUploadingStepId] = useState<string | null>(null);
   const [activityDoneMap, setActivityDoneMap] = useState<Record<string, boolean>>({});
+  const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
+  const [biomechSummary, setBiomechSummary] = useState<string | null>(null);
+  const [feedbackCompletions, setFeedbackCompletions] = useState<Record<string, Record<string, unknown>>>({});
+
+  // Load worksheet completions for feedback view
+  useEffect(() => {
+    const stepSubs = (submission as unknown as { step_submissions?: StepSubmission[] })?.step_submissions;
+    if (!submission?.id || !stepSubs?.length || !user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        stepSubs.map(async (ss) => {
+          try {
+            const r = await fetch(`/api/activity-completions?stepSubmissionId=${ss.id}&requesterId=${user.id}`);
+            const d = await r.json();
+            const comp = d.completions?.[0] as Record<string, unknown> | undefined;
+            return comp ? ([ss.id, comp] as const) : null;
+          } catch { return null; }
+        })
+      );
+      if (cancelled) return;
+      const map: Record<string, Record<string, unknown>> = {};
+      for (const e of entries) if (e) map[e[0]] = e[1];
+      setFeedbackCompletions(map);
+    })();
+    return () => { cancelled = true; };
+  }, [submission?.id, user?.id]);
+
+  // Worksheet summary for AI (so Overall Feedback mentions coloring work)
+  const worksheetAiSummary = React.useMemo(() => {
+    if (!steps.length || !submission) return null;
+    const wsSteps = steps.filter((s) => (s as unknown as { generated_activity?: { base_image_url?: string | null } })?.generated_activity?.base_image_url);
+    if (!wsSteps.length) return null;
+    const stepSubs = (submission as unknown as { step_submissions?: Array<{ id: string; program_step_id: string }> })?.step_submissions || [];
+    const doneEntries = Object.entries(feedbackCompletions) as Array<[string, Record<string, unknown>]>;
+    if (!doneEntries.length) return `Worksheet: ${wsSteps.length} coloring worksheet(s) assigned, completed via photo/video instead.`;
+    const parts = doneEntries.map(([sid, c]) => {
+      const ss = stepSubs.find((x) => x.id === sid);
+      const st = steps.find((s) => s.id === ss?.program_step_id);
+      const method = (c as { completion_method?: string })?.completion_method;
+      return `${st?.title || "Step"}: completed`;
+    });
+    return `Worksheet: ${doneEntries.length}/${wsSteps.length} coloring worksheet(s) completed — ${parts.join("; ").slice(0, 400)}`;
+  }, [steps, feedbackCompletions, submission]);
+
+  // Load biomechanic summaries for AI Overall Feedback (if any video was analyzed)
+  useEffect(() => {
+    const stepSubs = (submission as unknown as { step_submissions?: StepSubmission[] })?.step_submissions;
+    if (!submission?.id || !stepSubs?.length) { setBiomechSummary(null); return; }
+    let cancelled = false;
+    (async () => {
+      const parts: string[] = [];
+      for (const ss of stepSubs) {
+        try {
+          const r = await fetch(`/api/agent/biomech/save?stepSubmissionId=${ss.id}`);
+          const d = await r.json();
+          const saved = d.saved as { mhr_result?: { insights?: Array<{ label: string; rating: string; value: number | null; unit: string; threshold?: string }>; mhr?: { summary?: { peakAngles?: Record<string, number>; posturalAndDeformity?: { meanBosMarginMm?: number }; gait?: { comSwayVelocityMmPerSec?: number } } } } } | null;
+          const insights = saved?.mhr_result?.insights;
+          if (insights?.length) {
+            const stepTitle = steps.find((s) => s.id === ss.program_step_id)?.title || `Step ${(ss as unknown as { position?: number }).position || ""}`.trim() || ss.id.slice(0, 4);
+            const txt = insights.slice(0, 3).map((ins) => `${ins.label} ${ins.rating} ${ins.value ?? "?"}${ins.unit} (${ins.threshold ?? ""})`).join("; ");
+            parts.push(`${stepTitle}: ${txt}`);
+          } else if (saved?.mhr_result?.mhr?.summary) {
+            const s = saved.mhr_result.mhr.summary as { peakAngles?: Record<string, number> };
+            parts.push(`${ss.id.slice(0, 4)}: shoulder ${s.peakAngles?.["shoulderFlex_max"] ?? "?"}°`);
+          }
+        } catch {}
+      }
+      if (!cancelled) setBiomechSummary(parts.length ? parts.slice(0, 4).join(" | ").slice(0, 900) : null);
+    })();
+    return () => { cancelled = true; };
+  }, [submission?.id, steps.length]);
 
   // Consents
   const [consentTherapist, setConsentTherapist] = useState(true);
   const [consentMetaAi, setConsentMetaAi] = useState(true);
+
+  // Helper: submissions API returns review as array (Supabase join) or object — normalize
+  const getReviewObj = (sub: unknown) => {
+    const r = (sub as { review?: unknown })?.review;
+    if (!r) return null as unknown as { status?: string; overall_feedback?: string; subjective?: string; objective?: string; assessment?: string; plan?: string; client_summary?: string; step_reviews?: Array<{ step_submission_id: string; therapist_note?: string }> } | null;
+    if (Array.isArray(r)) return (r[0] as unknown) as { status?: string; overall_feedback?: string; subjective?: string; objective?: string; assessment?: string; plan?: string; client_summary?: string; step_reviews?: Array<{ step_submission_id: string; therapist_note?: string }> } | null;
+    return r as { status?: string; overall_feedback?: string; subjective?: string; objective?: string; assessment?: string; plan?: string; client_summary?: string; step_reviews?: Array<{ step_submission_id: string; therapist_note?: string }> };
+  };
 
   // Load Program & Submissions from database
   useEffect(() => {
@@ -127,7 +208,64 @@ function ClientProgramRunnerContent({
           setSelectedDate(effectiveDate);
         }
 
-        // 2. Fetch or create draft submission for this program & scheduled date
+        // 1b. Fetch all submissions for this program so client can see per-date feedback even while ongoing
+        if (isMounted && loadedProg) {
+          try {
+            const allRes = await fetch(
+              `/api/client/submissions?programId=${programId}&clientUserId=${user?.id || ""}&requesterId=${user?.id || ""}`
+            );
+            const allData = await allRes.json();
+            if (isMounted && Array.isArray(allData.submissions)) {
+              setAllSubmissions(allData.submissions as Submission[]);
+            }
+          } catch {}
+        }
+
+        // 2. If ?submissionId= present (deep link from Activities reviewed row), load that exact submission — bypasses date matching so feedback always opens
+        if (initialSubmissionIdParam && isMounted) {
+          try {
+            const directRes = await fetch(
+              `/api/client/submissions?submissionId=${initialSubmissionIdParam}&clientUserId=${user?.id || ""}&requesterId=${user?.id || ""}`
+            );
+            const directData = await directRes.json();
+            const directSub = (directData.submission || directData.submissions?.[0]) as Submission | undefined;
+            if (directSub) {
+              if (directSub.scheduled_date) setSelectedDate(directSub.scheduled_date);
+              setSubmission(directSub);
+              const rD = getReviewObj(directSub);
+              const isFeedbackGivenD =
+                directSub.state === "reviewed" ||
+                rD?.status === "published" ||
+                Boolean(rD?.overall_feedback);
+              setIsEditingMode(false);
+              setIsSubmitted(true);
+              if (typeof directSub.consent_therapist === "boolean") setConsentTherapist(directSub.consent_therapist);
+              if (typeof directSub.consent_meta_ai === "boolean") setConsentMetaAi(directSub.consent_meta_ai);
+              const directMap: Record<string, StepItemData> = {};
+              if (Array.isArray(directSub.step_submissions)) {
+                directSub.step_submissions.forEach((ss: StepSubmission) => {
+                  directMap[ss.program_step_id] = {
+                    stepSubmissionId: ss.id,
+                    videoPath: ss.video_path || undefined,
+                    mediaMime: ss.media_meta?.mime,
+                    mediaKind: ss.media_meta?.mediaKind,
+                    comment: ss.client_comment || "",
+                    skipped: Boolean(ss.skipped),
+                    skipReason: ss.skip_reason || "",
+                  };
+                });
+              }
+              loadedSteps.forEach((st) => {
+                if (!directMap[st.id]) directMap[st.id] = { comment: "", skipped: false, skipReason: "" };
+              });
+              setStepData(directMap);
+              if (isMounted) setLoading(false);
+              return;
+            }
+          } catch {}
+        }
+
+        // 2b. Fetch or create draft submission for this program & scheduled date
         const subRes = await fetch("/api/client/submissions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -143,10 +281,11 @@ function ClientProgramRunnerContent({
         if (isMounted && subData.submission) {
           const currentSub: Submission = subData.submission;
           setSubmission(currentSub);
+          const r0 = getReviewObj(currentSub);
           const isFeedbackGiven =
             currentSub.state === "reviewed" ||
-            currentSub.review?.status === "published" ||
-            Boolean(currentSub.review?.overall_feedback);
+            r0?.status === "published" ||
+            Boolean(r0?.overall_feedback);
           const isDone = currentSub.state === "submitted" || isFeedbackGiven;
 
           if (isFeedbackGiven) {
@@ -217,10 +356,11 @@ function ClientProgramRunnerContent({
 
   // Start Editing Submission
   const handleStartEdit = () => {
+    const rEdit = getReviewObj(submission);
     const isFeedbackGiven =
       submission?.state === "reviewed" ||
-      submission?.review?.status === "published" ||
-      Boolean(submission?.review?.overall_feedback);
+      rEdit?.status === "published" ||
+      Boolean(rEdit?.overall_feedback);
     if (isFeedbackGiven) {
       setErrorMsg(
         "Feedback has already been published by your therapist. This submission is finalized and cannot be modified."
@@ -234,16 +374,93 @@ function ClientProgramRunnerContent({
     setErrorMsg(null);
   };
 
+  // Apply a submission object to UI state (shared by cache-instant + network paths)
+  const applySubmissionForDate = (newDate: string, cur: Submission) => {
+    setSelectedDate(newDate);
+    setSubmission(cur);
+    const rCur = getReviewObj(cur);
+    const reviewedForDate =
+      cur.state === "reviewed" ||
+      rCur?.status === "published" ||
+      Boolean(rCur?.overall_feedback);
+    const submittedForDate = cur.state === "submitted" || (cur as unknown as { state?: string }).state === "reviewed" || reviewedForDate;
+    setIsSubmitted(reviewedForDate ? true : submittedForDate);
+    setIsEditingMode(false);
+    setIsSummaryView(false);
+    setCurrentStepIndex(0);
+    setErrorMsg(null);
+    setSaveSuccessMsg(null);
+    const initialMap: Record<string, StepItemData> = {};
+    if (Array.isArray(cur.step_submissions)) {
+      cur.step_submissions.forEach((ss: StepSubmission) => {
+        initialMap[ss.program_step_id] = {
+          stepSubmissionId: ss.id,
+          videoPath: ss.video_path || undefined,
+          mediaMime: ss.media_meta?.mime,
+          mediaKind: ss.media_meta?.mediaKind,
+          comment: ss.client_comment || "",
+          skipped: Boolean(ss.skipped),
+          skipReason: ss.skip_reason || "",
+        };
+      });
+    }
+    steps.forEach((st) => {
+      if (!initialMap[st.id]) {
+        initialMap[st.id] = { comment: "", skipped: false, skipReason: "" };
+      }
+    });
+    setStepData(initialMap);
+  };
+
+  // Instant "View feedback" — uses already-fetched allSubmissions cache, no POST round-trip.
+  // Falls back to network only if date not in cache.
+  const handleViewFeedback = async (newDate: string) => {
+    const cached = allSubmissions.find((s) => s.scheduled_date === newDate);
+    if (cached) {
+      applySubmissionForDate(newDate, cached);
+      // Background refresh full review (step_reviews) via GET by id — never blocks UI
+      try {
+        const r = await fetch(
+          `/api/client/submissions?submissionId=${cached.id}&clientUserId=${user?.id || ""}&requesterId=${user?.id || ""}`
+        );
+        const d = await r.json();
+        const fresh = (d.submission || d.submissions?.[0]) as Submission | undefined;
+        if (fresh && fresh.id === cached.id) {
+          setSubmission(fresh);
+          setAllSubmissions((prev) => prev.map((s) => (s.id === fresh.id ? fresh : s)));
+        }
+      } catch {}
+      return;
+    }
+    // Not in cache — fall back to network fetch
+    await handleSelectDate(newDate);
+  };
+
   // Switch Scheduled Practice Date (Each date is 1 submission)
   const handleSelectDate = async (newDate: string) => {
     if (newDate === selectedDate) return;
+    // Instant path: if we already have this date's submission cached, apply immediately
+    const cached = allSubmissions.find((s) => s.scheduled_date === newDate);
+    if (cached) {
+      applySubmissionForDate(newDate, cached);
+      // Refresh badges in background
+      try {
+        const allRes = await fetch(
+          `/api/client/submissions?programId=${programId}&clientUserId=${user?.id || ""}&requesterId=${user?.id || ""}`
+        );
+        const allData = await allRes.json();
+        if (Array.isArray(allData.submissions)) setAllSubmissions(allData.submissions as Submission[]);
+      } catch {}
+      return;
+    }
     setSelectedDate(newDate);
     setIsEditingMode(false);
     setIsSummaryView(false);
     setCurrentStepIndex(0);
     setErrorMsg(null);
     setSaveSuccessMsg(null);
-    setLoading(true);
+    // Use lightweight savingDraft flag instead of full page loading — keeps per-date feedback visible
+    setSavingDraft(true);
 
     try {
       const subRes = await fetch("/api/client/submissions", {
@@ -260,7 +477,14 @@ function ClientProgramRunnerContent({
       if (subData.submission) {
         const cur: Submission = subData.submission;
         setSubmission(cur);
-        setIsSubmitted(cur.state === "submitted" || cur.state === "reviewed");
+        // Show feedback view for this date if it is reviewed, even while other dates are ongoing
+        const rCur = getReviewObj(cur);
+        const reviewedForDate =
+          cur.state === "reviewed" ||
+          rCur?.status === "published" ||
+          Boolean(rCur?.overall_feedback);
+        setIsSubmitted(reviewedForDate ? true : cur.state === "submitted" || cur.state === "reviewed");
+        if (reviewedForDate) setIsEditingMode(false);
         const initialMap: Record<string, StepItemData> = {};
         if (Array.isArray(cur.step_submissions)) {
           cur.step_submissions.forEach((ss: StepSubmission) => {
@@ -282,10 +506,19 @@ function ClientProgramRunnerContent({
         });
         setStepData(initialMap);
       }
+      // refresh per-date feedback badges after switch
+      try {
+        const allRes = await fetch(
+          `/api/client/submissions?programId=${programId}&clientUserId=${user?.id || ""}&requesterId=${user?.id || ""}`
+        );
+        const allData = await allRes.json();
+        if (Array.isArray(allData.submissions)) setAllSubmissions(allData.submissions as Submission[]);
+      } catch {}
     } catch (err) {
       console.warn("Date switch error:", err);
+      setErrorMsg(err instanceof Error ? err.message : String(err));
     } finally {
-      setLoading(false);
+      setSavingDraft(false);
     }
   };
 
@@ -533,10 +766,11 @@ function ClientProgramRunnerContent({
   // Final Submit to Therapist
   const handleSubmitToTherapist = async () => {
     if (submitting || isSubmitted || !submission) return;
+    const rSub = getReviewObj(submission);
     const isFeedbackGiven =
       submission.state === "reviewed" ||
-      submission.review?.status === "published" ||
-      Boolean(submission.review?.overall_feedback);
+      rSub?.status === "published" ||
+      Boolean(rSub?.overall_feedback);
     if (isFeedbackGiven) {
       setErrorMsg(
         "Feedback has already been published by your therapist. This submission is finalized and cannot be modified."
@@ -603,6 +837,12 @@ function ClientProgramRunnerContent({
       setIsSubmitted(true);
       setSaveSuccessMsg(isEditingMode ? "Submission updated and re-sent to clinician!" : "Home program submitted successfully!");
       setTimeout(() => setSaveSuccessMsg(null), 4000);
+      // refresh per-date list so badges update even while program ongoing
+      try {
+        const allRes = await fetch(`/api/client/submissions?programId=${programId}&clientUserId=${user?.id || ""}&requesterId=${user?.id || ""}`);
+        const allData = await allRes.json();
+        if (Array.isArray(allData.submissions)) setAllSubmissions(allData.submissions as Submission[]);
+      } catch {}
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : String(err));
     } finally {
@@ -620,11 +860,12 @@ function ClientProgramRunnerContent({
   }
 
   if (isSubmitted) {
+    const reviewObj = getReviewObj(submission);
     const isReviewed =
       submission?.state === "reviewed" ||
-      submission?.review?.status === "published" ||
-      Boolean(submission?.review?.overall_feedback);
-    const review = submission?.review;
+      reviewObj?.status === "published" ||
+      Boolean(reviewObj?.overall_feedback);
+    const review = reviewObj;
 
     if (isReviewed) {
       return (
@@ -653,127 +894,113 @@ function ClientProgramRunnerContent({
             </div>
           </div>
 
-          {/* Clinician Feedback finalized notice banner */}
-          <div className="rounded-xl border border-teal-500/30 bg-teal-950/20 p-3.5 text-xs text-teal-200 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
-              <span>
-                <strong>Submission Finalized:</strong> Your therapist has provided and published clinical feedback for this session. This submission is complete and cannot be edited.
-              </span>
+          {/* Date switcher — also in feedback view so client can navigate between reviewed dates */}
+          {program?.scheduled_dates && program.scheduled_dates.length > 1 && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-zinc-900/90 border border-zinc-800">
+              <div className="flex items-center gap-2 text-xs">
+                <Calendar className="w-4 h-4 text-teal-400 shrink-0" />
+                <span className="font-semibold text-zinc-200">Scheduled Sessions:</span>
+                <span className="text-zinc-400">tap a date</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {program.scheduled_dates.map((dStr, idx) => {
+                  const isSelected = (selectedDate || program.scheduled_dates?.[0]) === dStr;
+                  const subForDate = allSubmissions.find((s) => s.scheduled_date === dStr) as unknown as { state?: string; review?: unknown } | undefined;
+                  const rawR = (subForDate as unknown as { review?: unknown })?.review;
+                  const r = Array.isArray(rawR) ? (rawR[0] as { status?: string; overall_feedback?: string } | undefined) : (rawR as { status?: string; overall_feedback?: string } | undefined);
+                  const hasReview = subForDate?.state === "reviewed" || r?.status === "published" || Boolean(r?.overall_feedback);
+                  const isSubmittedDate = subForDate?.state === "submitted" || hasReview;
+                  return (
+                    <button
+                      key={dStr}
+                      type="button"
+                      onClick={() => handleViewFeedback(dStr)}
+                      title={hasReview ? "Feedback available" : isSubmittedDate ? "Submitted" : "Not yet submitted"}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono transition-colors border ${
+                        isSelected
+                          ? "bg-teal-950 border-teal-500 text-teal-300 font-bold shadow-sm"
+                          : hasReview
+                            ? "bg-emerald-950/40 border-emerald-800 text-emerald-300 hover:bg-emerald-950/60"
+                            : isSubmittedDate
+                              ? "bg-amber-950/30 border-amber-800 text-amber-300 hover:bg-amber-950/50"
+                              : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                      }`}
+                    >
+                      <span>Date {idx + 1}: {dStr}{hasReview ? " ✓" : isSubmittedDate ? " •" : ""}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <Badge variant="teal" statusText="Submission Locked" />
+          )}
+
+          {/* Clinician Feedback finalized notice banner */}
+          <div className="rounded-xl border border-teal-500/30 bg-teal-950/20 p-3.5 text-xs text-teal-200 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+            <span>
+              <strong>Submission Finalized:</strong> Your therapist has provided and published clinical feedback for this session. This submission is complete and cannot be edited.
+            </span>
           </div>
 
-          {/* Clinical SOAP Evaluation and Simple Family Summary */}
-          {review && (review.subjective || review.objective || review.assessment || review.plan) ? (
-            <div className="space-y-4">
-              {/* 4 SOAP Boxes Grid */}
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
-                    <Stethoscope className="w-3.5 h-3.5" />
-                  </div>
-                  <h2 className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
-                    Clinician SOAP Evaluation
-                  </h2>
+          {/* Overall Clinician Session Feedback — AI-generated, easy to understand, saved once */}
+          <OverallFeedbackCard
+            targetType="submission_review"
+            targetId={submission?.id}
+            overallFeedback={review?.overall_feedback || null}
+            subjective={review?.subjective}
+            objective={review?.objective}
+            assessment={review?.assessment}
+            plan={review?.plan}
+            stepReviews={(review?.step_reviews || []).map((sr: { step_submission_id: string; therapist_note?: string }) => {
+              const ss = (submission as unknown as { step_submissions?: Array<{ id: string; program_step_id: string }> })?.step_submissions?.find((s) => s.id === sr.step_submission_id);
+              const st = steps.find((s) => s.id === ss?.program_step_id);
+              return { stepTitle: st?.title || st?.instructions?.slice(0, 40) || "Step", therapistNote: sr.therapist_note || "" };
+            })}
+            biomechSummary={[biomechSummary, worksheetAiSummary].filter(Boolean).join(" | ") || null}
+            initialSummary={review?.client_summary || null}
+          />
+
+          {/* Clinical SOAP details — reference, below the easy summary */}
+          {review && (review.subjective || review.objective || review.assessment || review.plan) && (
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-400">
+                  <Stethoscope className="w-3.5 h-3.5" />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {/* Subjective Box */}
-                  <div className="p-3.5 rounded-xl border border-sky-500/20 bg-sky-950/10 space-y-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded bg-sky-500/20 text-sky-300 text-[10px] font-bold font-mono flex items-center justify-center">
-                        S
-                      </span>
-                      <span className="text-xs font-bold text-sky-300">
-                        Subjective (Symptoms & Tolerance)
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-300 leading-relaxed">
-                      {review.subjective || "No subjective notes recorded."}
-                    </p>
-                  </div>
-
-                  {/* Objective Box */}
-                  <div className="p-3.5 rounded-xl border border-teal-500/20 bg-teal-950/10 space-y-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded bg-teal-500/20 text-teal-300 text-[10px] font-bold font-mono flex items-center justify-center">
-                        O
-                      </span>
-                      <span className="text-xs font-bold text-teal-300">
-                        Objective (Performance & Metrics)
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-300 leading-relaxed">
-                      {review.objective || "No objective metrics recorded."}
-                    </p>
-                  </div>
-
-                  {/* Assessment Box */}
-                  <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-950/10 space-y-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold font-mono flex items-center justify-center">
-                        A
-                      </span>
-                      <span className="text-xs font-bold text-amber-300">
-                        Assessment (Clinical Analysis)
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-300 leading-relaxed">
-                      {review.assessment || "No clinical assessment recorded."}
-                    </p>
-                  </div>
-
-                  {/* Plan Box */}
-                  <div className="p-3.5 rounded-xl border border-violet-500/20 bg-violet-950/10 space-y-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded bg-violet-500/20 text-violet-300 text-[10px] font-bold font-mono flex items-center justify-center">
-                        P
-                      </span>
-                      <span className="text-xs font-bold text-violet-300">
-                        Plan (Next Steps & Adjustments)
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-300 leading-relaxed">
-                      {review.plan || "No plan adjustments specified."}
-                    </p>
-                  </div>
-                </div>
+                <h2 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Clinical Details (SOAP) — Reference</h2>
+                <span className="text-[11px] text-zinc-500">Full notes your therapist wrote</span>
               </div>
 
-              {/* PROMINENTLY BELOW THE SOAP NOTES: BUTTON TO SEE SUMMARY & CACHE IN DB */}
-              <SoapSummaryCard
-                targetType="submission_review"
-                targetId={submission?.id}
-                initialSummary={review.client_summary || null}
-                subjective={review.subjective}
-                objective={review.objective}
-                assessment={review.assessment}
-                plan={review.plan}
-              />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <Card className="border-teal-500/40 bg-teal-950/20 p-5 space-y-2.5 shadow-lg shadow-teal-950/30">
-                <div className="flex items-center gap-2 text-teal-400 text-sm font-bold">
-                  <Sparkles className="w-4 h-4 text-teal-400" />
-                  <span>Overall Clinician Session Feedback</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-xl border border-sky-500/20 bg-sky-950/10 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded bg-sky-500/20 text-sky-300 text-[10px] font-bold font-mono flex items-center justify-center">S</span>
+                    <span className="text-xs font-bold text-sky-300">Subjective (Symptoms & Tolerance)</span>
+                  </div>
+                  <p className="text-xs text-zinc-300 leading-relaxed">{review.subjective || "No subjective notes recorded."}</p>
                 </div>
-                <p className="text-xs text-zinc-200 leading-relaxed italic bg-zinc-900/60 p-3.5 rounded-xl border border-teal-500/20">
-                  &quot;{review?.overall_feedback || "Excellent dedication to your prescribed home program! Keep up the regular practice."}&quot;
-                </p>
-              </Card>
-
-              {/* PROMINENTLY BELOW: BUTTON TO SEE SUMMARY & CACHE IN DB */}
-              <SoapSummaryCard
-                targetType="submission_review"
-                targetId={submission?.id}
-                initialSummary={review?.client_summary || null}
-                subjective={review?.subjective}
-                objective={review?.objective}
-                assessment={review?.assessment}
-                plan={review?.plan}
-              />
+                <div className="p-3.5 rounded-xl border border-teal-500/20 bg-teal-950/10 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded bg-teal-500/20 text-teal-300 text-[10px] font-bold font-mono flex items-center justify-center">O</span>
+                    <span className="text-xs font-bold text-teal-300">Objective (Performance & Metrics)</span>
+                  </div>
+                  <p className="text-xs text-zinc-300 leading-relaxed">{review.objective || "No objective metrics recorded."}</p>
+                </div>
+                <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-950/10 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold font-mono flex items-center justify-center">A</span>
+                    <span className="text-xs font-bold text-amber-300">Assessment (Clinical Analysis)</span>
+                  </div>
+                  <p className="text-xs text-zinc-300 leading-relaxed">{review.assessment || "No clinical assessment recorded."}</p>
+                </div>
+                <div className="p-3.5 rounded-xl border border-violet-500/20 bg-violet-950/10 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded bg-violet-500/20 text-violet-300 text-[10px] font-bold font-mono flex items-center justify-center">P</span>
+                    <span className="text-xs font-bold text-violet-300">Plan (Next Steps & Adjustments)</span>
+                  </div>
+                  <p className="text-xs text-zinc-300 leading-relaxed">{review.plan || "No plan adjustments specified."}</p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -815,33 +1042,86 @@ function ClientProgramRunnerContent({
                     <p className="text-zinc-300 leading-relaxed">{st.instructions}</p>
                   </div>
 
-                  {/* Submitted photo/video or skip reason — hosted in Supabase */}
-                  {data?.skipped || stepSub?.skipped ? (
-                    <div className="text-xs text-amber-200/90 bg-amber-950/20 border border-amber-800/40 p-3 rounded-lg">
-                      <span className="font-semibold text-amber-300">Your Skip Note: </span>
-                      &quot;{data?.skipReason || stepSub?.skip_reason || "Fatigue precaution"}&quot;
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="aspect-video w-full max-w-md mx-auto rounded-lg overflow-hidden bg-black border border-zinc-800">
-                        {(() => {
-                          const src = data?.videoPath || stepSub?.video_path || "/demo/cup_grasp_transfer.mp4";
-                          const mime = data?.mediaMime || stepSub?.media_meta?.mime || "";
-                          const isPhoto = data?.mediaKind === "photo" || stepSub?.media_meta?.mediaKind === "photo" || mime.startsWith("image/") || /\.(jpg|jpeg|png|webp)$/i.test(src);
-                          return isPhoto ? (
-                            <img src={src} alt="Submitted photo" className="w-full h-full object-contain" />
-                          ) : (
-                            <video src={src} controls className="w-full h-full object-cover" />
-                          );
-                        })()}
+                  {/* Worksheet if answered — shows assigned vs your work; otherwise photo/video; also handles plain photo */}
+                  {(() => {
+                    const ga = (st as unknown as { generated_activity?: { id: string; title: string; instructions: string; base_image_url: string | null } | null })?.generated_activity;
+                    const comp = stepSub ? (feedbackCompletions[stepSub.id] as { drawing_data_url?: string | null; photo_upload_path?: string | null; completion_method?: string; created_at?: string; drawing_strokes?: unknown[] } | undefined) : undefined;
+                    const hasWorksheet = Boolean(ga?.base_image_url);
+                    const hasComp = Boolean(comp?.drawing_data_url);
+                    if (data?.skipped || stepSub?.skipped) {
+                      return (
+                        <div className="text-xs text-amber-200/90 bg-amber-950/20 border border-amber-800/40 p-3 rounded-lg">
+                          <span className="font-semibold text-amber-300">Your Skip Note: </span>
+                          &quot;{data?.skipReason || stepSub?.skip_reason || "Fatigue precaution"}&quot;
+                        </div>
+                      );
+                    }
+                    if (hasWorksheet) {
+                      const isPhotoMethod = comp?.completion_method === "photo";
+                      return (
+                        <div className="space-y-2">
+                          <div className="rounded-xl border border-teal-500/20 bg-teal-950/10 overflow-hidden">
+                            <div className="px-3 py-2 bg-zinc-950/60 border-b border-teal-500/10 flex items-center justify-between gap-2">
+                              <span className="text-xs font-semibold text-teal-300 flex items-center gap-1.5">🎨 Worksheet: {ga!.title || st.title}</span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">{hasComp ? "Completed" : "Worksheet assigned"}</span>
+                            </div>
+                            <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="space-y-1.5">
+                                <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Assigned worksheet</p>
+                                <div className="rounded-lg overflow-hidden border border-zinc-800 bg-white">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={String(ga!.base_image_url)} alt={String(ga!.title || "Worksheet")} className="w-full h-auto object-contain" />
+                                </div>
+                              </div>
+                              <div className="space-y-1.5">
+                                <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Your work</p>
+                                {hasComp && comp!.drawing_data_url ? (
+                                  <div className="rounded-lg overflow-hidden border border-zinc-800 bg-white">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={String(comp!.drawing_data_url)} alt="Your worksheet submission" className="w-full h-auto object-contain" />
+                                  </div>
+                                ) : (
+                                  <div className="rounded-lg border border-dashed border-zinc-700 bg-zinc-950/60 p-6 text-center text-xs text-zinc-500">No worksheet answer saved for this step — you used photo/video instead.</div>
+                                )}
+                                {hasComp && comp!.created_at && <p className="text-[10px] text-zinc-500 font-mono">Saved {new Date(String(comp!.created_at)).toLocaleString()}</p>}
+                              </div>
+                            </div>
+                          </div>
+                          {/* Also show any separate photo/video you uploaded alongside the worksheet */}
+                          {(() => {
+                            const src = data?.videoPath || stepSub?.video_path;
+                            if (!src || src === comp?.drawing_data_url) return null;
+                            const mime = data?.mediaMime || stepSub?.media_meta?.mime || "";
+                            const isPhoto = data?.mediaKind === "photo" || stepSub?.media_meta?.mediaKind === "photo" || mime.startsWith("image/") || /\.(jpg|jpeg|png|webp)$/i.test(src);
+                            // Only show if it's not the same as worksheet photo
+                            const isWorksheetPhoto = isPhotoMethod && src === comp?.drawing_data_url;
+                            if (isWorksheetPhoto) return null;
+                            return (
+                              <div className="space-y-1.5">
+                                <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Additional {isPhoto ? "photo" : "video"} you uploaded</p>
+                                <div className="aspect-video w-full max-w-md mx-auto rounded-lg overflow-hidden bg-black border border-zinc-800">
+                                  {isPhoto ? <img src={src} alt="Uploaded photo" className="w-full h-full object-contain" /> : <video src={src} controls className="w-full h-full object-cover" />}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                          {data?.comment && <p className="text-xs text-zinc-400 italic text-center">Your note: &quot;{data.comment}&quot;</p>}
+                        </div>
+                      );
+                    }
+                    const src = data?.videoPath || stepSub?.video_path || "";
+                    if (!src) return <div className="rounded-lg bg-zinc-950/60 border border-zinc-800 p-4 text-xs text-zinc-400">No photo or video submitted for this step.</div>;
+                    const mime = data?.mediaMime || stepSub?.media_meta?.mime || "";
+                    const isPhoto = data?.mediaKind === "photo" || stepSub?.media_meta?.mediaKind === "photo" || mime.startsWith("image/") || /\.(jpg|jpeg|png|webp)$/i.test(src);
+                    return (
+                      <div className="space-y-2">
+                        <div className="aspect-video w-full max-w-md mx-auto rounded-lg overflow-hidden bg-black border border-zinc-800">
+                          {isPhoto ? <img src={src} alt="Submitted photo" className="w-full h-full object-contain" /> : <video src={src} controls className="w-full h-full object-cover" />}
+                        </div>
+                        {data?.comment && <p className="text-xs text-zinc-400 italic text-center">Your note: &quot;{data.comment}&quot;</p>}
                       </div>
-                      {data?.comment && (
-                        <p className="text-xs text-zinc-400 italic text-center">
-                          Your note: &quot;{data.comment}&quot;
-                        </p>
-                      )}
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Clinician Step Note */}
                   <div className="rounded-xl bg-teal-950/30 border border-teal-500/30 p-3.5 space-y-1">
@@ -866,10 +1146,7 @@ function ClientProgramRunnerContent({
                 Back to Dashboard
               </Button>
             </Link>
-            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2">
-              <span className="text-[11px] text-zinc-500 hidden sm:inline">
-                Submission finalized • Locked from edits
-              </span>
+            <div className="flex flex-wrap items-center gap-2">
               <Link href="/client/messages">
                 <Button className="bg-teal-600 hover:bg-teal-500 text-zinc-950 font-bold text-xs gap-1.5">
                   <MessageSquare className="w-3.5 h-3.5" />
@@ -913,7 +1190,7 @@ function ClientProgramRunnerContent({
           )}
         </div>
 
-        {/* Date Session Switcher if program has scheduled dates */}
+        {/* Date Session Switcher if program has scheduled dates — per-date feedback visible even while program ongoing */}
         {program?.scheduled_dates && program.scheduled_dates.length > 1 && (
           <div className="max-w-lg mx-auto p-3.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-left space-y-2.5">
             <div className="flex items-center justify-between text-xs font-semibold text-zinc-200">
@@ -921,23 +1198,67 @@ function ClientProgramRunnerContent({
                 <Calendar className="w-3.5 h-3.5 text-teal-400" />
                 Scheduled Dates ({program.scheduled_dates.length} sessions, 1 submission each):
               </span>
+              <span className="text-[10px] text-zinc-500 font-normal">Tap a date to see its feedback</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {program.scheduled_dates.map((dStr, idx) => {
                 const isCurrent = (selectedDate || program.scheduled_dates?.[0]) === dStr;
+                const subForDate = allSubmissions.find((s) => s.scheduled_date === dStr) as unknown as { state?: string; review?: unknown } | undefined;
+                const rawR = (subForDate as unknown as { review?: unknown })?.review;
+                const r = Array.isArray(rawR) ? (rawR[0] as { status?: string; overall_feedback?: string } | undefined) : (rawR as { status?: string; overall_feedback?: string } | undefined);
+                const hasReview = subForDate?.state === "reviewed" || r?.status === "published" || Boolean(r?.overall_feedback);
+                const isSubmittedDate = subForDate?.state === "submitted" || hasReview;
                 return (
                   <button
                     key={dStr}
                     type="button"
-                    onClick={() => handleSelectDate(dStr)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-colors ${
+                    onClick={() => handleViewFeedback(dStr)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-colors flex items-center gap-1.5 ${
                       isCurrent
                         ? "bg-teal-950 border-teal-500 text-teal-300 font-bold shadow-sm"
-                        : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                        : hasReview
+                          ? "bg-emerald-950/40 border-emerald-800 text-emerald-300 hover:bg-emerald-950/60"
+                          : isSubmittedDate
+                            ? "bg-amber-950/30 border-amber-800 text-amber-300 hover:bg-amber-950/50"
+                            : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
                     }`}
+                    title={hasReview ? "Feedback available — tap to view" : isSubmittedDate ? "Submitted — awaiting feedback" : "Not yet submitted"}
                   >
-                    Date {idx + 1}: {dStr}
+                    Date {idx + 1}: {dStr} {hasReview ? "✓ feedback" : isSubmittedDate ? "• submitted" : ""}
                   </button>
+                );
+              })}
+            </div>
+            {allSubmissions.some((s) => { const st=(s as unknown as { state?: string }).state; const raw=(s as unknown as { review?: unknown }).review; const ro=Array.isArray(raw) ? (raw[0] as { status?: string }) : (raw as { status?: string } | undefined); return st==="reviewed" || ro?.status==="published"; }) && (
+              <p className="text-[11px] text-emerald-400/80 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Feedback is available per date below — program can stay ongoing.</p>
+            )}
+          </div>
+        )}
+
+        {/* View feedback buttons for any reviewed date — even while current date is waiting */}
+        {program?.scheduled_dates && program.scheduled_dates.length > 1 && allSubmissions.some((s) => { const st=(s as unknown as { state?: string }).state; const raw=(s as unknown as { review?: unknown }).review; const ro=Array.isArray(raw) ? (raw[0] as { status?: string }) : (raw as { status?: string } | undefined); return st==="reviewed" || ro?.status==="published"; }) && (
+          <div className="max-w-lg mx-auto rounded-xl border border-emerald-900/50 bg-emerald-950/10 p-3 space-y-2 text-left">
+            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-300">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Feedback per date
+            </div>
+            <div className="grid gap-1.5">
+              {program.scheduled_dates.map((dStr) => {
+                const subForDate = allSubmissions.find((s) => s.scheduled_date === dStr) as unknown as { state?: string; review?: unknown } | undefined;
+                const rawR = (subForDate as unknown as { review?: unknown })?.review;
+                const r = Array.isArray(rawR) ? (rawR[0] as { status?: string; overall_feedback?: string } | undefined) : (rawR as { status?: string; overall_feedback?: string } | undefined);
+                const hasReview = subForDate?.state === "reviewed" || r?.status === "published" || Boolean(r?.overall_feedback);
+                if (!hasReview) return null;
+                const isCurrent = (selectedDate || program.scheduled_dates?.[0]) === dStr;
+                if (isCurrent) return null;
+                return (
+                  <div key={dStr} className="w-full flex items-center justify-between gap-2 rounded-lg border border-emerald-800/40 bg-zinc-950/60 px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="text-xs font-mono text-emerald-300">{dStr}</div>
+                      <div className="text-xs text-zinc-400 truncate max-w-[200px]">{r?.overall_feedback?.slice(0, 70) || "Clinician feedback published"}</div>
+                    </div>
+                    <Button type="button" size="sm" onClick={() => handleViewFeedback(dStr)} className="h-7 shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 cursor-pointer">View feedback</Button>
+                  </div>
                 );
               })}
             </div>
@@ -1021,7 +1342,7 @@ function ClientProgramRunnerContent({
         </div>
       )}
 
-      {/* Scheduled Dates Session Switcher */}
+      {/* Scheduled Dates Session Switcher — per-date feedback badges even while ongoing */}
       {program?.scheduled_dates && program.scheduled_dates.length > 1 && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-zinc-900/90 border border-zinc-800">
           <div className="flex items-center gap-2 text-xs">
@@ -1032,19 +1353,69 @@ function ClientProgramRunnerContent({
           <div className="flex flex-wrap items-center gap-1.5">
             {program.scheduled_dates.map((dStr, idx) => {
               const isSelected = (selectedDate || program.scheduled_dates?.[0]) === dStr;
+              const subForDate = allSubmissions.find((s) => s.scheduled_date === dStr) as unknown as { state?: string; review?: unknown } | undefined;
+              const rawR2 = (subForDate as unknown as { review?: unknown })?.review;
+              const r2 = Array.isArray(rawR2) ? (rawR2[0] as { status?: string; overall_feedback?: string } | undefined) : (rawR2 as { status?: string; overall_feedback?: string } | undefined);
+              const hasReview = subForDate?.state === "reviewed" || r2?.status === "published" || Boolean(r2?.overall_feedback);
+              const isSubmittedDate = subForDate?.state === "submitted" || hasReview;
               return (
                 <button
                   key={dStr}
                   type="button"
-                  onClick={() => handleSelectDate(dStr)}
+                  onClick={() => handleViewFeedback(dStr)}
+                  title={hasReview ? "Feedback available" : isSubmittedDate ? "Submitted" : "Not yet submitted"}
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono transition-colors border ${
                     isSelected
                       ? "bg-teal-950 border-teal-500 text-teal-300 font-bold shadow-sm"
-                      : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                      : hasReview
+                        ? "bg-emerald-950/40 border-emerald-800 text-emerald-300 hover:bg-emerald-950/60"
+                        : isSubmittedDate
+                          ? "bg-amber-950/30 border-amber-800 text-amber-300 hover:bg-amber-950/50"
+                          : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
                   }`}
                 >
-                  <span>Date {idx + 1}: {dStr}</span>
+                  <span>Date {idx + 1}: {dStr}{hasReview ? " ✓" : isSubmittedDate ? " •" : ""}</span>
                 </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Per-date feedback history — visible even while program ongoing and current date is not reviewed */}
+      {program?.scheduled_dates && program.scheduled_dates.length > 1 && allSubmissions.some((s) => { const st=(s as unknown as { state?: string }).state; const raw=(s as unknown as { review?: unknown }).review; const ro=Array.isArray(raw) ? (raw[0] as { status?: string }) : (raw as { status?: string } | undefined); return st==="reviewed" || ro?.status==="published"; }) && (
+        <div className="rounded-xl border border-emerald-900/50 bg-emerald-950/10 p-3 space-y-2">
+          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-300">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Feedback per date — available even while program is ongoing
+          </div>
+          <div className="grid gap-1.5">
+            {program.scheduled_dates.map((dStr) => {
+              const subForDate = allSubmissions.find((s) => s.scheduled_date === dStr) as unknown as { id: string; state?: string; review?: unknown } | undefined;
+              const rawR3 = (subForDate as unknown as { review?: unknown })?.review;
+              const r3 = Array.isArray(rawR3) ? (rawR3[0] as { status?: string; overall_feedback?: string } | undefined) : (rawR3 as { status?: string; overall_feedback?: string } | undefined);
+              const hasReview = subForDate?.state === "reviewed" || r3?.status === "published" || Boolean(r3?.overall_feedback);
+              if (!hasReview || dStr === selectedDate) return null;
+              return (
+                <div
+                  key={dStr}
+                  className="w-full flex items-center justify-between gap-2 rounded-lg border border-emerald-800/40 bg-zinc-950/60 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <div className="text-xs font-mono text-emerald-300 flex items-center gap-2">
+                      {dStr} <span className="text-[10px] bg-emerald-900/50 px-1.5 py-0.5 rounded">feedback ready</span>
+                    </div>
+                    <div className="text-xs text-zinc-400 truncate max-w-[280px]">{r3?.overall_feedback?.slice(0, 80) || "Clinician feedback published"}</div>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => handleViewFeedback(dStr)}
+                    className="h-7 shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 cursor-pointer"
+                  >
+                    View feedback
+                  </Button>
+                </div>
               );
             })}
           </div>
@@ -1363,7 +1734,7 @@ function ClientProgramRunnerContent({
                 </span>
               </label>
 
-              {/* Consent 2: Optional Meta AI Processing */}
+              {/* Consent 2: Optional AI Processing (therapist-assisted) */}
               <label className="flex items-start gap-2.5 text-xs text-zinc-300 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -1374,10 +1745,10 @@ function ClientProgramRunnerContent({
                 <div className="space-y-0.5">
                   <span className="leading-relaxed flex items-center gap-1.5 font-medium text-teal-300">
                     <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-                    Optional: Consent to Meta AI visual analysis assistance
+                    Optional: Allow your therapist to use AI assistance
                   </span>
                   <p className="text-[11px] text-zinc-500 leading-relaxed">
-                    Allows your therapist to use Meta AI (Muse Spark & SAM 3.1) for tentative visual observations. You may decline this and still submit for human clinician review.
+                    Allows your therapist to use AI to help review your videos and notes for tentative observations. You may decline this and still submit for human clinician review.
                   </p>
                 </div>
               </label>

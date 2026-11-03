@@ -33,6 +33,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SamOverlay } from "@/components/ui/sam-overlay";
 import { BiomechPanel } from "@/components/therapist/BiomechPanel";
+import { BiomechAnalysisModal } from "@/components/therapist/BiomechAnalysisModal";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { Submission, StepSubmission, ProgramStep, AiAnalysisRecord, SoapNoteAssessmentLink } from "@/types/database";
 
@@ -90,6 +91,13 @@ function TherapistSubmissionReviewContent({
   const [biomechLoading, setBiomechLoading] = useState<string | null>(null);
   const [biomechResults, setBiomechResults] = useState<Record<string, any>>({});
   const [biomechError, setBiomechError] = useState<Record<string, string>>({});
+  const [siblingSubs, setSiblingSubs] = useState<Array<{ id: string; state?: string; scheduled_date?: string | null; submitted_at?: string | null; review?: unknown }>>([]);
+  // Biomechanic Agent modal — prefilled from step (assigned instructions + client comment + age band)
+  const [biomechModal, setBiomechModal] = useState<{ step: ProgramStep; stepSub: StepSubmission; videoUrl: string; storagePath?: string | null } | null>(null);
+  const [clientAgeBand, setClientAgeBand] = useState<string>("adult");
+  // Saved biomechanic analyses per step — reference viewable after generation (cached in DB)
+  const [savedBiomech, setSavedBiomech] = useState<Record<string, { updated_at?: string }>>({});
+  const [savedBiomechLoading, setSavedBiomechLoading] = useState(false);
 
   useEffect(() => {
     // Load submission data
@@ -110,30 +118,34 @@ function TherapistSubmissionReviewContent({
           if (loadedSteps.length > 0) setSteps(loadedSteps);
           if (loadedStepSubs.length > 0) setStepSubmissions(loadedStepSubs);
 
-          if (data.submission.review) {
-            if (data.submission.review.overall_feedback) {
-              setOverallFeedback(data.submission.review.overall_feedback);
+          {
+            const rawRev = (data.submission as { review?: unknown }).review;
+            const revObj = (Array.isArray(rawRev) ? rawRev[0] : rawRev) as { overall_feedback?: string; session_recording_url?: string; subjective?: string; objective?: string; assessment?: string; assessment_links?: unknown; plan?: string; client_summary?: string; step_reviews?: unknown } | undefined;
+            if (revObj) {
+            if (revObj.overall_feedback) {
+              setOverallFeedback(revObj.overall_feedback);
             }
-            if (data.submission.review.session_recording_url) {
-              setSoapRecordingUrl(data.submission.review.session_recording_url);
+            if (revObj.session_recording_url) {
+              setSoapRecordingUrl(revObj.session_recording_url);
             }
-            if (data.submission.review.subjective) setSoapSubjective(data.submission.review.subjective);
-            if (data.submission.review.objective) setSoapObjective(data.submission.review.objective);
-            if (data.submission.review.assessment) setSoapAssessment(data.submission.review.assessment);
-            if (Array.isArray(data.submission.review.assessment_links)) {
-              setSoapAssessmentLinks(data.submission.review.assessment_links);
+            if (revObj.subjective) setSoapSubjective(revObj.subjective);
+            if (revObj.objective) setSoapObjective(revObj.objective);
+            if (revObj.assessment) setSoapAssessment(revObj.assessment);
+            if (Array.isArray(revObj.assessment_links)) {
+              setSoapAssessmentLinks(revObj.assessment_links as SoapNoteAssessmentLink[]);
             }
-            if (data.submission.review.plan) setSoapPlan(data.submission.review.plan);
-            if (data.submission.review.client_summary) {
-              setClientSummary(data.submission.review.client_summary);
+            if (revObj.plan) setSoapPlan(revObj.plan);
+            if (revObj.client_summary) {
+              setClientSummary(revObj.client_summary);
             }
 
-            if (Array.isArray(data.submission.review.step_reviews)) {
+            if (Array.isArray(revObj.step_reviews)) {
               const notesMap: Record<string, string> = {};
-              data.submission.review.step_reviews.forEach((sr: { step_submission_id: string; therapist_note?: string }) => {
+              (revObj.step_reviews as Array<{ step_submission_id: string; therapist_note?: string }>).forEach((sr: { step_submission_id: string; therapist_note?: string }) => {
                 notesMap[sr.step_submission_id] = sr.therapist_note || "";
               });
               setStepNotes(notesMap);
+            }
             }
           }
 
@@ -155,6 +167,80 @@ function TherapistSubmissionReviewContent({
 
     fetchSubmission();
   }, [submissionId, user?.id]);
+
+  // Load sibling submissions for same program — all scheduled_date entries, not just this one
+  useEffect(() => {
+    const progId = (submission as unknown as { program_id?: string })?.program_id;
+    if (!progId) return;
+    let cancelled = false;
+    const qReq = user?.id ? `&requesterId=${user.id}` : "";
+    fetch(`/api/client/submissions?programId=${progId}${qReq}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (Array.isArray(d.submissions)) setSiblingSubs(d.submissions as Array<{ id: string; state?: string; scheduled_date?: string | null; submitted_at?: string | null; review?: unknown }>);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [(submission as unknown as { program_id?: string })?.program_id, user?.id]);
+
+  // Auto-fill client age range for Biomechanic Agent modal (pedia/adolescent/adult/geriatric)
+  useEffect(() => {
+    const pid = (submission as unknown as { patient_id?: string })?.patient_id;
+    if (!pid || !user?.id) return;
+    let cancelled = false;
+    fetch(`/api/therapist/clients?id=${pid}&requesterId=${user.id}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        const age = (d.client as { age?: number } | undefined)?.age;
+        if (typeof age === "number") {
+          setClientAgeBand(age <= 11 ? "pedia" : age <= 17 ? "adolescent" : age >= 55 ? "geriatric" : "adult");
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [(submission as unknown as { patient_id?: string })?.patient_id, user?.id]);
+
+  // Load saved biomechanic analyses for reference — after generation + save, viewable here instantly.
+  // Re-runs when the popup closes so a fresh save flips Analyze → View without a page reload.
+  const refreshSavedBiomech = React.useCallback(async () => {
+    const videoSteps = stepSubmissions.filter((ss) => {
+      const mm = (ss.media_meta as unknown as { mime?: string; mediaKind?: string } | undefined);
+      const kind = mm?.mediaKind;
+      const mime = mm?.mime || "";
+      const vp = ss.video_path || "";
+      const isPhoto = kind === "photo" || mime.startsWith("image/") || /\.(jpg|jpeg|png|webp|heic)$/i.test(vp);
+      return !isPhoto && Boolean(vp);
+    });
+    if (videoSteps.length === 0) return;
+    setSavedBiomechLoading(true);
+    try {
+      const rows = await Promise.all(
+        videoSteps.map(async (ss) => {
+          try {
+            const r = await fetch(`/api/agent/biomech/save?stepSubmissionId=${ss.id}`);
+            const d = await r.json();
+            return { id: ss.id, saved: (d.saved as { updated_at?: string } | null) || null };
+          } catch { return { id: ss.id, saved: null }; }
+        })
+      );
+      const map: Record<string, { updated_at?: string }> = {};
+      rows.forEach(({ id, saved }) => { if (saved) map[id] = { updated_at: saved.updated_at }; });
+      setSavedBiomech(map);
+    } finally {
+      setSavedBiomechLoading(false);
+    }
+  }, [stepSubmissions]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (cancelled) return;
+      await refreshSavedBiomech();
+    })();
+    return () => { cancelled = true; };
+  }, [refreshSavedBiomech]);
 
   // Load activity completions (private per patient — therapist must own patient)
   useEffect(() => {
@@ -396,11 +482,15 @@ function TherapistSubmissionReviewContent({
     }
   };
 
+  // Normalize review (Supabase join returns array) for status checks
+  const reviewObj = Array.isArray((submission as unknown as { review?: unknown })?.review)
+    ? (((submission as unknown as { review?: unknown }).review as unknown[])?.[0] as { status?: string; overall_feedback?: string } | undefined)
+    : ((submission as unknown as { review?: { status?: string; overall_feedback?: string } })?.review as { status?: string; overall_feedback?: string } | undefined);
   // Determine if feedback is already published/reviewed
   const isAlreadyReviewed =
     submission?.state === "reviewed" ||
-    submission?.review?.status === "published" ||
-    Boolean(submission?.review?.overall_feedback);
+    reviewObj?.status === "published" ||
+    Boolean(reviewObj?.overall_feedback);
 
   // Save Draft Review or Publish Review
   const handleSaveReview = async (action: "save_draft" | "publish") => {
@@ -524,7 +614,43 @@ function TherapistSubmissionReviewContent({
             {isAlreadyReviewed ? "Feedback Published — editable anytime" : "Submitted Recently"} • {steps.length > 0 ? `${steps.length} Steps Total` : "Home Program Submission"}
           </p>
         </div>
+        {(submission as unknown as { scheduled_date?: string | null })?.scheduled_date && (
+          <p className="text-xs text-zinc-400 font-mono">Session date: {(submission as unknown as { scheduled_date?: string }).scheduled_date}</p>
+        )}
       </div>
+
+      {/* Sibling sessions — all dates for this program, not just this submission */}
+      {siblingSubs.length > 1 && (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 space-y-2">
+          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
+            <Clock className="w-3.5 h-3.5 text-teal-400" />
+            All sessions for this program ({siblingSubs.length} dates)
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {siblingSubs
+              .slice()
+              .sort((a, b) => String(a.scheduled_date || "").localeCompare(String(b.scheduled_date || "")))
+              .map((s) => {
+                const rawR = (s as { review?: unknown }).review;
+                const r = Array.isArray(rawR) ? (rawR[0] as { status?: string; overall_feedback?: string } | undefined) : (rawR as { status?: string; overall_feedback?: string } | undefined);
+                const reviewed = s.state === "reviewed" || r?.status === "published" || Boolean(r?.overall_feedback);
+                const isCurrent = s.id === submissionId;
+                return (
+                  <Link key={s.id} href={`/therapist/submissions/${s.id}`}>
+                    <Button
+                      size="sm"
+                      variant={isCurrent ? "default" : "outline"}
+                      className={`h-7 text-xs font-mono px-2.5 ${isCurrent ? "bg-teal-600 hover:bg-teal-500 text-white font-bold" : reviewed ? "border-emerald-800 text-emerald-300 hover:bg-emerald-950/40" : s.state === "submitted" ? "border-amber-800 text-amber-300 hover:bg-amber-950/30" : "text-zinc-400"}`}
+                      title={reviewed ? "Reviewed — open" : s.state === "submitted" ? "Submitted — review" : "Draft"}
+                    >
+                      {s.scheduled_date || s.id.slice(0, 8)}{reviewed ? " ✓" : s.state === "submitted" ? " •" : ""}
+                    </Button>
+                  </Link>
+                );
+              })}
+          </div>
+        </div>
+      )}
 
       {statusMessage && (
         <div
@@ -626,7 +752,7 @@ function TherapistSubmissionReviewContent({
                   <div className="rounded-xl border border-teal-500/20 bg-teal-950/10 overflow-hidden">
                     <div className="px-3 py-2 bg-zinc-950/60 border-b border-teal-500/10 flex items-center justify-between gap-2">
                       <span className="text-xs font-semibold text-teal-300 flex items-center gap-1.5">🎨 Worksheet: {ga.title || step?.title}</span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">{comp ? (hasPhoto ? "Photo upload" : hasDigital ? "Digital coloring" : "Viewed") : "Not yet completed"}</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">{comp ? "Completed" : "Not yet completed"}</span>
                     </div>
                     <div className="p-3 space-y-3">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -639,11 +765,11 @@ function TherapistSubmissionReviewContent({
                           <a href={String(ga.base_image_url)} target="_blank" rel="noreferrer" className="inline-flex text-[11px] text-teal-400 hover:text-teal-300 gap-1">Open original <ExternalLink className="w-3 h-3" /></a>
                         </div>
                         <div className="space-y-1.5">
-                          <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Client work — {hasPhoto ? "printed & photographed" : hasDigital ? "saved digital coloring" : "awaiting"}</p>
+                          <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Client work</p>
                           {comp?.drawing_data_url ? (
                             <div className="rounded-lg overflow-hidden border border-zinc-800 bg-white">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={String(comp.drawing_data_url)} alt={hasPhoto ? "Client uploaded photo of printed worksheet" : "Client digital coloring"} className="w-full h-auto object-contain" />
+                              <img src={String(comp.drawing_data_url)} alt="Client worksheet submission" className="w-full h-auto object-contain" />
                             </div>
                           ) : (
                             <div className="rounded-lg border border-dashed border-zinc-700 bg-zinc-950/60 p-6 text-center text-xs text-zinc-500">No saved coloring/photo yet for this step. Client can draw on screen (crayons + eraser) or print & upload a photo.</div>
@@ -713,176 +839,40 @@ function TherapistSubmissionReviewContent({
                     </div>
                   )}
 
-                  {/* Collapsible Meta Review Assistant */}
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
-                    <div className="flex items-center justify-between p-3 border-b border-zinc-800/80 bg-zinc-900/50">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-teal-400" />
-                        <span className="text-xs font-semibold text-zinc-200">
-                          Meta Review Assistant
-                        </span>
-                        {aiRec && (
-                          <span className="text-[10px] text-teal-400 font-mono">
-                            • {aiRec.model_id}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {!aiRec && (
+                  {/* Biomechanic Agent — full agent popup (assigned instructions + client comment + age band) */}
+                  {(() => {
+                    const mimeB = (stepSub.media_meta as unknown as { mime?: string; mediaKind?: string })?.mime || "";
+                    const kindB = (stepSub.media_meta as unknown as { mediaKind?: string })?.mediaKind;
+                    const isPhotoB = kindB === "photo" || mimeB.startsWith("image/") || /\.(jpg|jpeg|png|webp|heic)$/i.test(videoSource || "");
+                    if (isPhotoB || !videoSource) return null;
+                    const openModal = () => { if (!step) return; const mm = (stepSub.media_meta as unknown as { storagePath?: string; storage_path?: string } | undefined); const vp0 = stepSub.video_path || ""; const sp = mm?.storagePath || mm?.storage_path || null; const cleanSp = sp || (/^(submissions|playground)\//.test(vp0) ? vp0 : null); setBiomechModal({ step, stepSub, videoUrl: videoSource, storagePath: cleanSp }); };
+                    const hasSaved = !!savedBiomech[stepSub.id];
+                    return (
+                      <div className="space-y-2">
+                        {hasSaved ? (
                           <Button
                             type="button"
-                            size="sm"
-                            variant="outline"
-                            isLoading={isAnalyzing}
-                            onClick={() => handleAnalyzeWithMeta(stepSub, step!)}
-                            className="h-7 text-xs gap-1.5 border-teal-500/40 text-teal-300 hover:bg-teal-950/60"
+                            onClick={openModal}
+                            className="w-full h-9 gap-2 bg-emerald-950/60 border border-emerald-800/50 text-emerald-200 hover:bg-emerald-950/40 text-xs font-semibold"
                           >
-                            <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-                            Analyze with Meta
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            View saved insights{savedBiomech[stepSub.id]?.updated_at ? ` • ${new Date(savedBiomech[stepSub.id].updated_at as string).toLocaleDateString()}` : ""}
                           </Button>
-                        )}
-
-                        {aiRec && (
-                          <button
-                            type="button"
-                            onClick={() => toggleCollapse(stepSub.id)}
-                            className="p-1 rounded text-zinc-400 hover:text-zinc-200"
-                          >
-                            {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Assistant Body */}
-                    {aiRec && !isCollapsed && (
-                      <div className="p-4 space-y-4 text-xs">
-                        {/* Tentative Observations Checklist */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-zinc-300">
-                              Tentative Observable Actions (Muse Spark 1.3):
-                            </span>
-                            <span className="text-[11px] text-zinc-500">
-                              Check to confirm as clinical evidence
-                            </span>
-                          </div>
-
-                          <div className="space-y-1.5">
-                            {aiRec.spark_results?.observations.map((obs) => {
-                              const isChecked = currentConfirmed.includes(obs.id);
-                              return (
-                                <button
-                                  key={obs.id}
-                                  type="button"
-                                  onClick={() => handleToggleObservation(stepSub.id, obs.id)}
-                                  className={`w-full text-left p-2 rounded-lg border transition-all flex items-start gap-2.5 ${
-                                    isChecked
-                                      ? "bg-teal-950/50 border-teal-500/50 text-teal-200"
-                                      : "bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
-                                  }`}
-                                >
-                                  {isChecked ? (
-                                    <CheckSquare className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
-                                  ) : (
-                                    <Square className="w-4 h-4 text-zinc-500 shrink-0 mt-0.5" />
-                                  )}
-                                  <div className="flex-1">
-                                    <p className="leading-relaxed">{obs.description}</p>
-                                    {obs.approx_timestamp_seconds !== null && (
-                                      <span className="text-[10px] text-zinc-500 font-mono mt-0.5 block">
-                                        approx ~{obs.approx_timestamp_seconds}s
-                                      </span>
-                                    )}
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Visual Limitations */}
-                        {aiRec.spark_results?.limitations && aiRec.spark_results.limitations.length > 0 && (
-                          <div className="text-[11px] text-zinc-500 space-y-0.5 bg-zinc-900/40 p-2 rounded border border-zinc-800/60">
-                            <span className="font-semibold text-zinc-400">Capture Limitations:</span>
-                            <ul className="list-disc list-inside">
-                              {aiRec.spark_results.limitations.map((lim, i) => (
-                                <li key={i}>{lim}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {/* Helper button to draft note */}
-                        <div className="pt-1 flex justify-end">
+                        ) : (
                           <Button
                             type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => handleDraftFeedbackWithMeta(stepSub, step!)}
-                            className="h-7 text-xs gap-1.5 text-zinc-300"
+                            onClick={openModal}
+                            className="w-full h-10 gap-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold"
                           >
-                            <Sparkles className="w-3 h-3 text-teal-400" />
-                            Draft Step Note with Confirmed Evidence
+                            <Activity className="w-4 h-4" />
+                            Analyze with Biomechanic Agent
                           </Button>
-                        </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  {/* Biomech Engine (no mock fallback) — per-step SAM 3.1 → Modal MHR */}
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3 space-y-2.5">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5"><Activity className="w-3.5 h-3.5 text-teal-400" /> Movement check — what to look at</span>
-                      <a href="/docs/AGENTS_GUIDE.md#5-agent-2--biomech-engine-sam-31--modal-mhr" target="_blank" className="text-[11px] text-teal-400 hover:underline">Guide</a>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={biomechIntents[stepSub.id] || "U1"}
-                        onChange={(e)=> setBiomechIntents(prev=> ({...prev, [stepSub.id]: e.target.value}))}
-                        className="h-8 rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-200 px-2.5 flex-1"
-                      >
-                        <option value="U1">Arm & shoulder — reach and lift</option>
-                        <option value="U2">Hand — grip and pinch</option>
-                        <option value="U3">Walking — steps and balance</option>
-                        <option value="U4">Get up & go — stand, walk, turn</option>
-                        <option value="U5">Posture — trunk and back</option>
-                        <option value="U6">Sit to stand — getting up</option>
-                        <option value="U7">Both hands — together</option>
-                        <option value="U8">Homework — how often</option>
-                        <option value="U9">Over time — progress trend</option>
-                        <option value="U10">Write notes — help draft</option>
-                        <option value="U11">Neck — head control</option>
-                      </select>
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={!videoSource || biomechLoading === stepSub.id}
-                        onClick={async ()=>{
-                          if (!videoSource) return;
-                          const intent = biomechIntents[stepSub.id] || "U1";
-                          setBiomechLoading(stepSub.id);
-                          setBiomechError(prev=> ({...prev, [stepSub.id]: ""}));
-                          try {
-                            const res = await fetch("/api/agent/biomech/run", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ submissionId, stepSubmissionId: stepSub.id, intent }) });
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || "Biomech failed");
-                            setBiomechResults(prev=> ({...prev, [stepSub.id]: data}));
-                          } catch (e:any) { setBiomechError(prev=> ({...prev, [stepSub.id]: e.message || String(e)})); } finally { setBiomechLoading(null); }
-                        }}
-                        className="h-8 text-xs gap-1.5 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold shrink-0"
-                      >
-                        {biomechLoading===stepSub.id ? <span className="w-3 h-3 border-2 border-zinc-900/30 border-t-zinc-900 rounded-full animate-spin" /> : <Activity className="w-3.5 h-3.5" />}
-                        Check movement
-                      </Button>
-                    </div>
-                    {!videoSource && <p className="text-[11px] text-amber-300">No video yet — add one to check movement.</p>}
-                    {biomechError[stepSub.id] && <p className="text-xs text-rose-300 bg-rose-950/20 border border-rose-800/40 rounded p-2">{biomechError[stepSub.id]}</p>}
-                    {biomechResults[stepSub.id] && (
-                      <BiomechPanel mhr={biomechResults[stepSub.id]} onInsertObjective={(txt)=> setSoapObjective(prev=> prev ? `${prev}\n\n${txt}` : txt)} />
-                    )}
-                    {biomechResults[stepSub.id] && <p className="text-[10px] text-zinc-500">Changing dropdown re-filters cached MHR — no re-bill. 1 Modal inference serves U1+U5+U11 views.</p>}
-                  </div>
+                    );
+                  })()}
+
+
                 </div>
               ) : (
                 <div className="rounded-lg bg-zinc-950/60 border border-zinc-800 p-4 text-xs text-zinc-400">
@@ -922,84 +912,10 @@ function TherapistSubmissionReviewContent({
               Home Program Clinical SOAP Documentation
             </CardTitle>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Full-width structured clinical SOAP documentation (Subjective, Objective, Assessment, Plan) with session video recording and standardized test links.
+              Structured clinical SOAP documentation (Subjective, Objective, Assessment, Plan) with standardized test links.
             </p>
           </div>
-          <span className="text-[11px] font-medium text-teal-400 bg-teal-950/70 border border-teal-500/30 px-2.5 py-1 rounded-md self-start sm:self-auto flex items-center gap-1.5 shrink-0">
-            <Clock className="w-3 h-3 text-teal-400" />
-            Clinical S.O.A.P. Standard
-          </span>
-        </div>
 
-        {/* Clinical Presets & Quick Fill Bar */}
-        <div className="p-3 rounded-xl bg-zinc-950/80 border border-zinc-800/80 flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2">
-            <Wand2 className="w-3.5 h-3.5 text-teal-400" />
-            <span className="text-xs font-semibold text-zinc-300">Quick Clinical Presets:</span>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => handleApplyClinicalPreset("pediatric")}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-teal-300 transition-colors"
-            >
-              Pediatric Fine Motor
-            </button>
-            <button
-              type="button"
-              onClick={() => handleApplyClinicalPreset("neuro")}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-teal-300 transition-colors"
-            >
-              Adult Stroke / Neuro
-            </button>
-            <button
-              type="button"
-              onClick={() => handleApplyClinicalPreset("geriatric")}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-teal-300 transition-colors"
-            >
-              Geriatric Balance & TUG
-            </button>
-            <button
-              type="button"
-              onClick={handleAutoFillFromAiObservations}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-teal-950/60 hover:bg-teal-900/60 border border-teal-500/40 text-teal-300 hover:text-teal-200 flex items-center gap-1 transition-colors"
-              title="Populate Objective section with confirmed kinematic detections from Spark and SAM"
-            >
-              <Sparkles className="w-3 h-3 text-teal-400" />
-              Auto-Fill Objective from AI
-            </button>
-          </div>
-        </div>
-
-        {/* 1. SESSION VIDEO RECORDING URL (PLACED BEFORE ACTUAL SOAP NOTES) */}
-        <div className="p-3.5 rounded-xl border border-teal-500/30 bg-teal-950/20 space-y-1.5">
-          <label className="text-xs font-bold text-teal-300 flex items-center gap-2">
-            <Video className="w-4 h-4 text-teal-400" />
-            Session Video Recording URL (Placed Before SOAP Notes)
-          </label>
-          <p className="text-[11px] text-zinc-400">
-            Add the cloud recording link for this synchronous telehealth or live evaluation session (e.g. Google Meet, Zoom, Vimeo, or Google Drive link).
-          </p>
-          <div className="flex items-center gap-2 pt-1">
-            <Input
-              type="url"
-              placeholder="https://meet.google.com/rec/session-id or https://drive.google.com/file/d/..."
-              value={soapRecordingUrl}
-              onChange={(e) => setSoapRecordingUrl(e.target.value)}
-              className="bg-zinc-950 border-zinc-800 text-xs text-zinc-200"
-            />
-            {soapRecordingUrl.trim() && (
-              <a
-                href={soapRecordingUrl.trim()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-2 rounded-md bg-teal-500/20 border border-teal-500/40 text-teal-300 hover:bg-teal-500/30 text-xs font-semibold flex items-center gap-1 shrink-0"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Test Link
-              </a>
-            )}
-          </div>
         </div>
 
         {/* 2. FULL-WIDTH SOAP DOCUMENTATION BOXES WITH LARGE TEXTAREAS */}
@@ -1026,25 +942,15 @@ function TherapistSubmissionReviewContent({
 
           {/* O: Objective - FULL WIDTH */}
           <div className="space-y-1.5 rounded-xl border border-teal-900/40 bg-zinc-950/60 p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-              <label className="text-xs font-bold text-teal-400 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-teal-950 border border-teal-500/40 text-[11px] flex items-center justify-center font-mono">
-                  O
-                </span>
-                Objective *
-                <span className="text-[11px] text-zinc-500 font-normal">
-                  (Measurable clinical data, active ROM degrees, grip strength score, task repetitions)
-                </span>
-              </label>
-              <button
-                type="button"
-                onClick={handleAutoFillFromAiObservations}
-                className="text-[11px] text-teal-400 hover:text-teal-300 underline underline-offset-2 flex items-center gap-1 self-start sm:self-auto"
-              >
-                <Sparkles className="w-3 h-3" />
-                Append AI Kinematic Detections
-              </button>
-            </div>
+            <label className="text-xs font-bold text-teal-400 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-teal-950 border border-teal-500/40 text-[11px] flex items-center justify-center font-mono">
+                O
+              </span>
+              Objective *
+              <span className="text-[11px] text-zinc-500 font-normal">
+                (Measurable clinical data, active ROM degrees, grip strength score, task repetitions)
+              </span>
+            </label>
             <Textarea
               rows={6}
               placeholder="Measurable clinical metrics, active ROM degrees, grip strength readings, task trials/repetitions, postural alignment observations, confirmed Spark/SAM kinematic detections..."
@@ -1075,102 +981,62 @@ function TherapistSubmissionReviewContent({
               />
             </div>
 
-            {/* Multiple Assessment Document Links Section */}
-            <div className="pt-2 border-t border-amber-950/60 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-amber-400" />
-                    Assessment Documents & Standardized Test Reports
-                  </label>
-                  <p className="text-[11px] text-zinc-500">
-                    Attach links to standardized assessment PDFs (e.g. PDMS-2, Fugl-Meyer, Sensory Profile, Goniometry sheets).
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddAssessmentLink}
-                  className="h-7 text-xs border-amber-500/30 text-amber-300 hover:bg-amber-950/40 hover:text-amber-200 gap-1"
-                >
-                  <Plus className="w-3 h-3" />
-                  Add Document Link
-                </Button>
+            {/* Analyzed Biomechanics — viewable after generation + save (cached, no re-run) */}
+            <div className="pt-2 border-t border-teal-950/60 space-y-2.5">
+              <div>
+                <label className="text-xs font-semibold text-teal-300 flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-teal-400" />
+                  Analyzed Biomechanics
+                </label>
+                <p className="text-[11px] text-zinc-500">
+                  Run Analyze with Biomechanic Agent on a step video above. After you review and save, the analysis is cached — reopen it here instantly without re-running.
+                </p>
               </div>
-
-              {soapAssessmentLinks.length === 0 ? (
+              {savedBiomechLoading ? (
+                <p className="text-[11px] text-zinc-500">Checking saved analyses…</p>
+              ) : stepSubmissions.filter((ss) => {
+                const mm = (ss.media_meta as unknown as { mime?: string; mediaKind?: string } | undefined);
+                return mm?.mediaKind !== "photo" && !(mm?.mime || "").startsWith("image/") && Boolean(ss.video_path);
+              }).length === 0 ? (
                 <div className="text-[11px] text-zinc-500 italic bg-zinc-900/40 p-2.5 rounded-lg border border-dashed border-zinc-800">
-                  No assessment documents linked yet. Click &quot;Add Document Link&quot; to attach test reports or scorecards.
+                  No videos to analyze yet — analyses will be listed here once a step video is submitted.
                 </div>
               ) : (
-                <div className="space-y-2.5">
-                  {soapAssessmentLinks.map((link, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 rounded-lg bg-zinc-900/80 border border-zinc-800 space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-amber-300 flex items-center gap-1.5">
-                          <span className="w-5 h-5 rounded bg-amber-950/80 border border-amber-500/30 text-amber-400 text-[10px] font-mono font-bold flex items-center justify-center">
-                            {idx + 1}
-                          </span>
-                          Assessment Link #{idx + 1}
-                        </span>
-                        <div className="flex items-center gap-1.5">
-                          {link.url.trim() && (
-                            <a
-                              href={link.url.trim()}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-[11px] text-teal-300 hover:text-teal-200 transition-colors"
-                              title="Open link in new tab"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              <span>Test Link</span>
-                            </a>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveAssessmentLink(idx)}
-                            className="p-1 rounded hover:bg-rose-950/40 text-rose-400 hover:text-rose-300 transition-colors"
-                            title="Remove document link"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                <div className="space-y-2">
+                  {stepSubmissions.filter((ss) => {
+                    const mm = (ss.media_meta as unknown as { mime?: string; mediaKind?: string } | undefined);
+                    return mm?.mediaKind !== "photo" && !(mm?.mime || "").startsWith("image/") && Boolean(ss.video_path);
+                  }).map((ss) => {
+                    const st = steps.find((s) => s.id === ss.program_step_id);
+                    const saved = savedBiomech[ss.id];
+                    return (
+                      <div key={ss.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-zinc-900/80 border border-zinc-800">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-zinc-200 truncate">{st?.title || `Step ${st?.position || ""}`}</p>
+                          <p className="text-[11px] text-zinc-500">{saved ? `Analyzed${saved.updated_at ? ` • saved ${new Date(saved.updated_at).toLocaleString()}` : ""}` : "Not yet analyzed"}</p>
                         </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            if (!st) return;
+                            const rawVp = ss.video_path || "";
+                            const vp = rawVp.startsWith("http") || rawVp.startsWith("/") || rawVp.startsWith("blob:") ? rawVp : `/${rawVp}`;
+                            setBiomechModal({ step: st, stepSub: ss, videoUrl: vp, storagePath: (() => { const mm2 = (ss.media_meta as unknown as { storagePath?: string; storage_path?: string } | undefined); const raw2 = ss.video_path || ""; return mm2?.storagePath || mm2?.storage_path || (/^(submissions|playground)\//.test(raw2) ? raw2 : null); })() });
+                          }}
+                          className="h-7 text-xs gap-1.5 border-teal-500/40 text-teal-300 hover:bg-teal-950/60 shrink-0"
+                        >
+                          <Activity className="w-3.5 h-3.5" />
+                          {saved ? "View" : "Analyze"}
+                        </Button>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-[11px] font-medium text-zinc-400 mb-1">
-                            Test Title
-                          </label>
-                          <Input
-                            placeholder="e.g. PDMS-2 Scorecard PDF or Fugl-Meyer UE"
-                            value={link.title}
-                            onChange={(e) => handleUpdateAssessmentLink(idx, "title", e.target.value)}
-                            className="bg-zinc-950 border-zinc-800 text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-medium text-zinc-400 mb-1">
-                            Link (URL)
-                          </label>
-                          <Input
-                            placeholder="https://drive.google.com/... or https://clinic.org/..."
-                            value={link.url}
-                            onChange={(e) => handleUpdateAssessmentLink(idx, "url", e.target.value)}
-                            className="bg-zinc-950 border-zinc-800 text-xs"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
-
           {/* P: Plan - FULL WIDTH */}
           <div className="space-y-1.5 rounded-xl border border-indigo-900/40 bg-zinc-950/60 p-4">
             <label className="text-xs font-bold text-indigo-400 flex items-center gap-2">
@@ -1188,40 +1054,6 @@ function TherapistSubmissionReviewContent({
               value={soapPlan}
               onChange={(e) => setSoapPlan(e.target.value)}
               className="bg-zinc-900/80 border-zinc-800 text-xs leading-relaxed min-h-[150px] resize-y"
-            />
-          </div>
-
-          {/* 3. PLAIN-ENGLISH CLIENT & CAREGIVER SUMMARY */}
-          <div className="space-y-2 rounded-xl border border-emerald-900/40 bg-zinc-950/60 p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <label className="text-xs font-bold text-emerald-400 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-400" />
-                Plain-English Client & Caregiver Takeaways
-                <span className="text-[11px] text-zinc-500 font-normal">
-                  (Simple summary delivered to client portal)
-                </span>
-              </label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleGenerateAiSummary}
-                isLoading={isAiSummarizing}
-                className="h-7 text-xs border-emerald-500/30 text-emerald-300 hover:bg-emerald-950/40 hover:text-emerald-200 gap-1.5 self-start sm:self-auto"
-              >
-                <Sparkles className="w-3 h-3 text-emerald-400" />
-                Generate Summary with AI
-              </Button>
-            </div>
-            <p className="text-[11px] text-zinc-400">
-              Summarizes technical clinical SOAP terms into encouraging, accessible next steps for the client and family.
-            </p>
-            <Textarea
-              rows={4}
-              placeholder="Click 'Generate Summary with AI' or type personalized takeaways for the client..."
-              value={clientSummary}
-              onChange={(e) => setClientSummary(e.target.value)}
-              className="bg-zinc-900/80 border-zinc-800 text-xs leading-relaxed min-h-[120px] resize-y"
             />
           </div>
         </div>
@@ -1267,6 +1099,25 @@ function TherapistSubmissionReviewContent({
           </Button>
         </div>
       </div>
+
+      {/* Biomechanic Agent modal — prefilled from step, looks like /tools/biomech.
+          Refreshes the saved list on close so a fresh save flips Analyze → View. */}
+      <BiomechAnalysisModal
+        open={biomechModal !== null}
+        onClose={() => { setBiomechModal(null); refreshSavedBiomech(); }}
+        submissionId={submissionId}
+        stepSubmissionId={biomechModal?.stepSub?.id || ""}
+        stepTitle={biomechModal?.step?.title || ""}
+        stepInstructions={biomechModal?.step?.instructions || ""}
+        clientComment={biomechModal?.stepSub?.client_comment || ""}
+        clientSkipped={biomechModal?.stepSub?.skipped || false}
+        skipReason={biomechModal?.stepSub?.skip_reason || null}
+        ageBand={clientAgeBand}
+        videoUrl={biomechModal?.videoUrl || null}
+        videoStoragePath={biomechModal?.storagePath || null}
+        scheduledDate={(submission as unknown as { scheduled_date?: string | null })?.scheduled_date || null}
+        onInsertObjective={(txt) => setSoapObjective((prev) => (prev ? `${prev}\n\n${txt}` : txt))}
+      />
     </div>
   );
 }

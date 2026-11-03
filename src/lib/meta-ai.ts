@@ -373,10 +373,14 @@ export async function generateActivity(
   };
 }
 
+function isValidUUID(v: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
+
 export async function otChatAssistant(input: OtChatInput): Promise<OtChatOutput> {
   const { aiMode, models, apiKey } = getMetaConfig();
-  const conversationId =
-    input.conversationId?.trim() || `ot-${Date.now().toString(36)}`;
+  const _rawConv = input.conversationId?.trim() || "";
+  const conversationId = _rawConv && isValidUUID(_rawConv) ? _rawConv : (typeof crypto !== "undefined" && typeof (crypto as any).randomUUID === "function" ? (crypto as any).randomUUID() : `00000000-0000-4000-a000-${Date.now().toString(16).padStart(12, "0").slice(-12)}`);
   const requestedModel =
     input.model && isOtChatModel(input.model)
       ? input.model

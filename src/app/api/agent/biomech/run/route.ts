@@ -101,6 +101,9 @@ export async function POST(req: NextRequest) {
     });
     if (!modalRes.ok) {
       const txt = await modalRes.text().catch(()=> "");
+      if (/timed?\s*out|execution timed|cancellation signal/i.test(txt)) {
+        return NextResponse.json({ error: "Movement analysis timed out — clip too long or server was cold starting. Trim to ≤15s and run again (second run is warm and faster).", code: "MODAL_TIMEOUT" }, { status: 504 });
+      }
       return NextResponse.json({ error: `Modal MHR failed: ${modalRes.status} ${txt.slice(0,500)}`, code: "MODAL_FAILED" }, { status: 502 });
     }
     const mhr = await modalRes.json();

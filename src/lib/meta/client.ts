@@ -11,16 +11,10 @@ const APPROVED_META_HOSTS = [
 ];
 
 export function getMetaConfig() {
-  const apiKey =
-    process.env.MODEL_API_KEY ||
-    process.env.META_API_KEY ||
-    process.env.OPENAI_API_KEY ||
-    "";
-  const baseUrl =
-    process.env.META_API_BASE_URL ||
-    process.env.OPENAI_BASE_URL ||
-    "https://api.meta.ai/v1";
-  const aiMode = (process.env.AI_MODE || "live").toLowerCase() as "off" | "live" | "mock";
+  // Meta-exclusive: no OpenAI aliases — only MODEL_API_KEY / META_API_KEY (bf8f10a intent)
+  const apiKey = (process.env.MODEL_API_KEY || process.env.META_API_KEY || "").trim();
+  const baseUrl = (process.env.META_API_BASE_URL || "https://api.meta.ai/v1").trim();
+  const aiMode = (process.env.AI_MODE || "live").trim().toLowerCase() as "off" | "live" | "mock";
 
   // Validate base URL if live mode
   if (aiMode === "live") {
@@ -33,12 +27,9 @@ export function getMetaConfig() {
           500
         );
       }
-      const isApproved =
-        process.env.META_API_BASE_URL || process.env.OPENAI_BASE_URL
-          ? true // explicitly user-configured custom endpoint
-          : APPROVED_META_HOSTS.some(
-              (host) => parsedUrl.hostname === host || parsedUrl.hostname.endsWith(`.${host}`)
-            );
+      const isApproved = process.env.META_API_BASE_URL
+        ? true // explicitly user-configured custom endpoint
+        : APPROVED_META_HOSTS.some((host) => parsedUrl.hostname === host || parsedUrl.hostname.endsWith(`.${host}`));
       if (!isApproved) {
         throw new MetaApiError(
           `Configured META_API_BASE_URL (${parsedUrl.hostname}) is not an approved Meta API host. Expected api.meta.ai.`,
@@ -66,6 +57,10 @@ export function getMetaConfig() {
 export function createMetaOpenAiClient(): OpenAI {
   const config = getMetaConfig();
   if (!config.apiKey) {
+    // Log once server-side so dev terminal shows what's loaded without leaking the key
+    console.error(
+      `[meta] Missing MODEL_API_KEY — env loaded: MODEL_API_KEY=${!!process.env.MODEL_API_KEY} META_API_KEY=${!!process.env.META_API_KEY} AI_MODE=${process.env.AI_MODE} META_API_BASE_URL=${process.env.META_API_BASE_URL || "(default)"}`
+    );
     throw new MetaApiError(
       "MODEL_API_KEY is missing from environment. Real Meta API calls require an authenticated API key.",
       "MISSING_API_KEY",

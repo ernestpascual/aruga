@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Sparkles, Eye, EyeOff, Database, HeartHandshake, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -35,6 +35,26 @@ export function SoapSummaryCard({
   const [isCached, setIsCached] = useState<boolean>(Boolean(initialSummary && initialSummary.trim().length > 0));
   const [revealed, setRevealed] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
+  const autoTriedRef = useRef<string | null>(null);
+
+  // Reset + auto-generate when the target changes (e.g. switching feedback dates).
+  // If no cached summary exists, generate automatically on view and store in DB via POST.
+  useEffect(() => {
+    setSummary(initialSummary || null);
+    setIsCached(Boolean(initialSummary && initialSummary.trim().length > 0));
+    setRevealed(false);
+    setLoading(false);
+    autoTriedRef.current = null;
+  }, [targetId, targetType]);
+
+  useEffect(() => {
+    if (summary && summary.trim().length > 0) return;
+    if (!targetId) return;
+    if (autoTriedRef.current === targetId) return;
+    autoTriedRef.current = targetId;
+    handleSeeSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetId, targetType, summary]);
 
   const handleSeeSummary = async () => {
     // If we already have the summary loaded in state, simply toggle reveal

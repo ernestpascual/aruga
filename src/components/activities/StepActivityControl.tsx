@@ -175,8 +175,16 @@ export function StepActivityControl({
           targetGoalText: goalText,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Agent failed");
+      const ct = res.headers.get("content-type") || "";
+      let data: any;
+      if (ct.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const txt = await res.text();
+        if (!res.ok) throw new Error(txt.slice(0, 500) || `Agent failed (${res.status})`);
+        try { data = JSON.parse(txt); } catch { throw new Error(txt.slice(0, 500)); }
+      }
+      if (!res.ok) throw new Error(data.error || data.message || "Agent failed");
       setAgentDraft(data as AgentDraft);
       // sync editable instructions to new draft
       setDraftInstructionsEdit((data as AgentDraft).instructions);

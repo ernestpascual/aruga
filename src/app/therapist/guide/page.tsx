@@ -317,7 +317,7 @@ export default function TherapistGuidePage() {
                     <li>To edit your last question: tap it, change text, send again — AI makes a new answer.</li>
                     <li>To delete a chat: open chat list → tap <b className="text-zinc-200">trash icon</b> next to the chat.</li>
                     <li>To clear all: in Aruga Guide, tap <b className="text-zinc-200">Clear</b> (top right) — removes all chats for this device.</li>
-                    <li>Tap <b className="text-zinc-200">Send to clinician to verify</b> if you want a therapist to check the answer.</li>
+                    <li>Clients can tap <b className="text-zinc-200">Send to clinician to verify</b> if they want you to check an answer.</li>
                   </ul>
                 </div>
                 <div className="p-3 rounded-xl bg-teal-950/20 border border-teal-800/30 text-xs text-teal-200/90">Tip: Ask short and clear. Example: “How to help a 5-year-old hold a pencil?” AI gives steps you can use right away.</div>
@@ -330,7 +330,7 @@ export default function TherapistGuidePage() {
               <Card className="bg-zinc-900/60 border-zinc-800">
                 <CardHeader className="p-6 pb-3"><CardTitle className="text-base text-zinc-100 flex items-center gap-2"><Wrench className="w-5 h-5 text-teal-400" /> Tools</CardTitle></CardHeader>
                 <CardContent className="p-6 pt-0 grid sm:grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800"><b className="text-zinc-100 flex items-center gap-1"><Bot className="w-3.5 h-3.5 text-teal-400" /> Aruga Guide AI Agent</b><span className="text-zinc-400"> Ask rehab questions. Add a photo for better help. Answers show References (web articles). Tap “Send to clinician to verify.”</span><br /><Link href="/aruga-guide" className="text-teal-400 hover:underline">Open →</Link></div>
+                  <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800"><b className="text-zinc-100 flex items-center gap-1"><Bot className="w-3.5 h-3.5 text-teal-400" /> Aruga Guide AI Agent</b><span className="text-zinc-400"> Ask rehab questions. Add a photo for better help. Answers show References (web articles). Clients tap “Send to clinician to verify” to ask you to check an answer.</span><br /><Link href="/aruga-guide" className="text-teal-400 hover:underline">Open →</Link></div>
                   <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800"><b className="text-zinc-100 flex items-center gap-1"><Scan className="w-3.5 h-3.5 text-sky-400" /> SAM Test</b><span className="text-zinc-400"> Try image cut-outs. Upload a photo, tap to mark an object, see the mask.</span><br /><Link href="/sam-test" className="text-teal-400 hover:underline">Open →</Link></div>
                   <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800"><b className="text-zinc-100 flex items-center gap-1"><Palette className="w-3.5 h-3.5 text-amber-400" /> Activities</b><span className="text-zinc-400"> Make worksheets. See Activities section above.</span></div>
                   <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800"><b className="text-zinc-100 flex items-center gap-1"><FileText className="w-3.5 h-3.5 text-zinc-300" /> Assessment</b><span className="text-zinc-400"> Create and view SOAP notes. See Assessments above.</span></div>

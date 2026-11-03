@@ -33,10 +33,10 @@ export function HighlightsStrip({ patientId, isTherapist=false }: { patientId?: 
     fetch(`/api/agent/highlights/run?patientId=${encodeURIComponent(patientId)}&month=${month}`)
       .then(r => r.json())
       .then(data => {
-        if (data?.highlights && Array.isArray(data.highlights)) {
+        if (data?.highlights && Array.isArray(data.highlights) && data.highlights.length > 0) {
           setItems(data.highlights);
           if (data.status === "published") setPublished(true);
-        } else if (data?.status === "not_found") {
+        } else if (data?.status === "not_found" || (Array.isArray(data?.highlights) && data.highlights.length === 0)) {
           // no saved highlights yet — show empty CTA
         }
       })
@@ -51,7 +51,7 @@ export function HighlightsStrip({ patientId, isTherapist=false }: { patientId?: 
       const r = await fetch(url, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ patientId, month: new Date().toISOString().slice(0,7) }) });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || data.message || "Failed to generate highlights");
-      if (Array.isArray(data.highlights)) { setItems(data.highlights); setPublished(false); }
+      if (Array.isArray(data.highlights) && data.highlights.length > 0) { setItems(data.highlights); setPublished(false); }
       else if (Array.isArray(data)) { setItems(data); setPublished(false); }
       else throw new Error(data.error || "No highlights — insufficient evidence");
     } catch (e:any) {
@@ -127,7 +127,7 @@ export function HighlightsStrip({ patientId, isTherapist=false }: { patientId?: 
             return (
               <div key={h.slot} className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-zinc-400">{h.slot}. {h.slotLabel}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-zinc-400">{h.slotLabel}</span>
                   <Arrow className={`w-4 h-4 ${arrowColor}`} />
                 </div>
                 <p className="text-xs font-semibold text-zinc-100 leading-snug">{h.title}</p>
@@ -143,7 +143,7 @@ export function HighlightsStrip({ patientId, isTherapist=false }: { patientId?: 
         </div>
         {error && <p className="text-xs text-rose-400">{error}</p>}
         {traceOpen && <div className="rounded-lg bg-zinc-950 border border-zinc-800 p-3 text-[11px] font-mono text-zinc-400">Looked at the last 30 days — notes, goals, homework, and videos — and picked the 7 clearest changes.</div>}
-        <p className="text-[10px] text-zinc-500 italic">Your best 7 moments this month — checked by your therapist.</p>
+        <p className="text-[10px] text-zinc-500 italic">{isTherapist ? "Top 7 moments this month — publish to share with the client." : "Your best 7 moments this month — checked by your therapist."}</p>
       </CardContent>
     </Card>
   );

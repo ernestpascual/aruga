@@ -52,13 +52,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Upload a video first (videoDataUrl or videoStoragePath)." }, { status: 400 });
     }
     const videoDataUrl: string = videoDataUrlResolved;
-    if (videoDataUrl.length > 140_000_000) {
-      return NextResponse.json({ error: "Video too large (>100MB as data URL)." }, { status: 413 });
+    if (videoDataUrl.length > 134_000_000) { // ~100 MB file → ~133 MB base64 data URL
+      return NextResponse.json({ error: "Video too large — max 100 MB. Use a shorter clip." }, { status: 413 });
     }
-    // Vercel Hobby/Pro λ body cap is 4.5 MB — if we got here the body already parsed, but guard still helps self-hosted
-    if (!videoStoragePath && videoDataUrl.length > 6_000_000) {
-      // ~4.5 MB file ≈ 6 MB data URL; return JSON so client doesn't hit "Unexpected token 'R'" on plain text 413
-      return NextResponse.json({ error: `Video data URL is ${(videoDataUrl.length/1_000_000).toFixed(1)} MB — exceeds Vercel function payload (4.5 MB). Sign in to use Storage upload (up to 100 MB) or use a shorter clip ≤15s / <3 MB.`, code: "PAYLOAD_TOO_LARGE" }, { status: 413 });
+    // Vercel λ body cap is 4.5 MB — localhost has no cap, so only enforce on Vercel
+    const host = req.headers.get("host") || req.headers.get("x-forwarded-host") || "";
+    const isLocalhostReq = /^(localhost|127\.0\.0\.1|\[::1\]|.*\.local)(:\d+)?$/.test(host);
+    if (!videoStoragePath && !isLocalhostReq && videoDataUrl.length > 6_000_000) {
+      return NextResponse.json({ error: `Video data URL is ${(videoDataUrl.length/1_000_000).toFixed(1)} MB — exceeds Vercel function payload (4.5 MB). Sign in to use Storage upload (up to 100 MB) or run on localhost:3000 (allows 100 MB direct) or use a shorter clip ≤15s / <3 MB.`, code: "PAYLOAD_TOO_LARGE" }, { status: 413 });
     }
 
     // Step 1: Determine — Spark planner picks 2-8 concepts from BIOMECH_KEYWORDS 16 only
@@ -110,7 +111,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           submissionId: "playground",
           stepSubmissionId: "playground-step",
-          videoUrl: videoDataUrl.startsWith("data:") ? "demo://playground-clip" : videoDataUrl,
+          videoUrl: videoDataUrl,
           samPerson,
           options: { concepts, ageBand, activity: { title: prescribedTitle, instructions: prescribedInstructions } }
         })
@@ -120,6 +121,9 @@ export async function POST(req: NextRequest) {
     }
     if (!modalRes.ok) {
       const txt = await modalRes.text().catch(()=> "");
+      if (/timed?\s*out|execution timed|cancellation signal/i.test(txt)) {
+        return NextResponse.json({ error: "Movement analysis timed out — clip too long or server was cold starting. Trim to ≤15s and run again (second run is warm and faster).", code: "MODAL_TIMEOUT" }, { status: 504 });
+      }
       return NextResponse.json({ error: `Modal SAM3D failed: ${modalRes.status} ${txt.slice(0,800)}`, code: modalRes.status===401?"MODAL_UNAUTHORIZED":"MODAL_FAILED", plan }, { status: 502 });
     }
     const mhr = await modalRes.json();
@@ -132,6 +136,14 @@ export async function POST(req: NextRequest) {
       if (path === "summary.peakAngles.neckFlex_max") return mhrObj?.summary?.peakAngles?.neckFlex_max ?? null;
       if (path === "summary.peakAngles.kneeFlex_L_max") return mhrObj?.summary?.peakAngles?.kneeFlex_L_max ?? null;
       if (path === "summary.posturalAndDeformity.meanBosMarginMm") return mhrObj?.summary?.posturalAndDeformity?.meanBosMarginMm ?? null;
+      if (path === "summary.peakAngles.wristFlex_L_max") return mhrObj?.summary?.peakAngles?.wristFlex_L_max ?? mhrObj?.summary?.peakAngles?.wristFlex_max ?? null;
+      if (path === "summary.peakAngles.wristFlex_R_max") return mhrObj?.summary?.peakAngles?.wristFlex_R_max ?? null;
+      if (path === "summary.rom.fingerAperture_range_mm") return mhrObj?.summary?.rom?.fingerAperture_range_mm ?? null;
+      if (path === "summary.peakAngles.fingerAperture_L_max_mm") return mhrObj?.summary?.peakAngles?.fingerAperture_L_max_mm ?? null;
+      if (path === "frames[].angles.wristDeviation_max") {
+        const vals = (mhrObj?.frames||[]).map((f:any)=> f?.angles?.wristAngles?.deviation_L ?? f?.angles?.wristAngles?.deviation_R ?? f?.angles?.wristAngles?.flexExt_L).filter((v:any)=> typeof v==="number").map((v:number)=>Math.abs(v));
+        return vals.length? Math.max(...vals): null;
+      }
       if (path === "frames[].angles.trunkLean_max") {
         const vals = (mhrObj?.frames||[]).map((f:any)=> f?.angles?.trunkLean).filter((v:any)=> typeof v==="number");
         return vals.length? Math.max(...vals): null;
@@ -146,10 +158,15 @@ export async function POST(req: NextRequest) {
     const insights = expectations.map(ex => {
       const value = resolveMetric(ex.metricPath, mhr);
       const rating = thresholdBand(value, ex.target);
-      // evidence frames: top 3 where value farthest from target
       let evidenceFrames: Array<{t:number; value:number}> = [];
       if (ex.id==="trunkLean" && mhr?.frames) {
         const sorted = [...mhr.frames].map((f:any)=> ({t:f.timestampSeconds||0, value:f.angles?.trunkLean})).filter((x:any)=> typeof x.value==="number").sort((a,b)=> Math.abs(b.value) - Math.abs(a.value));
+        evidenceFrames = sorted.slice(0,3);
+      } else if ((ex.id==="wristFlex" || ex.id==="wristDeviation") && mhr?.frames) {
+        const sorted = [...mhr.frames].map((f:any)=> ({t:f.timestampSeconds||0, value: f.angles?.wristAngles?.flexExt_L ?? f.angles?.wristAngles?.flexExt_R ?? f.angles?.wristAngles?.deviation_L})).filter((x:any)=> typeof x.value==="number").sort((a,b)=> Math.abs(b.value) - Math.abs(a.value));
+        evidenceFrames = sorted.slice(0,3);
+      } else if (ex.id==="fingerAperture" && mhr?.frames) {
+        const sorted = [...mhr.frames].map((f:any)=> ({t:f.timestampSeconds||0, value: f.angles?.wristAngles?.fingerAperture_L_mm ?? f.angles?.wristAngles?.fingerAperture_R_mm})).filter((x:any)=> typeof x.value==="number").sort((a,b)=> b.value - a.value);
         evidenceFrames = sorted.slice(0,3);
       } else if (value!=null) {
         evidenceFrames = [{t: 0, value}];
@@ -157,13 +174,30 @@ export async function POST(req: NextRequest) {
       const thresholdStr = ex.target.min!==undefined && ex.target.max!==undefined ? `Good ${ex.target.min}–${ex.target.max}${ex.unit}`
         : ex.target.min!==undefined ? `Good ≥${ex.target.min}${ex.unit}` : `Good ≤${ex.target.max}${ex.unit}`;
       const score = rating==="Good" ? 90 : rating==="Watch" ? 65 : 35;
+      // build 1-2 sentence plain-language evidence (no jargon) — why AI thinks this rating
+      const evTxt = evidenceFrames.length ? evidenceFrames.slice(0,2).map(f=> `${f.t.toFixed(1)}s at ${Math.round(f.value)}${ex.unit}`).join(" and ") : (value!=null ? `${Math.round(value as number)}${ex.unit} peak` : "no clean frames");
+      const plainWhat: Record<string,string> = {
+        shoulderFlex: "shoulder lift",
+        trunkLean: "trunk lean",
+        neckFlex: "neck bend",
+        kneeFlex: "knee bend",
+        wristFlex: "wrist bend",
+        fingerAperture: "finger opening",
+        wristDeviation: "wrist side-tilt",
+        bos: "balance (CoM over feet)",
+      };
+      const what = plainWhat[ex.id] ?? ex.label.toLowerCase();
+      let explanation = "";
+      if (rating==="Good") explanation = `Good ${what} — measured ${value!=null?Math.round(value as number)+ex.unit:"—"} is inside ${thresholdStr}. Evidence: ${evTxt}.`;
+      else if (rating==="Watch") explanation = `Watch ${what} — ${value!=null?Math.round(value as number)+ex.unit:"—"} is just outside ${thresholdStr}. Evidence: ${evTxt}; try a small cue and re-check.`;
+      else explanation = `Needs support for ${what} — ${value!=null?Math.round(value as number)+ex.unit:"—"} is outside ${thresholdStr}. Evidence: ${evTxt}; the body is compensating elsewhere.`;
       return {
         id: ex.id, label: ex.label, value, unit: ex.unit, threshold: thresholdStr,
         rating, score,
         evidenceRef: ex.metricPath,
         evidenceFrames,
-        explanation: rating==="Good" ? `Within target — ${value ?? "?"}${ex.unit} meets ${thresholdStr}.` : rating==="Watch" ? `Borderline — ${value ?? "?"}${ex.unit} near threshold (${thresholdStr}). Cue and re-check next session.` : `Needs support — ${value ?? "?"}${ex.unit} outside ${thresholdStr}. Consider compensatory strategy.`,
-        formula: ex.id==="shoulderFlex" ? "180 - angle(pelvis, shoulder, elbow)" : ex.id==="trunkLean" ? "angle(pelvis+verticalUp, pelvis, thorax)" : "MHR deterministic",
+        explanation,
+        formula: ex.id==="shoulderFlex" ? "180 - angle(pelvis, shoulder, elbow)" : ex.id==="trunkLean" ? "angle(pelvis+verticalUp, pelvis, thorax)" : ex.id==="wristFlex" ? "180 - angle(elbow, wrist, mid_tip)" : ex.id==="fingerAperture" ? "||thumb_tip - index_tip|| mm" : ex.id==="wristDeviation" ? "wrist radial/ulnar °" : "MHR deterministic",
       };
     });
 

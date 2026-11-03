@@ -37,6 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { BiomechSkeletonOverlay, BiomechInVideoHud, BiomechLiveHud, BiomechMaskControls, BiomechMaskStyle, DEFAULT_BIOMECH_MASK, findActiveFrame } from "@/components/therapist/BiomechOverlay";
+import { Motion3DDots } from "@/components/therapist/Motion3DDots";
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface SamBoxOut {
@@ -72,10 +73,12 @@ function fileToDataUrl(file: File): Promise<string> {
 
 export default function BiomechPlaygroundPage() {
   // Step 1 — Prescribed activity (AI decides concepts from this, no word bank)
-  const [prescribedTitle, setPrescribedTitle] = useState("Cylindrical Cup Lift — 90° hold 3s");
-  const [prescribedInstructions, setPrescribedInstructions] = useState("Lift 8oz cup to mouth height with cylindrical grasp, hold 3 seconds, avoid trunk lean. Lower slowly. Repeat 5 reps.");
+  const [prescribedTitle, setPrescribedTitle] = useState("Tendon Gliding Exercise");
+  const [prescribedInstructions, setPrescribedInstructions] = useState(
+    "1. Start with your hand open and fingers straight.\n2. Slowly bend your fingers into a hook position.\n3. Make a gentle fist.\n4. Straighten your fingers and relax.\n5. Repeat without forcing the movement."
+  );
   const [ageBand, setAgeBand] = useState("adult");
-  const [therapistNeed, setTherapistNeed] = useState("");
+  const [therapistNeed, setTherapistNeed] = useState("wrist");
 
   // Video
   const [fileName, setFileName] = useState("");
@@ -103,6 +106,7 @@ export default function BiomechPlaygroundPage() {
   const [maskStyles, setMaskStyles] = useState<Record<string, { color: string; visible: boolean }>>({});
   const [isolatedLabel, setIsolatedLabel] = useState<string | null>(null);
   const [previousRun, setPreviousRun] = useState<any | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -136,8 +140,9 @@ export default function BiomechPlaygroundPage() {
       let payload: Record<string, unknown> = { prescribedTitle, prescribedInstructions, therapistNeed, ageBand, durationSeconds, mediaWidth: videoSize?.width, mediaHeight: videoSize?.height, previousMhr: previousRun?.mhr || null };
       let usedStorage = false;
 
-      // Prefer Storage path when file >~2 MB or any file when authenticated — bypasses Vercel body limit
-      if (rawFile) {
+      const isLocalhost = typeof window !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\]|.*\.local)$/.test(window.location.hostname);
+      // Prefer Storage path on Vercel (bypasses 4.5 MB λ limit); skip on localhost (no limit, avoid quota)
+      if (rawFile && !isLocalhost) {
         try {
           const supabase = createSupabaseBrowserClient();
           if (supabase) {
@@ -157,11 +162,14 @@ export default function BiomechPlaygroundPage() {
         } catch (e) { console.warn("[biomech] storage upload exception:", e); }
       }
       if (!usedStorage) {
-        // Fallen back to data URL — enforce Vercel cap
         if (!videoDataUrl) throw new Error("Upload failed — no video data available.");
         const approxPayloadMb = (videoDataUrl.length * 0.75) / (1024 * 1024);
-        if (approxPayloadMb > 4.2) {
-          throw new Error(`Clip too large for direct upload (${approxPayloadMb.toFixed(1)} MB). Sign in and retry — signed-in users upload via Storage (up to 100 MB). Or use a shorter clip ≤15s / <3 MB.`);
+        // localhost has no Vercel 4.5 MB gate → allow up to 100 MB direct; Vercel direct caps at ~4.2 MB
+        const directLimitMb = isLocalhost ? 98 : 4.2;
+        if (approxPayloadMb > directLimitMb) {
+          throw new Error(isLocalhost
+            ? `Clip is ${approxPayloadMb.toFixed(1)} MB — over 100 MB direct limit. Trim to ≤30s / re-encode lower bitrate, or sign in to use Storage upload (also 100 MB).`
+            : `Clip too large for direct upload (${approxPayloadMb.toFixed(1)} MB). Sign in and retry — signed-in users upload via Storage (up to 100 MB). Or use a shorter clip ≤15s / <3 MB, or run on localhost:3000 (allows 100 MB direct).`);
         }
         payload.videoDataUrl = videoDataUrl;
       }
@@ -187,7 +195,16 @@ export default function BiomechPlaygroundPage() {
       (data.concepts||[]).forEach((label:string,i:number)=> { init[label] = { color: PALETTE[i % PALETTE.length], visible: true }; });
       setMaskStyles(init);
       setTimeout(()=> videoRef.current?.play().catch(()=>{}), 300);
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); setActiveStep(1); }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const isLocalhost = typeof window !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\]|.*\.local)$/.test(window.location.hostname);
+      if (/FUNCTION_INVOCATION_TIMEOUT|504|Gateway Timeout|timed out/i.test(msg)) {
+        setError(isLocalhost
+          ? "Biomech timed out on localhost — 30s clips on Modal CPU 2 cores take ~90-130s. Sampling 10 frames spaced across clip; wait a bit longer or check modal app logs for processingMs. For 10× speed redeploy Modal with GPU (see modal/app.py cpu→gpu)."
+          : "Biomech timed out on Vercel (Hobby 10s limit; this flow needs ~20-35s: Spark → SAM 3.1 → Modal). Fix: upgrade to Vercel Pro (vercel.json maxDuration 60 now set) or run locally. Also use ≤15s clip to reduce SAM work.");
+      } else setError(msg);
+      setActiveStep(1);
+    }
     finally { setIsRunning(false); }
   }
 
@@ -358,8 +375,8 @@ export default function BiomechPlaygroundPage() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-xs"><FileVideo className="w-4 h-4 text-teal-400 shrink-0" /><span className="font-medium text-zinc-200 truncate">{fileName}</span>{videoSize && <span className="text-zinc-500">• {videoSize.width}×{videoSize.height}{durationSeconds?` • ${Math.round(durationSeconds)}s`:""}</span>}</div>
                   <div className="relative overflow-hidden rounded-2xl bg-black border border-zinc-800">
-                    <div className="relative w-full bg-black">
-                      <video ref={videoRef} src={previewUrl} playsInline controls={!isolatedLabel} className="block w-full h-auto bg-black max-h-[460px] mx-auto object-contain"
+                    <div className="relative w-full bg-black rounded-xl overflow-hidden">
+                      <video ref={videoRef} src={previewUrl} playsInline controls={!isolatedLabel} className="block w-full h-auto bg-black max-h-[460px] mx-auto object-contain relative z-0"
                         onLoadedMetadata={e=> { setDurationSeconds(e.currentTarget.duration||undefined); setVideoSize({width:e.currentTarget.videoWidth||0, height:e.currentTarget.videoHeight||0}); }}
                         onTimeUpdate={e=> setCurrentTime(e.currentTarget.currentTime)}
                         onPlay={()=> setIsVideoPlaying(true)} onPause={()=> setIsVideoPlaying(false)} onEnded={()=> setIsVideoPlaying(false)}
@@ -381,7 +398,6 @@ export default function BiomechPlaygroundPage() {
                       )}
                       {isolatedLabel && visibleActiveBoxes.length===0 && (<div className="absolute inset-0 grid place-items-center bg-black/80 pointer-events-none"><span className="text-xs text-zinc-400">No active frame for {isolatedLabel} at this time</span></div>)}
                       {isolatedLabel && (<div className="absolute bottom-2 left-2 z-10 px-2.5 py-1 rounded-full bg-zinc-900/90 border border-zinc-700 text-xs font-medium text-zinc-100 flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{backgroundColor: styleFor(isolatedLabel).color}} /> Isolated: {isolatedLabel}<button type="button" onClick={()=> setIsolatedLabel(null)} className="ml-1 px-2 py-0.5 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px]">Clear</button></div>)}
-                      {mhr?.frames?.length>0 && !isolatedLabel && showSkeleton && (<BiomechSkeletonOverlay mhr={mhr} currentTime={currentTime} mediaSize={videoSize ? [videoSize.width, videoSize.height] : null} style={biomechStyle} />)}
                       {mhr?.frames?.length>0 && !isolatedLabel && showHud && (<BiomechInVideoHud mhr={mhr} currentTime={currentTime} />)}
                     </div>
                   </div>
@@ -391,7 +407,6 @@ export default function BiomechPlaygroundPage() {
                     <span className="text-xs font-mono text-zinc-500">{currentTime.toFixed(2)}s / {durationSeconds? durationSeconds.toFixed(1)+"s" : "—"}</span>
                     <div className="flex items-center gap-1 ml-auto">
                       <button onClick={()=> setShowSamBoxes(v=>!v)} className={`px-2.5 py-1 rounded-full text-xs font-medium border ${showSamBoxes?"bg-teal-950 border-teal-500/30 text-teal-300":"bg-zinc-800 border-zinc-700 text-zinc-400"}`}>Boxes {showSamBoxes?"ON":"OFF"}</button>
-                      <button onClick={()=> setShowSkeleton(v=>!v)} className={`px-2.5 py-1 rounded-full text-xs font-medium border ${showSkeleton?"bg-teal-950 border-teal-500/30 text-teal-300":"bg-zinc-800 border-zinc-700 text-zinc-400"}`}>Skeleton</button>
                       <button onClick={()=> setShowHud(v=>!v)} className={`px-2.5 py-1 rounded-full text-xs font-medium border ${showHud?"bg-amber-950 border-amber-500/30 text-amber-300":"bg-zinc-800 border-zinc-700 text-zinc-400"}`}>HUD</button>
                       <button onClick={()=> setShowBiomechControls(v=>!v)} className="px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-800 border border-zinc-700 text-zinc-400">Style <ChevronDown className={`w-3 h-3 inline ${showBiomechControls?"rotate-180":""}`} /></button>
                     </div>
@@ -462,7 +477,7 @@ export default function BiomechPlaygroundPage() {
 
             {/* Step 3 */}
             <Card className="p-4 border-zinc-800 bg-zinc-900/70 space-y-3">
-              <h3 className="text-xs font-semibold tracking-wide uppercase text-zinc-300 flex items-center gap-2"><ClipboardCheck className="w-3.5 h-3.5 text-emerald-400" /> Step 3 — Compare <Badge variant="teal" className="text-[11px]">{adherence?.label} • {adherence?.pct}%</Badge>{trend && <Badge variant="amber" className="text-[11px]">{trend.direction}</Badge>}</h3>
+              <h3 className="text-xs font-semibold tracking-wide uppercase text-zinc-300 flex items-center gap-2"><ClipboardCheck className="w-3.5 h-3.5 text-emerald-400" /> Step 3 — Compare <Badge variant="teal" className="text-[11px]">{adherence?.label} • {adherence?.pct}%</Badge>{trend && <Badge variant="amber" className="text-[11px]">{trend.direction}</Badge>}<button onClick={()=> setGuideOpen(true)} className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[11px] font-medium text-zinc-300"><Info className="w-3 h-3" /> How to read this</button></h3>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                 <div className="lg:col-span-2 space-y-2">
                   {insights.map((ins: Insight)=> (
@@ -478,6 +493,11 @@ export default function BiomechPlaygroundPage() {
                   ))}
                   <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-400 leading-relaxed"><span className="font-semibold text-zinc-300">Adherence</span> — {adherence?.explanation} <span className="font-mono text-teal-300">{adherence?.pct}%</span> • {adherence?.label}</div>
                   {trend && (<div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-400"><span className="font-semibold text-zinc-300">Trend vs previous:</span> {trend.summary}</div>)}
+                  <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs leading-relaxed space-y-1">
+                    <div className="font-semibold text-zinc-200 flex items-center gap-1.5">Provenance <span className="px-1.5 py-0.5 rounded-full bg-teal-950 border border-teal-500/30 text-teal-300 text-[10px] font-mono">SAM 3D Body</span> <span className="text-zinc-500 font-normal">not Spark</span></div>
+                    <p className="text-zinc-400">Trunk compensation = <code className="px-1 py-0.5 rounded bg-zinc-800 border border-zinc-700 font-mono text-[11px]">angle(pelvis+verticalUp, pelvis, thorax)</code> from MHR 70 3D keypoints <span className="font-mono text-zinc-300">pelvis 0.5×(L_Hip+R_Hip) [9,10], thorax 0.5×(L_Sh+R_Sh) [5,6]</span> per-frame, One-Euro filtered. Spark only picks concepts; SAM 3.1 tracks boxes; Modal SAM3D infers the 3D pose — no LLM invents angles.</p>
+                    <p className="text-zinc-500">If subject is truncated/out-of-frame, <code className="px-1 py-0.5 rounded bg-zinc-800 border border-zinc-700">sceneUnderstanding.isTruncatedByFrameEdge</code> flags it and trunk value is still computed from visible joints but marked — check <span className="font-mono">mhr.frames[].sceneUnderstanding.subjectFrameCoveragePct</span> & flags <code className="px-1 py-0.5 rounded bg-amber-950/40 border border-amber-500/30 text-amber-200">scene_subject_partially_out_of_frame</code>.</p>
+                  </div>
                   <div className="text-[11px] text-zinc-600">Deterministic thresholds from <code className="px-1 py-0.5 rounded bg-zinc-800 border border-zinc-700">biomech-planner.ts deriveExpectation</code> + MHR ground truth. No hallucinated angles.</div>
                 </div>
                 <div className="space-y-3">
@@ -487,14 +507,18 @@ export default function BiomechPlaygroundPage() {
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800"><div className="text-[11px] text-zinc-500">Shoulder</div><div className="text-sm font-bold text-zinc-100">{mhr?.summary?.peakAngles?.shoulderFlex_max ?? "—"}°</div></div>
                       <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800"><div className="text-[11px] text-zinc-500">Neck</div><div className="text-sm font-bold text-zinc-100">{mhr?.summary?.peakAngles?.neckFlex_max ?? "—"}°</div></div>
+                      <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800"><div className="text-[11px] text-zinc-500">Wrist L</div><div className="text-sm font-bold text-violet-200">{mhr?.summary?.peakAngles?.wristFlex_L_max ?? mhr?.summary?.peakAngles?.wristFlex_R_max ?? "—"}°</div><div className="text-[10px] text-zinc-500">R {mhr?.summary?.peakAngles?.wristFlex_R_max ?? "—"}°</div></div>
+                      <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800"><div className="text-[11px] text-zinc-500">Aperture</div><div className="text-sm font-bold text-cyan-200">{mhr?.summary?.rom?.fingerAperture_range_mm ?? mhr?.summary?.peakAngles?.fingerAperture_L_max_mm ?? "—"}mm</div><div className="text-[10px] text-zinc-500">thumb-index</div></div>
                       <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800"><div className="text-[11px] text-zinc-500">BoS</div><div className="text-sm font-bold text-zinc-100">{mhr?.summary?.posturalAndDeformity?.meanBosMarginMm ?? "—"}mm</div></div>
                       <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800"><div className="text-[11px] text-zinc-500">Sway</div><div className="text-sm font-bold text-zinc-100">{mhr?.summary?.gait?.comSwayVelocityMmPerSec ?? "—"} mm/s</div></div>
                     </div>
-                    <div className="text-[11px] text-zinc-500">Clip ROM: Shoulder {mhr?.summary?.rom?.shoulderFlex_range ?? "—"}° • Neck {mhr?.summary?.rom?.neckFlex_range ?? "—"}°</div>
+                    <div className="text-[11px] text-zinc-500">Clip ROM: Shoulder {mhr?.summary?.rom?.shoulderFlex_range ?? "—"}° • Neck {mhr?.summary?.rom?.neckFlex_range ?? "—"}° • Wrist {mhr?.summary?.rom?.wristFlex_L_range ?? mhr?.summary?.rom?.wristFlex_R_range ?? "—"}° • Aperture {mhr?.summary?.rom?.fingerAperture_range_mm ?? "—"}mm</div>
                   </div>
                 </div>
               </div>
             </Card>
+            {/* 3D dots — full width below analysis, scrubbable */}
+            <Motion3DDots mhr={mhr} currentTime={currentTime} onSeek={(t)=>{ setCurrentTime(t); if(videoRef.current){ videoRef.current.currentTime=t; } }} />
 
             {/* Step 4 already visualized above — recap */}
             <Card className="p-4 border-zinc-800 bg-zinc-900/70">
@@ -523,6 +547,37 @@ export default function BiomechPlaygroundPage() {
           <Link href="/sam-test" className="text-xs font-medium text-teal-400 hover:text-teal-300 inline-flex items-center gap-1">Go to SAM Test <ArrowLeft className="w-3 h-3 rotate-180" /></Link>
         </Card>
       </main>
+      {guideOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={()=> setGuideOpen(false)} />
+          <div className="relative w-full max-w-3xl max-h-[85vh] overflow-auto rounded-2xl bg-zinc-900 border border-zinc-700 shadow-2xl">
+            <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2"><Info className="w-4 h-4 text-teal-400" /><h2 className="text-sm font-bold text-zinc-100">How to read Step 3</h2><span className="px-1.5 py-0.5 rounded-full bg-teal-950 border border-teal-500/30 text-teal-300 text-[11px] font-mono">1–2 sentence insights</span></div>
+              <button onClick={()=> setGuideOpen(false)} className="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs text-zinc-300">Close ✕</button>
+            </div>
+            <div className="p-4 space-y-4 text-xs leading-relaxed">
+              <p className="text-zinc-400">All numbers are real measurements from your video — <b className="text-zinc-200">SAM 3.1</b> finds the person/boxes, <b className="text-zinc-200">SAM 3D Body (MHR)</b> on Modal infers 70 3D joints per frame, then we compute angles. No LLM invents angles.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-3 space-y-1"><div className="font-semibold text-zinc-100">Scoring</div><p className="text-zinc-400"><span className="px-1.5 py-0.5 rounded-full bg-teal-600 text-white text-[11px] font-bold">Good 90</span> inside target • <span className="px-1.5 py-0.5 rounded-full bg-amber-600 text-white text-[11px] font-bold">Watch 65</span> just outside • <span className="px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[11px] font-bold">Needs support 35</span> clearly outside. Overall adherence = <span className="font-mono text-zinc-200">(Good + 0.6×Watch)/n</span> → <b className="text-zinc-200">≥80 Strong • ≥50 Partial • else Needs</b>.</p></div>
+                <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-3 space-y-1"><div className="font-semibold text-zinc-100">Range of motion (ROM)</div><p className="text-zinc-400"><b className="text-zinc-200">Peak</b> = highest angle in clip (e.g. Shoulder 118°). <b className="text-zinc-200">ROM</b> = max−min (how much you moved). <b className="text-zinc-200">BoS</b> = how far your center of mass is from your feet (≤120 mm good). <b className="text-zinc-200">Sway</b> = how fast that center wobbles (mm/s).</p></div>
+                <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-3 space-y-1"><div className="font-semibold text-zinc-100">Boxes & colors</div><p className="text-zinc-400"><b className="text-teal-300">Colored boxes</b> are SAM 3.1 detections (one per concept like shoulder/hand). Teal/violet/pink per label, shown for 0.75s around current time. Tap a chip to isolate one concept — black veil hides the rest.</p></div>
+                <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-3 space-y-1"><div className="font-semibold text-zinc-100">Warnings (amber pills)</div><p className="text-zinc-400">Derived from real angles, e.g. <span className="font-mono text-zinc-300">trunk &gt;8° mild / &gt;14° moderate</span>, <span className="font-mono text-zinc-300">neck &gt;25° forward head</span>, <span className="font-mono text-zinc-300">BoS &gt;140mm sway</span>, <span className="font-mono text-zinc-300">wrist &gt;60° end-range</span>, <span className="font-mono text-zinc-300">aperture &lt;15mm fist</span>. Listed under “flags”.</p></div>
+                <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-3 space-y-1"><div className="font-semibold text-zinc-100">Style & HUD</div><p className="text-zinc-400"><b className="text-zinc-200">Style</b> changes skeleton color/thickness/dots/opacity. <b className="text-zinc-200">HUD</b> is the bottom bar on the video with live numbers (shoulder/neck/wrist/aperture/BoS) and the right-side <b className="text-zinc-200">RangeBars + Sparklines</b> that show where you are inside the clip’s min–max.</p></div>
+                <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-3 space-y-1"><div className="font-semibold text-zinc-100">Evidence</div><p className="text-zinc-400">Every insight shows <b className="text-zinc-200">Evidence: 1.2s at 118°</b> — the actual frames where it was most extreme, so you can scrub the video to that time and verify.</p></div>
+              </div>
+              <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-3 space-y-2">
+                <div className="font-semibold text-zinc-100">3D projection — how it’s made</div>
+                <p className="text-zinc-400"><b className="text-zinc-200">Derived from</b> <span className="font-mono text-zinc-300">pred_keypoints_3d</span> 70×3 per frame (real MHR, no mock), centered at pelvis and auto-fit. No mesh hallucinated.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                  <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-2"><div className="font-semibold text-zinc-200">Dots</div><div className="text-zinc-400">~900 tiny squares sampled from the 70 joints into a volumetric human. Color by area: L violet / R pink / head amber / torso zinc. Far dots fade.</div></div>
+                  <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-2"><div className="font-semibold text-zinc-200">Trail</div><div className="text-zinc-400">When on, draws the continuous path each wrist/hand took through all frames — see loops for tendon-gliding. Off by default.</div></div>
+                  <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-2"><div className="font-semibold text-zinc-200">Axes & controls</div><div className="text-zinc-400"><span className="font-mono text-zinc-300">X→right</span> <span className="font-mono text-zinc-300">Y↑up</span> <span className="font-mono text-sky-300">Z→out</span> from pelvis. Drag to rotate, sliders for fine, <span className="font-mono text-zinc-200">↺ Reset</span> / double-click to neutral, frame slider scrubs pose.</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

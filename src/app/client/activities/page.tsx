@@ -40,10 +40,23 @@ export default function ClientActivitiesPage() {
 
   if (loading) return <div className="p-8 flex flex-col items-center gap-3 text-xs text-zinc-400"><Loader2 className="w-6 h-6 animate-spin text-teal-400" /><p>Loading your home programs…</p></div>;
 
+  // Helper: Supabase returns review as array (join) or object — normalize
+  const getReviewObj = (sub: unknown) => {
+    const r = (sub as { review?: unknown })?.review;
+    if (!r) return null;
+    if (Array.isArray(r)) return (r[0] as { status?: string; overall_feedback?: string } | undefined) || null;
+    return r as { status?: string; overall_feedback?: string };
+  };
+  const hasReviewFor = (s: Submission) => {
+    if (s.state === "reviewed") return true;
+    const r = getReviewObj(s);
+    return r?.status === "published" || Boolean(r?.overall_feedback);
+  };
+
   // Derive per-program status from program.status + submissions
   function programStatus(p: HomeProgram & { submissions?: Submission[] }): { label: string; variant: "teal" | "amber" | "emerald" | "outline"; desc: string } {
     const subs = submissions.filter(s => s.program_id === p.id);
-    const hasReviewed = subs.some(s => s.state === "reviewed" || s.review);
+    const hasReviewed = subs.some(hasReviewFor);
     const hasSubmitted = subs.some(s => s.state === "submitted");
     const hasDraft = subs.some(s => s.state === "draft");
     if (hasReviewed) return { label: "Reviewed", variant: "emerald", desc: "Therapist feedback published" };
@@ -69,7 +82,7 @@ export default function ClientActivitiesPage() {
     return true;
   });
 
-  const totalReviewed = submissions.filter(s => s.state === "reviewed" || s.review).length;
+  const totalReviewed = submissions.filter(hasReviewFor).length;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
@@ -129,7 +142,7 @@ export default function ClientActivitiesPage() {
                 const st = programStatus(p);
                 const subs = submissions.filter(s => s.program_id === p.id).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                 const draftSub = subs.find(s => s.state === "draft");
-                const latestReviewed = subs.find(s => s.state === "reviewed" || s.review);
+                const latestReviewed = subs.find(hasReviewFor);
                 const isArchived = p.status === "archived";
                 return (
                   <Card key={p.id} className="border-zinc-800 bg-zinc-900/90 p-4 space-y-3">
@@ -170,8 +183,9 @@ export default function ClientActivitiesPage() {
                         </div>
                         <div className="grid gap-2">
                           {subs.slice(0, 3).map(s => {
-                            const reviewed = s.state === "reviewed" || s.review;
-                            const awaiting = s.state === "submitted";
+                            const reviewed = hasReviewFor(s);
+                            const awaiting = s.state === "submitted" && !reviewed;
+                            const rObj = getReviewObj(s);
                             return (
                               <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-zinc-950 border border-zinc-800">
                                 <div className="space-y-1 min-w-0">
@@ -180,10 +194,14 @@ export default function ClientActivitiesPage() {
                                     <span className="text-zinc-500 font-mono text-[11px]">{s.scheduled_date || new Date(s.created_at).toLocaleDateString()}</span>
                                     <span className="text-zinc-600 text-[11px]">{s.step_submissions?.length || 0} steps</span>
                                   </div>
-                                  {s.review?.overall_feedback && <p className="text-xs text-zinc-400 line-clamp-1">Feedback: “{s.review.overall_feedback.slice(0, 80)}…”</p>}
+                                  {rObj?.overall_feedback && <p className="text-xs text-zinc-400 line-clamp-1">Feedback: “{rObj.overall_feedback.slice(0, 80)}…”</p>}
                                 </div>
                                 <div className="flex items-center gap-1.5 shrink-0">
-                                  <Link href={`/client/programs/${p.id}${s.scheduled_date ? `?date=${s.scheduled_date}` : ""}`}><Button variant="outline" size="sm" className="h-7 text-xs px-2.5">View</Button></Link>
+                                  {reviewed ? (
+                                    <Link href={`/client/programs/${p.id}?date=${s.scheduled_date || ""}&submissionId=${s.id}`}><Button size="sm" className="h-7 text-xs px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">View feedback</Button></Link>
+                                  ) : (
+                                    <Link href={`/client/programs/${p.id}${s.scheduled_date ? `?date=${s.scheduled_date}` : ""}`}><Button variant="outline" size="sm" className="h-7 text-xs px-2.5">View</Button></Link>
+                                  )}
                                   {s.state === "draft" && <Link href={`/client/programs/${p.id}${s.scheduled_date ? `?date=${s.scheduled_date}&edit=true` : "?edit=true"}`}><Button size="sm" className="h-7 text-xs px-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200">Edit Draft</Button></Link>}
                                 </div>
                               </div>

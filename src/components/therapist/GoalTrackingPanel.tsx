@@ -188,7 +188,7 @@ export function GoalTrackingPanel({ patientId, longTermGoals, shortTermGoals, so
                 <p>Checked {draft.verdicts.length} goals with your recent notes and videos — draft is ready to review.</p>
               </div>
             )}
-            <p className="text-[10px] text-zinc-500 italic">This is a draft. Your therapist will confirm it. {published ? "Now visible to client." : "Private until you publish."}</p>
+            <p className="text-[10px] text-zinc-500 italic">This is a draft for your review. {published ? "Now visible to client." : "Private until you publish."}</p>
           </div>
         )}
       </div>

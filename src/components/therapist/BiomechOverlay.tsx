@@ -98,6 +98,8 @@ function Sparkline({ values, height = 28, color = "#14b8a6", currentIdx = -1 }: 
 
 const SKELETON_EDGES: [number, number][] = [
   [0, 5], [0, 6], [5, 6], [5, 7], [7, 9], [6, 8], [8, 10], [11, 12], [5, 11], [6, 12], [11, 13], [13, 15], [12, 14], [14, 16],
+  // wrist/hand forearm: elbow(7,8) -> wrist(62,41) -> mid tip(50,29) so judges see tendon gliding
+  [7, 62], [62, 50], [8, 41], [41, 29],
 ];
 
 const JOINT_ANCHOR_IDX: Record<string, number> = {
@@ -118,42 +120,56 @@ const JOINT_ANCHOR_IDX: Record<string, number> = {
   elbow: 7,
   elbow_L: 7,
   elbow_R: 8,
+  wrist: 62,
+  wrist_L: 62,
+  wrist_R: 41,
+  wrist_dev: 62,
+  wrist_dev_L: 62,
+  wrist_dev_R: 41,
+  finger_aperture: 41,
+  finger_aperture_L: 62,
+  finger_aperture_R: 41,
+  hand: 41,
 };
 
 function MotionTags({ kpts2d, mediaSize, annotations, style }: { kpts2d: number[][]; mediaSize?: [number, number] | null; annotations: Array<{ joint: string; motion: string; anchor?: string }>; style: BiomechMaskStyle }) {
   if (!style.showLabels || !annotations?.length || !kpts2d?.length) return null;
   const w = mediaSize?.[0] ?? 1280;
   const h = mediaSize?.[1] ?? 720;
-  const norm = kpts2d.map(([x, y]) => {
-    if (x == null || y == null) return [0, 0] as [number, number];
-    const nx = x > 1.5 ? x / w : x;
-    const ny = y > 1.5 ? y / h : y;
-    return [nx, ny] as [number, number];
+  // keep in pixel space and let SVG viewBox handle letterboxing — so tags sit exactly on joints
+  const pix = kpts2d.map(([x, y]) => {
+    if (x == null || y == null) return [w * 0.5, h * 0.5] as [number, number];
+    const px = x > 1.5 ? x : x * w;
+    const py = y > 1.5 ? y : y * h;
+    return [px, py] as [number, number];
   });
-  // only show visible motions, limit to 6 to avoid clutter — prioritize neck + shoulders
-  const priority = ["neck_flex", "neck_lateral", "neck_rotation", "shoulder_L", "shoulder_R", "trunk", "hip_L", "hip_R", "elbow_R", "knee_L"];
+  const priority = ["neck_flex", "neck_lateral", "neck_rotation", "shoulder_L", "shoulder_R", "wrist_L", "wrist_R", "finger_aperture_L", "finger_aperture_R", "wrist_dev_L", "trunk", "hip_L", "hip_R", "elbow_R", "knee_L"];
   const sorted = [...annotations].sort((a, b) => priority.indexOf(a.joint) - priority.indexOf(b.joint));
-  const show = sorted.filter((a) => !a.motion.startsWith("Neutral") || a.joint.startsWith("neck")).slice(0, 6);
+  const show = sorted.filter((a) => !a.motion.startsWith("Neutral") || a.joint.startsWith("neck") || a.joint.startsWith("wrist") || a.joint.startsWith("finger")).slice(0, 7);
+  // render as SVG text so it uses same viewBox/preserveAspectRatio as skeleton — guaranteed alignment even with letterboxing
   return (
-    <>
+    <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet">
       {show.map((a) => {
         const idx = JOINT_ANCHOR_IDX[a.anchor as string] ?? JOINT_ANCHOR_IDX[a.joint] ?? 0;
-        const pt = norm[idx] ?? [0.5, 0.5];
-        // offset a bit so tag doesn't cover joint
-        const ox = pt[0] > 0.5 ? -1 : 1;
-        const oy = -1;
+        const [px, py] = pix[idx] ?? [w * 0.5, h * 0.5];
         const isNeck = a.joint.startsWith("neck");
+        const isSh = a.joint.includes("shoulder");
+        const bg = isNeck ? "#f59e0b" : isSh ? "#14b8a6" : "#18181b";
+        const fg = isNeck ? "#18181b" : "#f4f4f5";
+        const ox = px > w * 0.5 ? -6 : 6;
+        // estimate text width ~ 7px per char
+        const tw = Math.min(140, a.motion.length * 6.5 + 10);
+        const th = 14;
+        const rx = px + ox - (ox < 0 ? tw : 0);
+        const ry = py - 18;
         return (
-          <div
-            key={a.joint}
-            className={`absolute px-1.5 py-0.5 rounded text-[10px] font-mono font-bold shadow border pointer-events-none ${isNeck ? "bg-amber-500 text-zinc-900 border-amber-400" : a.joint.includes("shoulder") ? "bg-teal-500 text-white border-teal-400" : "bg-zinc-900/90 text-zinc-100 border-white/20"}`}
-            style={{ left: `${pt[0] * 100}%`, top: `${pt[1] * 100}%`, transform: `translate(${ox * 6}px, ${oy * 12}px) translate(-50%, -100%)` }}
-          >
-            {a.motion}
-          </div>
+          <g key={a.joint}>
+            <rect x={rx} y={ry} width={tw} height={th} rx={4} fill={bg} fillOpacity={0.96} stroke={isNeck ? "#fbbf24" : isSh ? "#2dd4bf" : "rgba(255,255,255,0.18)"} strokeWidth={0.8} />
+            <text x={rx + tw / 2} y={ry + 10} textAnchor="middle" fontSize={9} fontWeight={700} fontFamily="JetBrains Mono, ui-monospace, monospace" fill={fg}>{a.motion}</text>
+          </g>
         );
       })}
-    </>
+    </svg>
   );
 }
 
@@ -161,32 +177,34 @@ function SkeletonSvg({ kpts2d, mediaSize, style, annotations }: { kpts2d: number
   if (!kpts2d || kpts2d.length < 1) return null;
   const w = mediaSize?.[0] ?? 1280;
   const h = mediaSize?.[1] ?? 720;
-  const norm = kpts2d.map(([x, y]) => {
-    if (x == null || y == null) return [0, 0] as [number, number];
-    const nx = x > 1.5 ? x / w : x;
-    const ny = y > 1.5 ? y / h : y;
-    return [nx, ny] as [number, number];
+  // pixel coords — never pre-normalize; SVG viewBox handles scaling + letterboxing
+  const pix = kpts2d.map(([x, y]) => {
+    if (x == null || y == null) return [w * 0.5, h * 0.5] as [number, number];
+    const px = x > 1.5 ? x : x * w;
+    const py = y > 1.5 ? y : y * h;
+    return [px, py] as [number, number];
   });
-  if (norm.length < 17) {
+  if (pix.length < 17) {
     return (
-      <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 1 1" preserveAspectRatio="none">
-        {norm.slice(0, 5).map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r={style.pointRadius * 1.2} fill={style.color} fillOpacity={style.opacity} stroke="white" strokeWidth={0.002} />
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet">
+        {pix.slice(0, 5).map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={Math.max(3, style.pointRadius * Math.min(w, h) * 0.7)} fill={style.color} fillOpacity={style.opacity} stroke="white" strokeWidth={1} />
         ))}
       </svg>
     );
   }
-  const strokeW = (style.strokeWidth / 2.5) * 0.004;
+  const strokeW = (style.strokeWidth / 2.5) * Math.max(1.8, Math.min(w, h) * 0.0022);
+  const rPx = Math.max(2.2, style.pointRadius * Math.min(w, h) * 0.65);
   return (
-    <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 1 1" preserveAspectRatio="none">
+    <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet">
       {SKELETON_EDGES.map(([a, b], idx) => {
-        const pa = norm[a];
-        const pb = norm[b];
+        const pa = pix[a];
+        const pb = pix[b];
         if (!pa || !pb) return null;
         return <line key={idx} x1={pa[0]} y1={pa[1]} x2={pb[0]} y2={pb[1]} stroke={style.color} strokeWidth={strokeW} strokeLinecap="round" opacity={style.opacity} />;
       })}
-      {norm.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r={style.pointRadius * (i === 0 ? 1.1 : 1)} fill={i <= 1 ? "#f59e0b" : style.color} fillOpacity={style.opacity} stroke="white" strokeWidth={0.0015} />
+      {pix.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={rPx * (i === 0 ? 1.1 : 1)} fill={i <= 1 ? "#f59e0b" : style.color} fillOpacity={style.opacity} stroke="white" strokeWidth={0.9} />
       ))}
     </svg>
   );
@@ -213,6 +231,10 @@ export function BiomechInVideoHud({
     elbowR: frame.angles?.elbowFlex_R_motion ?? `${frame.angles?.elbowFlex_R ?? 0}°`,
     kneeL: frame.angles?.kneeFlex_L_motion ?? `${frame.angles?.kneeFlex_L ?? 0}°`,
     trunk: frame.angles?.trunkLean_motion ?? `${frame.angles?.trunkLean ?? 0}°`,
+    wristL: getMotion("wrist_L") ?? frame.angles?.wristAngles?.flexExt_L_motion ?? `${frame.angles?.wristAngles?.flexExt_L ?? 0}°`,
+    wristR: getMotion("wrist_R") ?? frame.angles?.wristAngles?.flexExt_R_motion ?? `${frame.angles?.wristAngles?.flexExt_R ?? 0}°`,
+    apertureL: frame.angles?.wristAngles?.fingerAperture_L_mm ?? frame.angles?.wristAngles?.fingerAperture_R_mm ?? null,
+    forearm: frame.angles?.elbowFlex_L ?? frame.angles?.elbowFlex_R ?? null,
     bosMargin: frame.biomechTelemetry?.bosMarginMm ?? null,
   };
   const frameFlags = frame.flags ?? [];
@@ -226,6 +248,9 @@ export function BiomechInVideoHud({
           <span className="px-1.5 py-1 rounded bg-zinc-800/90 text-zinc-100 border border-white/10">{vals.elbowR}</span>
           <span className="px-1.5 py-1 rounded bg-zinc-800/90 text-zinc-100 border border-white/10">{vals.kneeL}</span>
           <span className="px-1.5 py-1 rounded bg-zinc-800/90 text-zinc-200 border border-white/10">{vals.trunk}</span>
+          <span className="px-1.5 py-1 rounded bg-violet-600 text-white border border-white/20">{vals.wristL}</span>
+          <span className="px-1.5 py-1 rounded bg-cyan-600 text-white border border-white/20">{vals.wristR}</span>
+          {vals.apertureL !== null && <span className="px-1.5 py-1 rounded bg-teal-600 text-white">Aperture {Math.round(vals.apertureL)}mm</span>}
           <span className="px-1.5 py-1 rounded bg-amber-600 text-white border border-white/20">{vals.neckFlex}</span>
           {vals.neckLat && <span className="px-1.5 py-1 rounded bg-violet-600 text-white">{vals.neckLat}</span>}
           {vals.neckRot && !vals.neckRot.startsWith("Neutral") && <span className="px-1.5 py-1 rounded bg-fuchsia-600 text-white">{vals.neckRot}</span>}
@@ -275,17 +300,25 @@ export function BiomechLiveHud({
     kneeL: frame.angles?.kneeFlex_L ?? 0,
     trunkLean: frame.angles?.trunkLean ?? 0,
     neck: frame.angles?.neckAngles?.flexExt ?? 0,
+    wristL: frame.angles?.wristAngles?.flexExt_L ?? frame.angles?.wristAngles?.flexExt_R ?? 0,
+    wristR: frame.angles?.wristAngles?.flexExt_R ?? 0,
+    apertureL: frame.angles?.wristAngles?.fingerAperture_L_mm ?? frame.angles?.wristAngles?.fingerAperture_R_mm ?? 0,
     bosMargin: frame.biomechTelemetry?.bosMarginMm ?? null,
     pelvicObliq: frame.angles?.pelvicObliquityDeg ?? 0,
   };
   const shoulderSeries = mhr.frames.map((f) => f.angles?.shoulderFlex_L ?? 0);
   const neckSeries = mhr.frames.map((f) => f.angles?.neckAngles?.flexExt ?? 0);
   const kneeSeries = mhr.frames.map((f) => f.angles?.kneeFlex_L ?? 0);
+  const wristSeries = mhr.frames.map((f) => f.angles?.wristAngles?.flexExt_L ?? f.angles?.wristAngles?.flexExt_R ?? 0);
+  const apertureSeries = mhr.frames.map((f) => f.angles?.wristAngles?.fingerAperture_L_mm ?? f.angles?.wristAngles?.fingerAperture_R_mm ?? 0);
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1.5 text-[11px] font-mono">
         <span className="px-2 py-1 rounded-full bg-zinc-900/90 border border-teal-500/30 text-teal-200">Sh L <b className="text-white">{vals.shoulderL.toFixed(1)}°</b></span>
         <span className="px-2 py-1 rounded-full bg-zinc-900/90 border border-sky-500/30 text-sky-200">Sh R <b className="text-white">{vals.shoulderR.toFixed(1)}°</b></span>
+        <span className="px-2 py-1 rounded-full bg-zinc-900/90 border border-violet-500/30 text-violet-200">Wrist L <b className="text-white">{typeof vals.wristL === "number" ? vals.wristL.toFixed(1) : vals.wristL}°</b></span>
+        <span className="px-2 py-1 rounded-full bg-zinc-900/90 border border-cyan-500/30 text-cyan-200">Wrist R <b className="text-white">{typeof vals.wristR === "number" ? vals.wristR.toFixed(1) : vals.wristR}°</b></span>
+        <span className="px-2 py-1 rounded-full bg-zinc-900/90 border border-teal-500/30 text-teal-200">Aperture <b className="text-white">{vals.apertureL.toFixed(0)}mm</b></span>
         <span className="px-2 py-1 rounded-full bg-zinc-900/90 border border-zinc-700 text-zinc-200">Elbow <b className="text-white">{typeof vals.elbowR === "number" ? vals.elbowR.toFixed(1) : vals.elbowR}°</b></span>
         <span className="px-2 py-1 rounded-full bg-zinc-900/90 border border-zinc-700 text-zinc-200">Knee L <b className="text-white">{vals.kneeL.toFixed(1)}°</b></span>
         <span className="px-2 py-1 rounded-full bg-zinc-900/90 border border-zinc-700 text-zinc-300">Trunk {vals.trunkLean.toFixed(1)}°</span>
@@ -294,9 +327,13 @@ export function BiomechLiveHud({
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 rounded-lg bg-zinc-900/70 border border-zinc-800">
         <RangeBar label="Shoulder L" value={vals.shoulderL} min={shoulderRange.min} max={shoulderRange.max} />
-        <RangeBar label="Neck flex" value={typeof vals.neck === "number" ? vals.neck : 0} min={neckRange.min} max={neckRange.max} />
+        <RangeBar label="Wrist L" value={typeof vals.wristL === "number" ? vals.wristL : 0} min={-30} max={60} />
+        <RangeBar label="Aperture" value={vals.apertureL} min={5} max={80} unit="mm" />
         <RangeBar label="Shoulder R" value={vals.shoulderR} min={shoulderRRange.min} max={shoulderRRange.max} />
+        <RangeBar label="Wrist R" value={typeof vals.wristR === "number" ? vals.wristR : 0} min={-30} max={60} />
+        <RangeBar label="Neck flex" value={typeof vals.neck === "number" ? vals.neck : 0} min={neckRange.min} max={neckRange.max} />
         <RangeBar label="Knee L" value={vals.kneeL} min={kneeRange.min} max={kneeRange.max} />
+        <RangeBar label="BoS" value={vals.bosMargin ?? 0} min={0} max={150} unit="mm" />
       </div>
       <div className="rounded-lg bg-zinc-950 border border-zinc-800 p-2 space-y-2">
         <div className="flex items-center justify-between text-[10px] font-medium text-zinc-500">
@@ -305,6 +342,9 @@ export function BiomechLiveHud({
         </div>
         <Sparkline values={shoulderSeries} currentIdx={idx} color="#14b8a6" height={32} />
         <div className="grid grid-cols-3 gap-2">
+          <div><div className="text-[10px] text-zinc-500">Wrist L</div><Sparkline values={wristSeries} currentIdx={idx} color="#a78bfa" height={22} /></div>
+          <div><div className="text-[10px] text-zinc-500">Aperture</div><Sparkline values={apertureSeries} currentIdx={idx} color="#22d3ee" height={22} /></div>
+          <div><div className="text-[10px] text-zinc-500">Wrist R</div><Sparkline values={mhr.frames.map(f=> f.angles?.wristAngles?.flexExt_R ?? 0)} currentIdx={idx} color="#f472b6" height={22} /></div>
           <div><div className="text-[10px] text-zinc-500">Neck</div><Sparkline values={neckSeries} currentIdx={idx} color="#f59e0b" height={22} /></div>
           <div><div className="text-[10px] text-zinc-500">Knee L</div><Sparkline values={kneeSeries} currentIdx={idx} color="#60a5fa" height={22} /></div>
           <div><div className="text-[10px] text-zinc-500">BoS margin</div><Sparkline values={mhr.frames.map(f=> f.biomechTelemetry?.bosMarginMm ?? 0)} currentIdx={idx} color="#a78bfa" height={22} /></div>

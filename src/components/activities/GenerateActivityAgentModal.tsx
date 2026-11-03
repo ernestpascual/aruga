@@ -130,6 +130,33 @@ export function GenerateActivityAgentModal({
     } catch { return null; }
   }
 
+  async function uploadReferenceImagesToStorage(imgs: string[], effectiveCreatorId: string | null): Promise<{ paths?: string[]; images?: string[] }> {
+    if (!imgs.length) return {};
+    // Try direct browser → Supabase Storage to bypass Vercel 4.5 MB
+    try {
+      const supabase = createSupabaseBrowserClient();
+      if (supabase && effectiveCreatorId) {
+        const uploaded: string[] = [];
+        for (let i = 0; i < imgs.length; i++) {
+          const dataUrl = imgs[i]!;
+          if (!dataUrl.startsWith("data:image/")) continue;
+          const m = dataUrl.match(/^data:(image\/[a-z0-9.+-]+);base64,(.*)$/i);
+          if (!m) continue;
+          const mime = m[1]!;
+          const b64 = m[2]!;
+          const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : mime.includes("jpeg") || mime.includes("jpg") ? "jpg" : "jpg";
+          const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+          const path = `references/${effectiveCreatorId}/${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+          const { error } = await supabase.storage.from("activity-assets").upload(path, bytes, { contentType: mime, upsert: false });
+          if (!error) uploaded.push(path);
+        }
+        if (uploaded.length) return { paths: uploaded };
+      }
+    } catch {}
+    // Fallback: send data URLs directly (small images only; Vercel will 413 if too large)
+    return { images: imgs };
+  }
+
   async function handleGenerateFromTemplate() {
     if (!selected) return;
     setGenLoading(true);
@@ -137,6 +164,7 @@ export function GenerateActivityAgentModal({
     try {
       const effectiveCreatorId = await resolveEffectiveCreatorId();
       if (patientId && !effectiveCreatorId) throw new Error("Not authenticated — please wait for sign-in to finish and retry (requesterId required).");
+      const refPayload = await uploadReferenceImagesToStorage(referenceImages, effectiveCreatorId);
       const res = await fetch("/api/activities/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(effectiveCreatorId ? { "x-requester-id": effectiveCreatorId } : {}) },
@@ -152,13 +180,17 @@ export function GenerateActivityAgentModal({
           customImagePrompt: customImage,
           generateImage,
           referenceLinks: referenceLinks.length ? referenceLinks : undefined,
-          referenceImages: referenceImages.length ? referenceImages : undefined,
+          referenceImages: refPayload.images,
+          referenceImagePaths: refPayload.paths,
           patientId,
           creatorId: effectiveCreatorId || creatorId,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Generation failed");
+      const ct = res.headers.get("content-type") || "";
+      let data: any;
+      if (ct.includes("application/json")) data = await res.json();
+      else { const txt = await res.text(); if (!res.ok) throw new Error(txt.slice(0, 500) || `Generation failed (${res.status})`); try { data = JSON.parse(txt); } catch { throw new Error(txt.slice(0, 500)); } }
+      if (!res.ok) throw new Error(data.error || data.message || "Generation failed");
       onGenerated(data.activity);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
@@ -210,6 +242,7 @@ export function GenerateActivityAgentModal({
     try {
       const effectiveCreatorId = await resolveEffectiveCreatorId();
       if (patientId && !effectiveCreatorId) throw new Error("Not authenticated — please wait for sign-in to finish and retry (requesterId required).");
+      const cRefPayload = await uploadReferenceImagesToStorage(cRefImages, effectiveCreatorId);
       const res = await fetch("/api/activities/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(effectiveCreatorId ? { "x-requester-id": effectiveCreatorId } : {}) },
@@ -224,13 +257,17 @@ export function GenerateActivityAgentModal({
           customImagePrompt: cGenerateImage ? (cImage.trim() || undefined) : undefined,
           generateImage: cGenerateImage,
           referenceLinks: cRefLinks.length ? cRefLinks : undefined,
-          referenceImages: cRefImages.length ? cRefImages : undefined,
+          referenceImages: cRefPayload.images,
+          referenceImagePaths: cRefPayload.paths,
           patientId,
           creatorId: effectiveCreatorId || creatorId,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Generation failed");
+      const ct2 = res.headers.get("content-type") || "";
+      let data: any;
+      if (ct2.includes("application/json")) data = await res.json();
+      else { const txt = await res.text(); if (!res.ok) throw new Error(txt.slice(0, 500) || `Generation failed (${res.status})`); try { data = JSON.parse(txt); } catch { throw new Error(txt.slice(0, 500)); } }
+      if (!res.ok) throw new Error(data.error || data.message || "Generation failed");
       onGenerated(data.activity);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));

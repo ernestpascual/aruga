@@ -1664,6 +1664,40 @@ function TherapistClientDetailContent({
                         </div>
                       )}
 
+                      {/* All dates — every scheduled_date submission, not just latest */}
+                      {Array.isArray((prog as unknown as { submissions?: unknown[] }).submissions) && ((prog as unknown as { submissions?: unknown[] }).submissions as unknown[]).length > 1 && (
+                        <div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
+                            <Calendar className="w-3.5 h-3.5 text-teal-400" />
+                            All sessions ({((prog as unknown as { submissions?: unknown[] }).submissions as unknown[]).length} dates)
+                          </div>
+                          <div className="grid gap-1.5">
+                            {(((prog as unknown as { submissions?: Array<{ id: string; state?: string; scheduled_date?: string | null; submitted_at?: string | null; review?: unknown }> }).submissions) || [])
+                              .slice()
+                              .sort((a, b) => String(a.scheduled_date || "").localeCompare(String(b.scheduled_date || "")))
+                              .map((s) => {
+                                const rawR = (s as { review?: unknown }).review;
+                                const r = Array.isArray(rawR) ? (rawR[0] as { status?: string; overall_feedback?: string } | undefined) : (rawR as { status?: string; overall_feedback?: string } | undefined);
+                                const reviewed = s.state === "reviewed" || r?.status === "published" || Boolean(r?.overall_feedback);
+                                const submitted = s.state === "submitted" || reviewed;
+                                return (
+                                  <div key={s.id} className="flex items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2">
+                                    <div className="min-w-0 flex items-center gap-2">
+                                      <span className="text-xs font-mono text-zinc-300">{s.scheduled_date || "unscheduled"}</span>
+                                      {reviewed ? <Badge variant="emerald" statusText="Reviewed" /> : submitted ? <Badge variant="amber" statusText="Awaiting review" /> : <Badge variant="outline" statusText={s.state || "draft"} />}
+                                    </div>
+                                    <Link href={`/therapist/submissions/${s.id}`}>
+                                      <Button size="sm" className={`h-7 text-xs px-2.5 ${reviewed ? "bg-teal-600 hover:bg-teal-500 text-white font-semibold" : submitted ? "bg-teal-500 hover:bg-teal-400 text-zinc-950 font-bold" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-200"}`}>
+                                        {reviewed ? "Check and Edit Feedback" : submitted ? "Review & Give Feedback \u2192" : "View"}
+                                      </Button>
+                                    </Link>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Expandable Step Videos Drawer */}
                       {latestSub && expandedVideosProgId[prog.id] && (
                         <div className="mt-4 pt-4 border-t border-zinc-800/80 space-y-4 bg-zinc-950/70 p-4 rounded-xl">

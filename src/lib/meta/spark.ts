@@ -75,11 +75,30 @@ async function callSparkStructured<T>(params: {
         },
       },
       temperature: 0.2,
-      max_tokens: 1500,
-    } as never, { timeout: 55000, maxRetries: 1 } as never);
+      // was 1500 → NO_CONTENT with reasoning (1 prompt ≈1450 reasoning + output >1500 → finish_reason=length, content=null). Use max headroom.
+      max_tokens: 4000,
+    } as never, { timeout: 55000, maxRetries: 1 } as never) as any;
 
-    const latencyMs = Date.now() - startTime;
-    const choice = response.choices[0];
+    let latencyMs = Date.now() - startTime;
+    let choice: any = (response as any).choices?.[0];
+
+    // length retry: reasoning ate budget → empty content with finish_reason=length (reasoning ≈1450 tok even for small prompt)
+    if ((!choice?.message?.content || !String(choice.message.content).trim()) && choice?.finish_reason === "length") {
+      console.warn(`[spark-structured:${params.schemaName}] NO_CONTENT length with 4000, retry 6000 json_object`);
+      try {
+        const msgs: OpenAI.Chat.ChatCompletionMessageParam[] = [{ role: "system", content: params.systemPrompt }, { role: "user", content: params.userPrompt } as any];
+        if (params.mediaUrl) (msgs[1] as any).content = [{ type: "text", text: params.userPrompt }, { type: "image_url", image_url: { url: params.mediaUrl } }];
+        const retryRes: any = await client.chat.completions.create({
+          model: config.models.spark,
+          messages: msgs,
+          response_format: { type: "json_object" } as never,
+          temperature: 0.2,
+          max_tokens: 6000,
+        } as never, { timeout: 55000, maxRetries: 1 } as never);
+        choice = retryRes.choices[0];
+        latencyMs = Date.now() - startTime;
+      } catch {}
+    }
 
     if (!choice || !choice.message) {
       throw new MetaApiError("Empty response returned from Muse Spark 1.3", "EMPTY_SPARK_RESPONSE", 500);
@@ -89,9 +108,10 @@ async function callSparkStructured<T>(params: {
       throw new MetaRefusalError("Muse Spark 1.3 refused the request due to content safety filter.");
     }
 
-    const rawContent = choice.message.content;
-    if (!rawContent) {
-      throw new MetaApiError("No content returned in message from Muse Spark 1.3", "NO_CONTENT", 500);
+    const rawContentAny: unknown = (choice.message as any).content;
+    const rawContent = typeof rawContentAny === "string" ? rawContentAny : rawContentAny ? String(rawContentAny) : "";
+    if (!rawContent.trim()) {
+      throw new MetaApiError(`No content returned in message from Muse Spark 1.3 finish_reason=${choice.finish_reason}`, "NO_CONTENT", 500);
     }
 
     let parsedJson: unknown;
@@ -515,18 +535,30 @@ export async function runSparkOtChat(params: {
       });
     }
 
-    const response = await client.chat.completions.create(
+    let response: any = await client.chat.completions.create(
       {
         model: modelId,
         messages,
         temperature: 0.4,
-        max_tokens: 4000,
+        max_tokens: 5000,
       } as never,
       { timeout: 55000, maxRetries: 1 } as never
-    );
+    ) as any;
 
-    const latencyMs = Date.now() - startTime;
-    const choice = response.choices?.[0];
+    let latencyMs = Date.now() - startTime;
+    let choice: any = response.choices?.[0] as any;
+    // length retry: reasoning + history can exhaust 5000 → content=null
+    if ((!choice?.message?.content || !String((choice.message as any).content).trim()) && choice?.finish_reason === "length") {
+      console.warn(`[ot-chat] NO_CONTENT length with 5000, retry 7000`);
+      try {
+        response = await client.chat.completions.create(
+          { model: modelId, messages, temperature: 0.4, max_tokens: 7000 } as never,
+          { timeout: 55000, maxRetries: 1 } as never
+        ) as any;
+        choice = response.choices?.[0] as any;
+        latencyMs = Date.now() - startTime;
+      } catch {}
+    }
 
     if (!choice || !choice.message) {
       throw new MetaApiError(`Empty response returned from ${modelId}`, "EMPTY_SPARK_RESPONSE", 500);

@@ -68,8 +68,22 @@ const SUGGESTIONS = [
   "Show easy ways to practice at home safely with my family",
 ];
 
-function newConversationId() {
-  return `ot-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+function isValidUUID(v: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
+
+function newConversationId(): string {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+  } catch {}
+  // Fallback — still UUID v4 format to satisfy DB uuid column
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -267,7 +281,8 @@ export default function AskOtPage() {
     if (typeof window === "undefined") return "";
     try {
       const existing = window.localStorage.getItem(CONVERSATION_KEY);
-      if (existing) return existing;
+      // DB expects UUID (ot_conversations.id uuid) — legacy ot-xxx ids cause 22P02
+      if (existing && isValidUUID(existing)) return existing;
       const id = newConversationId();
       window.localStorage.setItem(CONVERSATION_KEY, id);
       return id;
@@ -275,6 +290,28 @@ export default function AskOtPage() {
       return newConversationId();
     }
   });
+
+  // Migrate legacy localStorage ids (ot-xxx) → UUID on mount; also fixes SSR "" hydration
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(CONVERSATION_KEY);
+      if (stored && !isValidUUID(stored)) {
+        const id = newConversationId();
+        window.localStorage.setItem(CONVERSATION_KEY, id);
+        setConversationId(id);
+        return;
+      }
+      if (!stored || !conversationId) {
+        const existing = stored && isValidUUID(stored) ? stored : newConversationId();
+        if (!stored || stored !== existing) {
+          window.localStorage.setItem(CONVERSATION_KEY, existing);
+        }
+        if (!conversationId || conversationId !== existing) {
+          setConversationId(existing);
+        }
+      }
+    } catch {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [modelId, setModelId] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<OtChatModelId>(() => {
     if (typeof window === "undefined") return DEFAULT_OT_CHAT_MODEL;
@@ -319,9 +356,9 @@ export default function AskOtPage() {
       .catch(() => {});
   }, [user?.id]);
 
-  // Load active conversation messages from database
+  // Load active conversation messages from database — skip legacy non-UUID ids
   useEffect(() => {
-    if (!conversationId) return;
+    if (!conversationId || !isValidUUID(conversationId)) return;
     fetch(`/api/ot-chat/conversations?conversationId=${conversationId}`)
       .then((res) => res.json())
       .then((data) => {
@@ -592,12 +629,13 @@ export default function AskOtPage() {
     setInput("");
     setPendingFiles([]);
 
-    if (user?.id && conversationId) {
+    if (user?.id && conversationId && isValidUUID(conversationId)) {
       fetch("/api/ot-chat/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "save_message",
+          userId: user.id,
           conversationId,
           title: text.slice(0, 32) || "OT Chat Session",
           message: {
@@ -648,7 +686,7 @@ export default function AskOtPage() {
       if (!res.ok) {
         throw new Error(data.error || "Chat request failed.");
       }
-      if (data.conversationId && data.conversationId !== conversationId) {
+      if (data.conversationId && data.conversationId !== conversationId && isValidUUID(data.conversationId)) {
         setConversationId(data.conversationId);
         try {
           localStorage.setItem(CONVERSATION_KEY, data.conversationId);
@@ -667,13 +705,16 @@ export default function AskOtPage() {
         },
       ]);
 
-      if (user?.id && conversationId) {
+      if (user?.id && conversationId && isValidUUID(conversationId)) {
+        // Use current conversationId (not stale closure if server returned a new one above)
+        const currentId = data.conversationId && isValidUUID(data.conversationId) ? data.conversationId : conversationId;
         fetch("/api/ot-chat/conversations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "save_message",
-            conversationId,
+            userId: user.id,
+            conversationId: currentId,
             message: {
               role: "assistant",
               content: data.reply as string,

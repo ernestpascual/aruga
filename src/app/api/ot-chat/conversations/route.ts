@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidUUID(v: string | null | undefined): boolean {
+  return typeof v === "string" && UUID_RE.test(v);
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -12,8 +17,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ conversations: [], messages: [] });
     }
 
-    // If specific conversationId requested, fetch its messages
+    // If specific conversationId requested, fetch its messages — guard legacy ot-xxx ids (22P02)
     if (conversationId) {
+      if (!isValidUUID(conversationId)) {
+        // Legacy client id (ot-mvzh8smg-xxxxx) or corrupted localStorage — no DB row possible
+        return NextResponse.json({ messages: [] });
+      }
       const { data: messages, error: mError } = await admin
         .from("ot_messages")
         .select("*")
@@ -60,7 +69,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "create_conversation") {
-      const newId = conversationId || crypto.randomUUID();
+      const newId = isValidUUID(conversationId) ? (conversationId as string) : crypto.randomUUID();
       const convTitle = title || "New Conversation";
 
       // Deduplicate: Check if this user created an identical conversation in the last 4 seconds
@@ -104,6 +113,20 @@ export async function POST(req: NextRequest) {
     if (action === "save_message") {
       if (!conversationId || !message) {
         return NextResponse.json({ error: "conversationId and message required" }, { status: 400 });
+      }
+      if (!isValidUUID(conversationId)) {
+        // Legacy client id — reject gracefully so client can regenerate UUID; avoid 22P02
+        return NextResponse.json({ error: "Invalid conversationId: must be UUID. Clear localStorage key ot-helper-conversation-id and retry." }, { status: 400 });
+      }
+
+      // Auto-heal: ensure conversation exists before inserting message (handles race / cleared DB)
+      if (userId) {
+        try {
+          await admin.from("ot_conversations").upsert(
+            { id: conversationId, user_id: userId, title: title || "New Conversation", updated_at: new Date().toISOString() },
+            { onConflict: "id" }
+          );
+        } catch {}
       }
 
       // Deduplicate recent message in this conversation (within 2 seconds)
@@ -169,6 +192,10 @@ export async function DELETE(req: NextRequest) {
 
     if (!conversationId) {
       return NextResponse.json({ error: "conversationId is required" }, { status: 400 });
+    }
+    if (!isValidUUID(conversationId)) {
+      // Legacy id — nothing to delete in DB; just acknowledge so client stops retrying
+      return NextResponse.json({ ok: true, cleared: true, legacy: true });
     }
 
     const admin = createAdminClient();

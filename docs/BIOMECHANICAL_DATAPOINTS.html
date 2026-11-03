@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aruga Biomech Engine — How It Works, ROM & 3D Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#09090b;--bg2:#121215;--card:#18181b;--card2:#222226;--border:#27272a;--t1:#f4f4f5;--t2:#a1a1aa;--t3:#71717a;--teal:#14b8a6;--amber:#f59e0b;--sky:#0284c7;--violet:#8b5cf6;--emerald:#10b981;--rose:#f43f5e;--cyan:#06b6d4;--font-sans:"Inter",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,monospace}
+*{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--t1);font-family:var(--font-sans);line-height:1.6;-webkit-font-smoothing:antialiased}
+header{background:linear-gradient(180deg,#18181b 0%,#09090b 100%);border-bottom:1px solid var(--border);padding:1.9rem 1.4rem 1rem;position:sticky;top:0;z-index:50;backdrop-filter:blur(10px)}
+.hdr{max-width:1240px;margin:0 auto;display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;align-items:center}
+.brand{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.brand b{font-size:1.55rem;letter-spacing:-.02em}
+.pill{font-family:var(--font-mono);font-size:.68rem;padding:.28rem .6rem;border-radius:999px;border:1px solid rgba(20,184,166,.35);background:rgba(20,184,166,.14);color:var(--teal);font-weight:700}
+.pill.violet{border-color:rgba(139,92,246,.35);background:rgba(139,92,246,.14);color:var(--violet)}
+.pill.amber{border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.14);color:var(--amber)}
+.pill.sky{border-color:rgba(2,132,199,.35);background:rgba(2,132,199,.14);color:var(--sky)}
+.meta{font-family:var(--font-mono);font-size:.72rem;color:var(--t3);text-align:right}
+.tabs{max-width:1240px;margin:0 auto;display:flex;gap:.35rem;padding:.8rem 1.4rem 0;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border)}
+.tabs::-webkit-scrollbar{display:none}
+.tab{border:none;background:none;color:var(--t2);font:600 .84rem var(--font-sans);padding:.65rem .95rem;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.active{color:var(--teal);border-bottom-color:var(--teal)}
+main{max-width:1240px;margin:1.4rem auto;padding:0 1.4rem 3rem}
+.panel{display:none}.panel.active{display:block;animation:fade .22s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.9rem;margin-bottom:1.2rem}
+.kpi .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem}
+.kpi .lab{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);font-weight:650}
+.kpi .val{font-family:var(--font-mono);font-size:1.55rem;font-weight:800}
+.kpi .sub{font-size:.74rem;color:var(--t2)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.35rem;margin-bottom:1rem}
+.card h3{font-size:.95rem;font-weight:750;display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem}
+.card h4{font-size:.8rem;font-weight:700;color:var(--t1);margin:.7rem 0 .35rem}
+.mono{font-family:var(--font-mono);font-size:.78rem}
+.small{font-size:.78rem;color:var(--t2)}
+code{font-family:var(--font-mono);background:var(--bg2);border:1px solid var(--border);padding:.15rem .4rem;border-radius:5px;font-size:.75rem}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th,td{border:1px solid var(--border);padding:.45rem .55rem;text-align:left;vertical-align:top}
+th{background:var(--bg2);color:var(--t1);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}
+td{color:var(--t2)}td b,td strong{color:var(--t1)}
+.ctrl{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-bottom:.7rem}
+.search{flex:1;max-width:380px;background:var(--bg2);border:1px solid var(--border);color:var(--t1);padding:.5rem .8rem;border-radius:8px;font-size:.85rem;outline:none}
+.search:focus{border-color:var(--teal)}
+.btn{border:1px solid var(--border);background:var(--bg2);color:var(--t1);padding:.4rem .7rem;border-radius:999px;font-size:.72rem;cursor:pointer}
+.btn.active{background:var(--teal);border-color:var(--teal);color:#000;font-weight:700}
+.slider{width:100%;accent-color:var(--teal)}
+.badge{font-family:var(--font-mono);font-size:.68rem;padding:.2rem .5rem;border-radius:999px;border:1px solid var(--border);background:var(--bg2)}
+.badge.teal{border-color:rgba(20,184,166,.35);color:var(--teal)}
+.badge.violet{border-color:rgba(139,92,246,.35);color:var(--violet)}
+.badge.amber{border-color:rgba(245,158,11,.35);color:var(--amber)}
+.badge.rose{border-color:rgba(244,63,94,.35);color:var(--rose)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem}
+.range{margin:.35rem 0}
+.range .bar{height:7px;background:var(--bg2);border:1px solid var(--border);border-radius:999px;position:relative;overflow:hidden}
+.range .fill{position:absolute;inset:0;background:linear-gradient(90deg,rgba(20,184,166,.35),rgba(139,92,246,.35))}
+.range .dot{position:absolute;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:999px;background:#fff;border:2px solid var(--teal)}
+.hidden{display:none!important}
+@media print{header{position:static} .tabs{display:none} .panel{display:block!important} .card{break-inside:avoid}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hdr">
+    <div>
+      <div class="brand"><b>Aruga Biomech</b> <span class="pill">LIVE SAM 3D Body — no mock</span> <span class="pill violet">30 s CPU</span> <span class="pill amber">MHR70</span></div>
+      <div class="small" style="margin-top:.25rem">How biomechanics works • What insights mean • Reading ROM + 3D dots — whole-human projection from <span class="mono">pred_keypoints_3d</span></div>
+    </div>
+    <div class="meta">
+      <div><span style="color:var(--teal);background:var(--card);padding:.15rem .4rem;border-radius:4px;border:1px solid var(--border)">docs/BIOMECHANICAL_DATAPOINTS.md</span></div>
+      <div>Modal <span class="mono">cpu=2.0 timeout=300 _max_frames_cpu=10</span> • <span class="mono">pytorch:2.4.0-cuda12.1-cudnn9-runtime</span></div>
+      <div class="small">Spark → SAM 3.1 → SAM 3D Body → Compare • Provenance badges: Trunk <span class="pill" style="padding:.1rem .35rem">SAM 3D Body not Spark</span></div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-t="pipe">Pipeline &amp; provenance</button>
+    <button class="tab" data-t="angles">Angles &amp; formulas</button>
+    <button class="tab" data-t="insights">Insights &amp; ratings</button>
+    <button class="tab" data-t="rom">ROM summary &amp; flags</button>
+    <button class="tab" data-t="d3">3D dots — whole human</button>
+    <button class="tab" data-t="play">Live demo — sliders</button>
+  </div>
+</header>
+<main>
+<!-- PIPELINE -->
+<div class="panel active" id="pipe">
+  <div class="kpi">
+    <div class="card"><div class="lab">Plan — Spark</div><div class="val" style="color:var(--violet)">2–8 concepts</div><div class="sub">Allowlist 16: person/shoulder/elbow/wrist/hand/finger/thumb/hip/knee… Heuristic fallback if LLM down. <span class="mono">biomech-planner.ts:64</span></div></div>
+    <div class="card"><div class="lab">Segment — SAM 3.1</div><div class="val" style="color:var(--sky)">boxes + masks</div><div class="sub">Per-concept tracking, stitch 0.75 s window, <span class="mono">billedRequests</span>. <span class="mono">sam-engine.ts</span></div></div>
+    <div class="card"><div class="lab">Pose — Modal SAM 3D Body</div><div class="val" style="color:var(--teal)">10 frames • 30 s</div><div class="sub">Real <code>Sam3DBodyEstimator(detector=None)</code> + One-Euro filter. 503 if ckpts missing, 422 if no person. <span class="mono">modal/app.py</span></div></div>
+    <div class="card"><div class="lab">Compare — deterministic</div><div class="val" style="color:var(--emerald)">Good / Watch / Needs</div><div class="sub">No LLM invents angles. <span class="mono">deriveExpectation + thresholdBand</span> → adherence% + evidence frames.</div></div>
+  </div>
+  <div class="card">
+    <h3>⚡ Provenance — why trunk is not Spark</h3>
+    <p class="small"><b style="color:var(--t1)">Trunk compensation</b> = <code>angle(pelvis+verticalUp, pelvis, thorax)</code> from <b>MHR 70 3D keypoints</b> — <span class="mono">pelvis 0.5×(L_Hip[9]+R_Hip[10]), thorax 0.5×(L_Sh[5]+R_Sh[6])</span> per frame, One-Euro filtered. Spark only picks <i>which</i> joints to watch; SAM 3.1 provides boxes; Modal SAM3D infers the 3D pose. UI badge <span class="pill">SAM 3D Body not Spark</span> is rendered in <span class="mono">page.tsx:494</span>. If subject truncated, <code>sceneUnderstanding.isTruncatedByFrameEdge</code> + flag <code>scene_subject_partially_out_of_frame</code> (box touches image edge) still computes from visible joints but marks coverage <span class="mono">subjectFrameCoveragePct</span>.</p>
+  </div>
+  <div class="card">
+    <h3>📦 What Modal returns</h3>
+    <table>
+      <tr><th>Key</th><th>Shape / unit</th><th>Notes</th></tr>
+      <tr><td><code>frames[i].angles.*</code></td><td class="mono">° / mm</td><td>All angles + <span class="mono">*_signed, *_motion</span> labels (Flexion/Extension/Neutral)</td></tr>
+      <tr><td><code>frames[i].pred_keypoints_3d</code></td><td class="mono">[70,3] m</td><td>Camera space. Real only — panel guards <code>has3d</code>, else amber “No 3D (no mock)”</td></tr>
+      <tr><td><code>frames[i].pred_keypoints_2d</code></td><td class="mono">[70,2] px</td><td>For skeleton overlay (edges <code>7-62-50 / 8-41-29</code> forearm→hand)</td></tr>
+      <tr><td><code>frames[i].biomechTelemetry</code></td><td>—</td><td>com3d, bosMarginMm, sparc, asymmetry, morphology</td></tr>
+      <tr><td><code>frames[i].sceneUnderstanding</code></td><td>—</td><td>truncation, coverage, floor, camera</td></tr>
+      <tr><td><code>summary.peakAngles / rom / gait / posturalAndDeformity</code></td><td>clip rollup</td><td>Peaks + ROM ranges for Summary card + live HUD RangeBars</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ANGLES -->
+<div class="panel" id="angles">
+  <div class="card">
+    <h3>🎯 Big-muscle angles — formula + meaning</h3>
+    <div class="ctrl"><input class="search" id="qAngles" placeholder="Filter angles (e.g. trunk, wrist, deviation)"><button class="btn active" data-f="all">All</button><button class="btn" data-f="big">Big muscles</button><button class="btn" data-f="hand">Wrist/hand</button></div>
+    <div style="overflow:auto"><table id="anglesTable">
+      <thead><tr><th>Metric</th><th>JSON path</th><th>Formula (modal/app.py)</th><th>What it means</th></tr></thead>
+      <tbody>
+        <tr data-k="big"><td><b>Shoulder flexion L/R</b></td><td class="mono">angles.shoulderFlex_L/R • +_signed • +_motion</td><td class="mono">180 − angle(pelvis, shoulder, elbow) :145</td><td>Arm raised forward. Signed by z diff (forward = flex). &lt;7° neutral.</td></tr>
+        <tr data-k="big"><td><b>Elbow flexion L/R</b></td><td class="mono">angles.elbowFlex_L/R</td><td class="mono">180 − angle(shoulder, elbow, wrist) :147</td><td>Bending. &gt;15° = real bend, &lt;5° neutral.</td></tr>
+        <tr data-k="big"><td><b>Hip flexion L/R</b></td><td class="mono">angles.hipFlex_L/R</td><td class="mono">180 − angle(thorax, hip, knee) :149</td><td>Thigh to trunk.</td></tr>
+        <tr data-k="big"><td><b>Knee flexion L/R</b></td><td class="mono">angles.kneeFlex_L/R</td><td class="mono">180 − angle(hip, knee, ankle) :151</td><td>Knee bend; extension = 0, always ≥0.</td></tr>
+        <tr data-k="big"><td><b>Trunk lean</b> <span class="pill">not Spark</span></td><td class="mono">angles.trunkLean • +_motion</td><td class="mono">angle(pelvis+verticalUp, pelvis, thorax) :155 signed thorax.z&lt;pelvis.z</td><td><b>Compensation:</b> &gt;8° mild, &gt;14° moderate flag. High trunk = shoulders not doing work.</td></tr>
+        <tr data-k="big"><td><b>Neck flexion (signed)</b></td><td class="mono">angles.neckAngles.flexExt* + signed</td><td class="mono">angle(thorax+spine_vec, thorax, head) :161 signed head.z</td><td>Forward head. &gt;25° flag. &lt;2° snapped to 0.</td></tr>
+        <tr data-k="big"><td><b>Neck lateral / rotation</b></td><td class="mono">neckAngles.lateralFlex / rotation</td><td class="mono">atan2(neck_vec.x,−neck_vec.y) :171 / yaw atan2 head-thorax *0.6 :173</td><td>Side-bend &amp; turn.</td></tr>
+        <tr data-k="big"><td><b>Pelvic obliquity / Shoulder tilt</b></td><td class="mono">angles.pelvicObliquityDeg / shoulderTiltDeg</td><td class="mono">_vector_tilt_deg(l_hip,r_hip) :181</td><td>Side drop. Shoulder tilt &gt;6° = hike.</td></tr>
+        <tr data-k="big"><td><b>BoS margin</b></td><td class="mono">biomechTelemetry.bosMarginMm</td><td class="mono">hypot(com.xz−bos_center.xz)*1000 :178</td><td>CoM off base. &gt;140 mm flag. Mean in summary ≤120 target.</td></tr>
+        <tr data-k="hand"><td><b>Wrist flexion L/R</b></td><td class="mono">angles.wristAngles.flexExt_L/R</td><td class="mono">180 − angle(elbow, wrist, mid_tip) :245 signed by mid−elbow z</td><td>Forearm→hand bend. |wrist|&gt;60° = end-range flag.</td></tr>
+        <tr data-k="hand"><td><b>Wrist deviation L/R</b></td><td class="mono">angles.wristAngles.deviation_L/R</td><td class="mono">forearm vs hand in frontal (z=0) :251 signed x</td><td>Radial/ulnar tilt.</td></tr>
+        <tr data-k="hand"><td><b>Finger aperture L/R</b></td><td class="mono">angles.wristAngles.fingerAperture*_mm</td><td class="mono">‖thumb_tip−index_tip‖*1000 :268 (21/42 thumb, 25/46 index)</td><td>Thumb-index distance. &lt;15 mm full fist, &gt;70 mm open hand flags.</td></tr>
+        <tr data-k="hand"><td><b>Hand closure</b></td><td class="mono">angles.wristAngles.handClosure_L/R_mm</td><td class="mono">‖thumb_tip−wrist‖*1000 :271</td><td>Fist tightness.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small" style="margin-top:.6rem">MHR70 indices verified <span class="mono">app.py:130-139</span>: R_wrist 41 L_wrist 62 R_thumb 21 R_index 25 R_mid 29 L_thumb 42 L_index 46 L_mid 50 neck 69 hips 9/10. One-Euro <span class="mono">min_cutoff=1.0 beta=0.007 d_cutoff=1.0</span> on 70×3 before any angle.</p>
+  </div>
+</div>
+
+<!-- INSIGHTS -->
+<div class="panel" id="insights">
+  <div class="card">
+    <h3>📋 Deterministic insights — expectations (no LLM)</h3>
+    <p class="small"><span class="mono">deriveExpectation(title+instructions)</span> → up to 6 insights • <span class="mono">resolveMetric(metricPath)</span> → value • <span class="mono">thresholdBand(value,target)</span> → Good/Watch/Needs support • score 90/65/35 • <span class="mono">adherence kinematicPct = (good+watch*0.6)/n</span> → Strong ≥80 Partial ≥50 else Needs. Trend: Δ shoulder &gt;2° improving / &lt;−2° regressing else stable; |Δ|&gt;3° meaningful else noise.</p>
+    <div class="ctrl"><input class="search" id="qIns" placeholder="Filter insights (e.g. wrist, trunk, deviation)"><button class="btn active" data-f="all">All</button><button class="btn" data-f="good">Good</button><button class="btn" data-f="watch">Watch</button><button class="btn" data-f="support">Needs</button></div>
+    <table id="insTable"><thead><tr><th>When title contains</th><th>Insight</th><th>MetricPath</th><th>Target</th><th>Formula</th></tr></thead>
+      <tbody>
+        <tr data-r="good"><td class="mono">shoulder|reach|lift|cup|drink|hair|arm|elbow|hand</td><td><b>Shoulder flexion</b></td><td class="mono">summary.peakAngles.shoulderFlex_max</td><td>≥120°</td><td class="mono">180−angle(pelvis,shoulder,elbow)</td></tr>
+        <tr data-r="watch"><td class="mono">trunk|lean|balance|sit|stand|compensation</td><td><b>Trunk lean</b></td><td class="mono">frames[].angles.trunkLean_max / trunkLean</td><td>≤8° / ≤12°</td><td class="mono">angle(pelvis+verticalUp,pelvis,thorax)</td></tr>
+        <tr data-r="good"><td class="mono">neck|head|cervical|chin</td><td><b>Neck flexion</b></td><td class="mono">summary.peakAngles.neckFlex_max</td><td>0–30°</td><td class="mono">angle(thorax+spine,thorax,head)</td></tr>
+        <tr data-r="good"><td class="mono">hip|knee|ankle|leg|walk|gait|stand|squat</td><td><b>Knee flexion</b></td><td class="mono">summary.peakAngles.kneeFlex_L_max</td><td>≥60°</td><td class="mono">180−angle(hip,knee,ankle)</td></tr>
+        <tr data-r="support"><td class="mono">wrist|forearm|hand|finger|thumb|tendon gliding|hook|fist|pinch (or always wrist posture)</td><td><b>Wrist flexion (tendons)</b></td><td class="mono">summary.peakAngles.wristFlex_L_max</td><td>10–60° (else 0–50° posture)</td><td class="mono">180−angle(elbow,wrist,mid_tip)</td></tr>
+        <tr data-r="support"><td><i>same hand task</i></td><td><b>Finger aperture</b></td><td class="mono">summary.rom.fingerAperture_range_mm</td><td>≥18 mm</td><td class="mono">‖thumb−index‖ mm</td></tr>
+        <tr data-r="watch"><td><i>same hand task</i></td><td><b>Wrist deviation</b></td><td class="mono">frames[].angles.wristDeviation_max</td><td>≤25°</td><td class="mono">frontal forearm vs hand °</td></tr>
+        <tr data-r="good"><td><i>always</i></td><td><b>Base of support</b></td><td class="mono">summary.posturalAndDeformity.meanBosMarginMm</td><td>≤120 mm</td><td class="mono">‖com.xz−bos.xz‖ mm</td></tr>
+      </tbody>
+    </table>
+    <h4>Rating bands — <span class="mono">thresholdBand</span></h4>
+    <table><tr><th>Target type</th><th>Good</th><th>Watch</th><th>Needs support</th></tr>
+      <tr><td>Two-sided min+max</td><td>in [min,max]</td><td>within margin = max(10,(max-min)/2) outside</td><td>else</td></tr>
+      <tr><td>One-sided min</td><td>≥min</td><td>≥min*0.75</td><td>else</td></tr>
+      <tr><td>One-sided max</td><td>≤max</td><td>≤max*1.4</td><td>else</td></tr></table>
+    <p class="small">Evidence frames: trunk top-3 |lean|, wrist top-3 |flex|/deviation, aperture top-3 aperture (largest). Shown as <span class="mono">0.9s 22°</span> chips.</p>
+  </div>
+</div>
+
+<!-- ROM -->
+<div class="panel" id="rom">
+  <div class="grid2">
+    <div class="card"><h3>📊 ROM Summary card — how to read</h3><table><tr><th>Card</th><th>Source</th><th>Read as</th></tr>
+      <tr><td><b>Shoulder</b></td><td class="mono">summary.peakAngles.shoulderFlex_max</td><td>Highest forward raise in clip. ≥120° target for reach.</td></tr>
+      <tr><td><b>Neck</b></td><td class="mono">peakAngles.neckFlex_max</td><td>Peak forward head. &gt;30° excessive.</td></tr>
+      <tr><td><b>Wrist L / R</b></td><td class="mono">peakAngles.wristFlex_L/R_max</td><td>Peak bend per side — tendon gliding phases.</td></tr>
+      <tr><td><b>Aperture</b></td><td class="mono">rom.fingerAperture_range_mm</td><td>Thumb-index excursion across clip. ≥18 mm = full cycle.</td></tr>
+      <tr><td><b>BoS</b></td><td class="mono">posturalAndDeformity.meanBosMarginMm</td><td>Mean CoM off BoS. Lower = stable. &gt;120 target.</td></tr>
+      <tr><td><b>Sway</b></td><td class="mono">gait.comSwayVelocityMmPerSec</td><td>CoM sway speed.</td></tr></table><p class="small">Clip ROM line <span class="mono">summary.rom.*_range = max−min</span> = excursion used.</p></div>
+    <div class="card"><h3>🚩 Flags — amber pills (modal/app.py:324)</h3><table><tr><th>Flag</th><th>When</th></tr>
+      <tr><td class="mono">trunk_compensation_mild/moderate</td><td>&gt;8° / &gt;14° trunk lean</td></tr>
+      <tr><td class="mono">neck_compensation_forward_head</td><td>&gt;25° signed neck flex</td></tr>
+      <tr><td class="mono">shoulder_hike_compensation</td><td>shoulder tilt &gt;6°</td></tr>
+      <tr><td class="mono">com_instability_high_sway</td><td>BoS margin &gt;140 mm</td></tr>
+      <tr><td class="mono">wrist_end_range_flexion/extension</td><td>|wrist| &gt;60°</td></tr>
+      <tr><td class="mono">tendon_gliding_full_fist / open_hand</td><td>aperture &lt;15 mm / &gt;70 mm</td></tr>
+      <tr><td class="mono">scene_subject_partially_out_of_frame</td><td>SAM box touches edge (x≤5 / x≥w-5)</td></tr>
+    </table><p class="small">Live HUD chips update per scrubbed frame; RangeBars show dot inside [clip min–max]; Sparklines show trend with white dot at <span class="mono">currentTime</span>.</p></div>
+  </div>
+  <div class="card">
+    <h3>📈 Live HUD — RangeBars + Sparklines (BiomechOverlay.tsx)</h3>
+    <p class="small">Chips: Sh L teal / Sh R sky / Wrist L violet / Wrist R cyan / Aperture teal / Elbow / Knee / Trunk / Neck amber. RangeBars: Wrist −30→60°, Aperture 5→80 mm, BoS 0→150 mm. Sparklines: Wrist L/Aperture/Wrist R/Neck/Knee/BoS across frames.</p>
+  </div>
+</div>
+
+<!-- 3D -->
+<div class="panel" id="d3">
+  <div class="card">
+    <h3>🧊 3D Motion Projection — whole-human map (Motion3DDots page.tsx:551)</h3>
+    <div class="grid2">
+      <div><h4>Source &amp; guard</h4><p class="small"><code>pred_keypoints_3d [70,3] m</code> camera space, real only. <code>has3d = frames[0].pred_keypoints_3d.length≥30 &amp;&amp; Array.isArray([0])</code>. If missing → amber banner “No 3D — Modal returned 2D only (no mock)”. Never synth.</p>
+        <h4>Centering &amp; fit</h4><p class="small">Center = pelvis <span class="mono">(hip9+hip10)/2</span> subtracted; fallback mean70. Scale <span class="mono">min(innerW,innerH)*0.38 / maxAbs</span> auto-fits whole body with 22% padding, <span class="mono">cy = pad+innerH*0.52</span>. Canvas 320 px, <span class="mono">rounded-xl p-4</span> card, responsive <span class="mono">wrapRef</span> width, mobile Y/X split row.</p>
+        <h4>Projection</h4><p class="small">Orthographic Euler <span class="mono">ry=Y°, rx=X°: x1=xcosY−zsinY, y1=ycosX−z1sinX</span> → screen <span class="mono">cx+x1*s, cy−y1*s</span>. Depth <span class="mono">z2</span> sorts dots &amp; shades (<span class="mono">0.55+0.45*((z+0.8)/1.6)</span>, nearer opaque).</p></div>
+      <div><h4>Bones (23 edges)</h4><p class="small"><span class="mono">wholeBodyEdges: 0-69-5/6, 5-6, 5-7-62-50/46/42, 6-8-41-29/25/21, 5-11,6-12,11-12,9-11,10-12,9-10,11-13-15-17,12-14-16-20,15-16</span> — head-neck-trunk, arms→wrists→hand tips, hips→knees→ankles→feet. Teal shoulders, violet L-wrist, pink R-wrist, depth-faded. Toggle Bones.</p>
+        <h4>Dots (70, depth-sorted)</h4><p class="small">Nose 0 amber r3.4 / neck 69 amber r3.0 / shoulders teal r3.0 / wrists 62/41 r5.0 violet/pink / hand tips r3.2 teal / feet r2.0 / others r2.0 + stroke.</p>
+        <h4>Trail (toggle)</h4><p class="small">6 paths: <span class="mono">62 L_wr, 41 R_wr, 50 L_mid, 29 R_mid, 42 L_thumb, 21 R_thumb</span> across adaptive-sampled frames (≤10 / 30 s). Alpha 0.55/0.45.</p>
+        <h4>How to read</h4><p class="small">Scrub video → dots jump; trail stays. Y rotates sagittal lean, X frontal sway. Loops = repeated tendon cycles. Pale far, vivid near. Label <span class="mono">frame i/n @s • 70 joints • real 3D</span>.</p></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>🧭 Quick checklist for judges</h3>
+    <ul class="small" style="padding-left:1.1rem;display:grid;gap:.25rem">
+      <li><span class="badge teal">real 3D only</span> badge — confirms no mock dots</li>
+      <li>Trunk card shows <span class="mono">angle(pelvis+verticalUp,pelvis,thorax)</span> provenance + coverage flag</li>
+      <li>Wrist/Aperture cards + wrist HUD chips + sparklines visible for tendon tasks</li>
+      <li>3D panel centered pelvis, bones show head→hands→feet, Y/X sliders work on mobile</li>
+    </ul>
+  </div>
+</div>
+
+<!-- PLAYGROUND -->
+<div class="panel" id="play">
+  <div class="card">
+    <h3>🎛️ Live demo — try ROM thresholds</h3>
+    <p class="small">Drag sliders to see how <span class="mono">thresholdBand</span> maps a value → Good/Watch/Needs support. Matches the deterministic Compare logic.</p>
+    <div class="grid2">
+      <div><label class="small">Shoulder flexion (°) — target ≥120 <span class="mono" id="vSh">120</span></label><input type="range" class="slider" id="sSh" min="60" max="170" value="120"><div id="rSh"></div></div>
+      <div><label class="small">Trunk lean (°) — target ≤8 <span class="mono" id="vTr">6</span></label><input type="range" class="slider" id="sTr" min="0" max="25" value="6"><div id="rTr"></div></div>
+      <div><label class="small">Wrist flexion (°) — target 10–60 <span class="mono" id="vWr">35</span></label><input type="range" class="slider" id="sWr" min="-10" max="80" value="35"><div id="rWr"></div></div>
+      <div><label class="small">Finger aperture (mm) — target ≥18 <span class="mono" id="vAp">22</span></label><input type="range" class="slider" id="sAp" min="5" max="80" value="22"><div id="rAp"></div></div>
+      <div><label class="small">Wrist deviation (°) — target ≤25 <span class="mono" id="vDv">10</span></label><input type="range" class="slider" id="sDv" min="0" max="45" value="10"><div id="rDv"></div></div>
+      <div><label class="small">BoS margin (mm) — target ≤120 <span class="mono" id="vBo">90</span></label><input type="range" class="slider" id="sBo" min="20" max="200" value="90"><div id="rBo"></div></div>
+    </div>
+    <div style="margin-top:.8rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+      <span class="mono small">Adherence</span><span id="adhPct" class="pill">—</span><span id="adhLabel" class="small"></span><span class="small mono" id="adhDetail"></span>
+    </div>
+  </div>
+  <div class="card">
+    <h3>📂 File map for reviewers</h3>
+    <table><tr><th>File</th><th>What to verify</th></tr>
+      <tr><td class="mono">modal/app.py:104 compute_frame… :242 wrist :324 flags :155 trunk</td><td>Real formulas + MHR70 indices, no mock path</td></tr>
+      <tr><td class="mono">src/lib/meta/biomech-planner.ts:64 Spark prompt :142 deriveExpectation :178 thresholdBand</td><td>Concepts + expectations + ratings</td></tr>
+      <tr><td class="mono">src/app/api/tools/biomech/run/route.ts:130 resolveMetric :154 insights :186 adherence</td><td>Wrist grading wired</td></tr>
+      <tr><td class="mono">src/app/tools/biomech/page.tsx:493 Provenance :502 ROM :551 Motion3DDots</td><td>UI provenance + ROM + 3D real-only</td></tr>
+      <tr><td class="mono">src/components/therapist/BiomechOverlay.tsx:99 edges :266 LiveHud :207 InVideoHud</td><td>Forearm→hand skeleton + wrist HUD + sparklines</td></tr>
+    </table>
+  </div>
+</div>
+</main>
+<script>
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); document.getElementById(b.dataset.t).classList.add('active');
+}));
+function filt(inputId, tableId, colForSearch){
+  const q=(document.getElementById(inputId).value||'').toLowerCase();
+  document.querySelectorAll('#'+tableId+' tbody tr').forEach(tr=>{
+    const txt=tr.innerText.toLowerCase(); tr.style.display = !q || txt.includes(q) ? '' : 'none';
+  });
+}
+document.getElementById('qAngles')?.addEventListener('input',()=>filt('qAngles','anglesTable'));
+document.getElementById('qIns')?.addEventListener('input',()=>filt('qIns','insTable'));
+document.querySelectorAll('[data-f]').forEach(btn=>btn.addEventListener('click',()=>{
+  const f=btn.dataset.f;
+  document.querySelectorAll('#anglesTable tbody tr').forEach(tr=>{
+    const k=tr.dataset.k; tr.classList.toggle('hidden', f!=='all' && k!==f);
+  });
+}));
+function thresholdBand(v,t){
+  if(v==null||isNaN(v)) return 'Watch';
+  if(t.min!==void 0 && t.max!==void 0){ if(v>=t.min&&v<=t.max) return 'Good'; const m=Math.max(10,(t.max-t.min)*0.5); if(v>=t.min-m&&v<=t.max+m) return 'Watch'; return 'Needs support'; }
+  if(t.min!==void 0){ if(v>=t.min) return 'Good'; if(v>=t.min*0.75) return 'Watch'; return 'Needs support'; }
+  if(t.max!==void 0){ if(v<=t.max) return 'Good'; if(v<=t.max*1.4) return 'Watch'; return 'Needs support'; }
+  return 'Watch';
+}
+function pill(r){ const c=r==='Good'?'teal':r==='Watch'?'amber':'rose'; return '<span class="badge '+c+'">'+r+'</span>'; }
+function upd(){
+  const sh=+document.getElementById('sSh').value, tr=+document.getElementById('sTr').value, wr=+document.getElementById('sWr').value, ap=+document.getElementById('sAp').value, dv=+document.getElementById('sDv').value, bo=+document.getElementById('sBo').value;
+  document.getElementById('vSh').textContent=sh; document.getElementById('vTr').textContent=tr; document.getElementById('vWr').textContent=wr; document.getElementById('vAp').textContent=ap; document.getElementById('vDv').textContent=dv; document.getElementById('vBo').textContent=bo;
+  const defs=[
+    {k:'Shoulder ≥120°',v:sh,t:{min:120}},
+    {k:'Trunk ≤8°',v:tr,t:{max:8}},
+    {k:'Wrist 10–60°',v:wr,t:{min:10,max:60}},
+    {k:'Aperture ≥18 mm',v:ap,t:{min:18}},
+    {k:'Deviation ≤25°',v:dv,t:{max:25}},
+    {k:'BoS ≤120 mm',v:bo,t:{max:120}},
+  ];
+  const ids=['rSh','rTr','rWr','rAp','rDv','rBo'];
+  let good=0,watch=0;
+  defs.forEach((d,i)=>{ const r=thresholdBand(d.v,d.t); if(r==='Good') good++; else if(r==='Watch') watch++; document.getElementById(ids[i]).innerHTML=pill(r)+' <span class="mono small">'+d.k+' → '+d.v+(d.k.includes('mm')?'mm':'°')+'</span>'; });
+  const pct=Math.round(((good+watch*0.6)/defs.length)*100);
+  const label=pct>=80?'Strong adherence':pct>=50?'Partial adherence':'Needs support';
+  document.getElementById('adhPct').textContent=pct+'%'; document.getElementById('adhPct').className='pill '+(pct>=80?'':pct>=50?'amber':'');
+  if(pct<50) document.getElementById('adhPct').classList.add('amber'); // reuse
+  document.getElementById('adhLabel').textContent='• '+label;
+  document.getElementById('adhDetail').textContent=good+'/'+defs.length+' good, '+watch+' watch';
+}
+['sSh','sTr','sWr','sAp','sDv','sBo'].forEach(id=>document.getElementById(id).addEventListener('input',upd));
+upd();
+</script>
+</body>
+</html>

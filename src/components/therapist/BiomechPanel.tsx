@@ -43,7 +43,7 @@ export function BiomechPanel({ mhr, onInsertObjective }: Props) {
       {onInsertObjective && (
         <Button size="sm" variant="outline" className="h-7 text-xs border-zinc-700" onClick={()=> onInsertObjective(`Movement check: shoulder ${mhr.summary.peakAngles?.shoulderFlex_max ?? "—"}°, neck ${mhr.summary.peakAngles?.neckFlex_max ?? "—"}° — ${mhr.flags.length ? mhr.flags.join(", ").replace(/_/g," ") : "looked steady"}`)}>Add to notes</Button>
       )}
-      <p className="text-[10px] text-zinc-500 italic">Draft for your therapist to confirm.</p>
+      <p className="text-[10px] text-zinc-500 italic">Draft — review before publishing.</p>
     </Card>
   );
 }

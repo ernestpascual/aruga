@@ -15,6 +15,10 @@ interface SoapSummaryPayload {
   plan?: string;
   clientName?: string;
   forceRegenerate?: boolean;
+  overallFeedback?: string;
+  stepReviewsText?: string;
+  biomechSummary?: string;
+  mode?: "soap_plain" | "overall_feedback";
 }
 
 function cleanText(txt?: string | null): string {
@@ -27,6 +31,52 @@ function cleanText(txt?: string | null): string {
  * Used when AI endpoint is disabled, offline, or fallback mode,
  * ensuring reliable, instant translation of clinical jargon into patient-friendly takeaways.
  */
+function synthesizeOverallFeedbackSummary(params: {
+  overallFeedback?: string;
+  subjective?: string;
+  objective?: string;
+  assessment?: string;
+  plan?: string;
+  stepReviewsText?: string;
+  biomechSummary?: string;
+  clientName?: string;
+}): string {
+  const nameGreeting = params.clientName ? `${params.clientName.split(" ")[0]}, ` : "";
+  const verbatim = cleanText(params.overallFeedback);
+  const o = cleanText(params.objective);
+  const a = cleanText(params.assessment);
+  const bio = cleanText(params.biomechSummary);
+  const stepText = cleanText(params.stepReviewsText);
+  const p = cleanText(params.plan);
+
+  // Fallback when AI is unavailable — informational but still plain
+  let para1 = `${nameGreeting}you did a great job in this session. `;
+  if (bio) {
+    para1 += `Your video movement analysis showed: ${bio.slice(0, 240)}. `;
+  } else if (o) {
+    const first = o.split(".")[0].slice(0, 150);
+    para1 += `In your performance, ${first.toLowerCase()}. `;
+  }
+  if (a) {
+    const firstA = a.split(".")[0].slice(0, 130);
+    para1 += `${firstA}. `;
+  }
+  let para2 = "";
+  if (stepText) {
+    const firstStep = stepText.split("\n")[0].slice(0, 150);
+    para2 += `Your therapist’s step guidance: ${firstStep}. `;
+  }
+  if (p) {
+    const firstPlan = p.split(".")[0].slice(0, 140);
+    para2 += `What to keep practicing: ${firstPlan.toLowerCase()}. `;
+  } else {
+    para2 += `Keep practicing gently and let your therapist know if anything feels strained. `;
+  }
+  let out = `${para1.trim()}\n\n${para2.trim()}`;
+  if (verbatim) out += `\n\nYour therapist wrote: “${verbatim.slice(0, 180).replace(/\n/g, " ")}”`;
+  return out.trim();
+}
+
 function synthesizePlainLanguageSummary(params: {
   subjective?: string;
   objective?: string;
@@ -145,6 +195,10 @@ export async function POST(req: NextRequest) {
       plan = "",
       clientName = "",
       forceRegenerate = false,
+      overallFeedback = "",
+      stepReviewsText = "",
+      biomechSummary = "",
+      mode = "soap_plain",
     } = body;
 
     const admin = createAdminClient();
@@ -197,32 +251,52 @@ export async function POST(req: NextRequest) {
       try {
         const client = createMetaOpenAiClient();
 
-        // HIPAA Safe Harbor: de-identify clinical text before third-party LLM transmission
         const safeSubjective = deidentifyClinicalText(subjective || "", { clientName });
         const safeObjective = deidentifyClinicalText(objective || "", { clientName });
         const safeAssessment = deidentifyClinicalText(assessment || "", { clientName });
         const safePlan = deidentifyClinicalText(plan || "", { clientName });
+        const safeOverall = deidentifyClinicalText(overallFeedback || "", { clientName });
+        const safeStep = deidentifyClinicalText(stepReviewsText || "", { clientName });
+        const safeBio = deidentifyClinicalText(biomechSummary || "", { clientName });
 
-        const response = await client.chat.completions.create({
-          model: models.spark,
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are an empathetic Occupational Therapist communicating directly with a patient and their family. Convert the provided clinical SOAP notes into a simple, 2-3 sentence summary in plain, easy-to-understand language. Focus on what improved, celebrate their dedication, and clearly explain what to practice or remember next. Do not use confusing clinical jargon.",
-            },
-            {
-              role: "user",
-              content: `Client: Client\n\nClinical SOAP Notes (De-Identified):\n- Subjective: ${safeSubjective}\n- Objective: ${safeObjective}\n- Assessment: ${safeAssessment}\n- Plan: ${safePlan}\n\nGenerate the plain-English summary:`,
-            },
-          ],
-          temperature: 0.3,
-          max_tokens: 300,
-        });
-
-        const text = response.choices[0]?.message?.content;
-        if (text && text.trim().length > 0) {
-          generatedSummary = text.trim();
+        if (mode === "overall_feedback") {
+          const response = await client.chat.completions.create({
+            model: models.spark,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are an empathetic Occupational Therapist writing to a patient and family at a 6th-grade reading level. Using ONLY the provided data (clinician's verbatim overall feedback, SOAP notes, step-by-step therapist guidance, and optional video movement analysis + worksheet completion), write an informational but easy-to-understand summary. Structure it as 2 short paragraphs (4-6 sentences total): 1) What you did well and what the video/movement analysis showed, 2) What to keep practicing and any simple caution. Use plain words, no jargon. Be specific where data gives numbers (e.g., shoulder lift, wrist control) but explain them simply. Warm and encouraging. Do not invent facts not in the input. If overall feedback is provided, close with a new line: Your therapist wrote: \"[verbatim, 1 sentence trimmed]\".",
+              },
+              {
+                role: "user",
+                content: `Overall feedback (verbatim, de-identified): ${safeOverall}\nSOAP — Subjective: ${safeSubjective}\nObjective: ${safeObjective}\nAssessment: ${safeAssessment}\nPlan: ${safePlan}\nStep-by-step therapist guidance: ${safeStep}\nVideo movement analysis / worksheet completion (if any): ${safeBio}\n\nWrite the informational, easy-to-understand session summary (4-6 sentences, plain English, with verbatim quote at end if provided):`,
+              },
+            ],
+            temperature: 0.35,
+            max_tokens: 550,
+          });
+          const text = response.choices[0]?.message?.content;
+          if (text && text.trim().length > 0) generatedSummary = text.trim();
+        } else {
+          const response = await client.chat.completions.create({
+            model: models.spark,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are an empathetic Occupational Therapist communicating directly with a patient and their family. Convert the provided clinical SOAP notes into a simple, 2-3 sentence summary in plain, easy-to-understand language. Focus on what improved, celebrate their dedication, and clearly explain what to practice or remember next. Do not use confusing clinical jargon.",
+              },
+              {
+                role: "user",
+                content: `Client: Client\n\nClinical SOAP Notes (De-Identified):\n- Subjective: ${safeSubjective}\n- Objective: ${safeObjective}\n- Assessment: ${safeAssessment}\n- Plan: ${safePlan}\n\nGenerate the plain-English summary:`,
+              },
+            ],
+            temperature: 0.3,
+            max_tokens: 300,
+          });
+          const text = response.choices[0]?.message?.content;
+          if (text && text.trim().length > 0) generatedSummary = text.trim();
         }
       } catch (aiErr) {
         console.warn("Live AI generation encountered error, falling back to clinical synthesis:", aiErr);
@@ -230,13 +304,26 @@ export async function POST(req: NextRequest) {
     }
 
     if (!generatedSummary) {
-      generatedSummary = synthesizePlainLanguageSummary({
-        subjective,
-        objective,
-        assessment,
-        plan,
-        clientName,
-      });
+      if (mode === "overall_feedback") {
+        generatedSummary = synthesizeOverallFeedbackSummary({
+          overallFeedback,
+          subjective,
+          objective,
+          assessment,
+          plan,
+          stepReviewsText,
+          biomechSummary,
+          clientName,
+        });
+      } else {
+        generatedSummary = synthesizePlainLanguageSummary({
+          subjective,
+          objective,
+          assessment,
+          plan,
+          clientName,
+        });
+      }
     }
 
     // STEP 3: Cache and Persist in Database so subsequent calls are 100% free
