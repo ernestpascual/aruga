@@ -1,19 +1,31 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+vi.mock("../src/lib/supabase/admin", async () => {
+  const { createFakeAdmin } = await import("./mocks/supabase-fake");
+  return { createAdminClient: () => createFakeAdmin() };
+});
+
+vi.mock("../src/lib/supabase/server", () => ({
+  createClient: async () => ({
+    auth: { getUser: async () => ({ data: { user: null }, error: null }) },
+  }),
+}));
+
 import { NextRequest } from "next/server";
 import {
   getMockStore,
   resetMockStore,
   DEMO_THERAPIST_ID,
-  DEMO_CLIENT_ID,
   DEMO_SUBMISSION_ID,
-  DEMO_REVIEW_ID,
 } from "../src/lib/supabase/mock-store";
 import { POST as clientSubmissionsPOST } from "../src/app/api/client/submissions/route";
 import { POST as therapistReviewsPOST } from "../src/app/api/therapist/reviews/route";
+import { __resetFakeAuth } from "./mocks/supabase-fake";
 
 describe("Client Submission Feedback Lock & Therapist Feedback Editing", () => {
   beforeEach(() => {
     resetMockStore();
+    __resetFakeAuth();
   });
 
   it("blocks client from editing step drafts when therapist feedback is already reviewed/published", async () => {

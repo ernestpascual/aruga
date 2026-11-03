@@ -1,375 +1,266 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Aruga — Hackathon Winning Conditions 1102260208</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hackathon Winning Conditions 1103261726 — Aruga (Judge-Local Recalibration)</title>
 <style>
-:root{--bg:#09090b;--card:#121215;--muted:#27272a;--border:#3f3f46;--text:#fafafa;--sub:#a1a1aa;--teal:#14b8a6;--teal2:#0d9488;--amber:#f59e0b;--sky:#0284c7;--emerald:#10b981;--rose:#e11d48}
-*{box-sizing:border-box;margin:0}
-body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:var(--bg);line-height:1.6}
-a{color:var(--teal)}
-.header{position:sticky;top:0;z-index:20;background:rgba(9,9,11,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
-.header-inner{max-width:1280px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.badge{font-family:JetBrains Mono,monospace;font-size:11px;letter-spacing:.08em;padding:4px 8px;border-radius:999px;border:1px solid var(--border);background:var(--card)}
-.badge.pass{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.4);color:var(--emerald)}
-.badge.teal{background:rgba(20,184,166,.12);border-color:rgba(20,184,166,.4);color:var(--teal)}
-.kpis{max-width:1280px;margin:14px auto;padding:0 16px;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-@media(max-width:900px){.kpis{grid-template-columns:repeat(3,1fr)}.tabs{overflow-x:auto}.col2{grid-template-columns:1fr!important}}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
-.kpi{position:relative;overflow:hidden}
-.kpi h3{font:11px JetBrains Mono,monospace;letter-spacing:.08em;color:var(--sub)}
-.kpi .big{font:700 22px/1 Inter;margin-top:6px}
-.kpi .sub{font-size:12px;color:var(--sub);margin-top:4px}
-.kpi .ring{position:absolute;right:-10px;top:-10px;width:80px;height:80px;border-radius:999px;border:6px solid rgba(16,185,129,.22)}
-.tabs{max-width:1280px;margin:10px auto;padding:0 16px;display:flex;gap:8px;flex-wrap:wrap}
-.tab{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:var(--card);cursor:pointer;font:600 13px Inter}
-.tab.active{background:var(--teal);color:#042f2e;border-color:transparent}
-.panel{display:none;max-width:1280px;margin:0 auto;padding:12px 16px}
-.panel.active{display:block}
-.grid{display:grid;gap:10px}
-.grid.col2{grid-template-columns:1fr 1fr}
-.grid.col3{grid-template-columns:repeat(3,1fr)}
-.table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border-radius:12px;border:1px solid var(--border)}
-.table th{font:600 12px JetBrains Mono,monospace;letter-spacing:.06em;text-align:left;padding:10px 12px;background:#18181b;color:var(--sub);border-bottom:1px solid var(--border)}
-.table td{padding:10px 12px;border-bottom:1px solid var(--muted);font-size:13px;vertical-align:top}
-.table tr:last-child td{border-bottom:none}
-.score{font-weight:800}
-.ok{color:var(--emerald)} .warn{color:var(--amber)} .bad{color:var(--rose)}
-.progress{height:8px;background:var(--muted);border-radius:999px;overflow:hidden}
-.fill{height:100%;background:var(--emerald)}
-.comparator{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.track{border:1px solid var(--border);border-radius:14px;padding:14px;background:var(--card)}
-.track.reco{outline:2px solid var(--emerald);outline-offset:2px}
-.range{width:100%}
-.pill{display:inline-block;padding:2px 8px;border-radius:999px;font:11px JetBrains Mono,monospace;border:1px solid var(--border);background:var(--card)}
-.checklist{display:grid;gap:8px}
-.item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px}
-.item input{margin-top:3px}
-.timeline{position:relative;padding-left:18px}
-.timeline::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:var(--muted);border-radius:2px}
-.step{position:relative;margin-bottom:10px}
-.step::before{content:"";position:absolute;left:-13px;top:8px;width:10px;height:10px;border-radius:999px;background:var(--teal);border:2px solid var(--bg)}
-.step .time{font:12px JetBrains Mono,monospace;color:var(--teal)}
-.mono{font-family:JetBrains Mono,monospace}
-.code{font:12px JetBrains Mono,monospace;background:#18181b;border:1px solid var(--muted);border-radius:10px;padding:10px;white-space:pre-wrap}
-details{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--card)}
-details summary{cursor:pointer;font-weight:700}
-@media print{ .header{position:static} .tabs{display:none} .panel{display:block!important} .no-print{display:none} }
+:root{--bg:#09090b;--panel:#121215;--panel2:#18181b;--line:#27272a;--teal:#14b8a6;--amber:#f59e0b;--sky:#0284c7;--red:#f87171;--txt:#e4e4e7;--mut:#a1a1aa}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.6}
+code,.mono{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;font-size:.86em;color:#5eead4}
+pre{background:#09090b;border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px;line-height:1.55;color:#d4d4d8}
+header{max-width:1100px;margin:0 auto;padding:28px 20px 8px}
+main{max-width:1100px;margin:0 auto;padding:0 20px 48px}
+h1{font-size:27px;line-height:1.25;margin:8px 0 10px}
+h2{color:var(--teal);font-size:19px;margin:26px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+h3{font-size:15px;margin:16px 0 6px;color:#fafafa}
+p,li{font-size:14.5px}
+.mut{color:var(--mut)}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;border:1px solid var(--teal);color:var(--teal);font-size:12px;margin:0 6px 6px 0}
+.badge.warn{border-color:var(--amber);color:var(--amber)}
+.badge.bad{border-color:var(--red);color:var(--red)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0}
+.card.amber{border-color:#92600a}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0}
+th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{color:var(--teal);background:var(--panel2)}
+nav{margin:14px 0 4px}
+button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer;margin:0 6px 6px 0;font-size:13.5px}
+button.on{border-color:var(--teal);color:var(--teal)}
+.tab{display:none}
+.tab.on{display:block}
+input[type=range]{width:100%;accent-color:var(--teal)}
+input[type=search]{width:100%;padding:9px 11px;background:#09090b;border:1px solid var(--line);border-radius:8px;color:var(--txt);font-size:14px}
+.bar{height:10px;background:#27272a;border-radius:99px;overflow:hidden;margin:8px 0 12px}
+.bar>i{display:block;height:100%;background:var(--teal);width:0;transition:width .3s}
+label.chk{display:block;padding:5px 0;cursor:pointer;font-size:14px}
+.chk input{accent-color:var(--teal)}
+a{color:#38bdf8}
+.score-out{font-family:'JetBrains Mono',monospace;font-size:16px;color:#5eead4}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+blockquote{border-left:3px solid var(--teal);margin:12px 0;padding:4px 14px;color:#d4d4d8;background:var(--panel)}
+@media print{body{background:#fff;color:#000}button,input[type=search]{display:none}.card,th{background:#fff}h2,th{color:#0f766e}code,.mono,.score-out{color:#0f766e}pre{background:#f4f4f5;color:#18181b}}
 </style>
 </head>
 <body>
-<div class="header">
-  <div class="header-inner">
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <strong style="font:800 14px Inter;letter-spacing:.04em">ARUGA</strong>
-      <span class="badge teal">HACKATHON WINNING CONDITIONS</span>
-      <span class="badge mono">1102260208</span>
-      <span class="badge mono">28bd077</span>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <span class="badge pass">STAGE ONE PASS</span>
-      <span class="badge" style="background:rgba(20,184,166,.12);border-color:rgba(20,184,166,.4);color:var(--teal)">BUILD FOR YOUR WORLD ★</span>
-      <span class="badge">43/50</span>
-      <a class="badge" href="HACKATHON_WINNING_CONDITIONS_1102260208.md">Markdown →</a>
-      <button class="badge" onclick="window.print()">Print/PDF</button>
-    </div>
-  </div>
-</div>
+<header>
+  <div class="mono">1103261726 · e1d8d89 · e1d8d8987f14e5355bdc8a3fae7cf2802000dfb2 · 2026-11-03 17:26 PST</div>
+  <h1>Hackathon Winning Conditions — Judge-Local Recalibration</h1>
+  <p>
+    <span class="badge">STAGE ONE: PASS</span>
+    <span class="badge">Stage Two 7.80/10</span>
+    <span class="badge">Projected 8.55/10</span>
+    <span class="badge warn">Deadline Nov 4 · 6:00 PM PST (9 PM EST)</span>
+  </p>
+  <p><b>Recalibration trigger (participant-confirmed):</b> judges will only have Meta APIs, will not use Supabase, and will only run the project locally. The demo therefore uses an <b>intentionally unauthenticated</b> approach.</p>
+  <p><b>Demo topology:</b> <code>git clone → npm i → .env.local (MODEL_API_KEY + AI_MODE=live + MODAL_MHR_URL) → npm run dev → three unauthenticated playgrounds. No login. No Supabase.</code></p>
+  <p class="mut">Problem statement: <b>Build for Your World</b> (Push the Frontier = secondary narrative) · Prize track: <b>Startups</b> · Previous editions: <a href="../audit/old/HACKATHON_WINNING_CONDITIONS_1103261714.md">1103261714 (hosted model, 7.35/10)</a> · <a href="../audit/HACKATHON_WINNING_CONDITIONS_1103261726.md">Full Markdown audit</a></p>
+</header>
 
-<div class="kpis">
-  <div class="card kpi"><div class="ring"></div><h3>STAGE ONE</h3><div class="big ok">PASS</div><div class="sub">Harness Spark Open 1026 (32) + 5 Spark/SAM/Image via api.meta.ai + SAM3D Body</div></div>
-  <div class="card kpi"><h3>RECOMMENDED TRACK</h3><div class="big" style="color:var(--emerald)">Build for<br>Your World</div><div class="sub">9/10 fit · Frontier 4/10</div></div>
-  <div class="card kpi"><h3>PROJECTED STAGE TWO</h3><div class="big">43 / 50</div><div class="sub">Top-5 threshold ~38–40 · Advance if video lands</div><div class="progress" style="margin-top:8px"><div class="fill" style="width:86%"></div></div></div>
-  <div class="card kpi"><h3>TECH VERIFICATION</h3><div class="big ok">56/56</div><div class="sub">build · tsc 0 · 93/93 tests · C1-H4 hardened</div></div>
-  <div class="card kpi"><h3>TIME FREED</h3><div class="big">73%</div><div class="sub">14–20m → 3.7–5.5m per submission</div></div>
-</div>
-<div style="max-width:1280px;margin:6px auto;padding:0 16px"><div class="card" style="border-color:rgba(20,184,166,.45);background:rgba(20,184,166,.06);font-size:12px">🧪 <b>Harness proof:</b> <code>opencode.jsonc:2 model:baseten/muse-spark-hackathon</code> → <code>provider baseten baseURL https://inference.baseten.co/v1 modelID meta-models/muse-spark-open-1026</code> → DB <code>~/.local/share/opencode/opencode.db session_v2 where model.id='muse-spark-hackathon'</code> only = 32 sess · 9,287,969 in · 1,710,983 out (1102260157) · <code>src/lib/meta/client.ts:14 MODEL_API_KEY → api.meta.ai/v1</code> runtime Spark 1.3 contributor + Wonder selector <code>src/app/aruga-guide/page.tsx:279</code> · <code>src/app/api/agent/biomech/run:61 sam3Engine.segmentConcepts → modal/app.py:415 sam-3d-body-vith + MHR 1.0 (GPU/enriched-sim)</code> ROM + motion-through-time → <code>biomech_jobs</code> → <code>src/components/therapist/BiomechPanel.tsx:30</code></div></div>
+<main>
+<nav>
+  <button class="on" onclick="showTab('t0',this)">Recalibration</button>
+  <button onclick="showTab('t1',this)">Judge-Local Surface</button>
+  <button onclick="showTab('t2',this)">Score Calculator</button>
+  <button onclick="showTab('t3',this)">Quickstart &amp; Sprint</button>
+  <button onclick="showTab('t4',this)">Bonus &amp; Video</button>
+</nav>
 
-<div class="tabs" id="tabs">
-  <button class="tab active" data-tab="overview">Overview</button>
-  <button class="tab" data-tab="meta">Meta Vision Fit</button>
-  <button class="tab" data-tab="tracks">Track Comparator</button>
-  <button class="tab" data-tab="rubric">Rubric & Scoring</button>
-  <button class="tab" data-tab="video">Video Playbook</button>
-  <button class="tab" data-tab="modal" style="border-color:rgba(124,58,237,.45)">Modal + All Models ★</button>
-</div>
-<div style="max-width:1280px;margin:0 auto;padding:0 16px"><div class="card" style="border-color:rgba(20,184,166,.35);background:rgba(20,184,166,.08);display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="badge" style="background:#7c3aed;color:white;border-color:transparent">V3 1102260208 — META-ONLY VERIFIED</span><span class="sub">Spark Open 1026 harness (32 sess 9.28M in, <code>opencode.jsonc → baseten</code>) + Spark 1.3 contributor/Wonder runtime + SAM 3.1 → <code>facebookresearch/sam-3d-body</code> ROM-over-time. <a href="#modal" onclick="document.querySelector('[data-tab=modal]').click()">Modal + Biomech →</a></span><span class="pill ok">Meta-only Image verified</span><span class="pill">5.5/7 → 6.5/7 Meta</span><span class="pill ok">Build+Frontier</span></div></div>
-
-<!-- OVERVIEW -->
-<div class="panel active" id="p-overview">
-  <div class="grid col2">
-    <div class="card">
-      <h3 style="color:var(--teal);margin-bottom:8px">Executive Verdict</h3>
-      <p style="font-size:13px;color:var(--sub)">Aruga is a <b style="color:var(--text)">Build-for-Your-World</b> frontrunner because it turns Meta's Frontier models into usable clinic infrastructure — HIPAA-hardened, cost-measured, and lifespan-specific (pedia→geriatric 55+) in a way no generic demo does. Enter <b>Build</b>, narrate Frontier as the enabler.</p>
-      <ul style="margin:8px 0 0 18px;font-size:13px;color:var(--sub)">
-        <li><b style="color:var(--text)">Passes Stage One</b> — 5 Spark surfaces + SAM streaming SSE + Image two-stage via <span class="mono">https://api.meta.ai/v1</span> (<span class="mono">client.ts:6</span> host-validated).</li>
-        <li><b style="color:var(--text)">Wins Stage Two</b> — 43/50 projected (R1 8.5 + R2 8 + R3 9 + R4 9 + R5 8).</li>
-        <li><b style="color:var(--text)">Video is the gate</b> — 90s caregiver story + 70s therapist proof inside §Video does the work.</li>
-      </ul>
-      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><span class="pill">muse-spark-1.3 contributor</span><span class="pill">sam-3.1 streaming</span><span class="pill">muse-image-1.0</span><span class="pill">700 keyword engines</span><span class="pill">HIPAA C1-H4</span></div>
-    </div>
-    <div class="card">
-      <h3 style="margin-bottom:8px">5 Meta Model Surfaces (one baseURL)</h3>
-      <table class="table">
-        <thead><tr><th>Surface</th><th>Model</th><th>Proof it’s Meta</th></tr></thead>
-        <tbody>
-          <tr><td>Draft Program</td><td>muse-spark-1.3</td><td>json_schema strict → Zod <span class="mono">spark.ts:66</span></td></tr>
-          <tr><td>Video Obs + Concept</td><td>muse-spark-1.3</td><td>single object concept → SAM</td></tr>
-          <tr><td>SAM Segmentation</td><td>sam-3.1</td><td>SSE <span class="mono">stream:true</span> + @meta-sam/parser</td></tr>
-          <tr><td>SOAP + Summary</td><td>muse-spark-1.3</td><td>de-id egress, DB cache &lt;15ms</td></tr>
-          <tr><td>Activity Worksheet</td><td>Spark→Image 1.0</td><td>spec then image, mock fallback</td></tr>
-          <tr><td>Aruga Guide Chat</td><td>spark-1.2 / Wonder 1.0</td><td>selector (<code>src/app/aruga-guide/page.tsx:279</code>), References, send-to-clinician</td></tr>
-          <tr><td>Harness</td><td>muse-spark-open-1026</td><td><code>opencode.jsonc baseten/muse-spark-hackathon</code> 32 sess 9.28M in</td></tr>
-          <tr><td>Biomech</td><td>sam-3.1 → sam-3d-body</td><td>SAM boxes → Modal MHR ROM-over-time <code>biomech_jobs</code></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-  <div class="card" style="margin-top:10px">
-    <h3 style="margin-bottom:8px">Pre-Submission Fix-It — Tonight (60–90m)</h3>
-    <div class="checklist" id="checklist">
-      <label class="item"><input type="checkbox" data-w="1"> <div><b>F1 — Founder tie (5m)</b><div class="sub">Add 1-line shadowing/clinic tie to README hero — answers #1 judge question</div></div><span class="pill">R4 9→9.5</span></label>
-      <label class="item"><input type="checkbox" data-w="1"> <div><b>F2 — Mock cold start (15m)</b><div class="sub">Verify AI_MODE=mock with no key: build + test + landing + /sam-test overlay</div></div><span class="pill">Stage-One survival</span></label>
-      <label class="item"><input type="checkbox" data-w="1"> <div><b>F3 — Cost addendum (5m)</b><div class="sub">C2: nanoid(12)+15m/60m TTL = 0 COGS overhead, 672× reduction</div></div><span class="pill">R3 hold</span></label>
-      <label class="item"><input type="checkbox" data-w="1"> <div><b>F4 — 90s video (30m)</b><div class="sub">§Video playbook — printed worksheet on table, not just screen</div></div><span class="pill">R5 8→9</span></label>
-      <label class="item"><input type="checkbox" data-w="1"> <div><b>F5 — Pilot signal (10m)</b><div class="sub">1 LOI quote or honest roadmap line in pitch deck</div></div><span class="pill">R4 trust</span></label>
-      <label class="item"><input type="checkbox" data-w="1" checked> <div><b>F6 — ✅ FIXED 1102260208 — Meta-only purge (5m)</b><div class="sub"> Removed <span class="mono">dall-e-3/gpt-image-1</span> from <span class="mono">ACTIVITY_IMAGE_MODELS</span>; now <span class="mono">["muse-image-1.0","muse-image-1.1"]</span> — <span class="mono">src/</span> clean</div></div><span class="pill" style="background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.4);color:var(--emerald)">FIXED ✓</span></label>
-      <label class="item"><input type="checkbox" data-w="1"> <div><b>F7 — B-roll proof (5m)</b><div class="sub">Screenshot HIPAA 13/13 + verify-rls 0 rows for video</div></div><span class="pill">R3/R4</span></label>
-    </div>
-    <div style="margin-top:10px;display:flex;gap:10px;align-items:center"><div class="progress" style="flex:1"><div class="fill" id="prog"></div></div><span class="mono" id="pct">0%</span><input id="search" placeholder="Search…" style="max-width:180px;background:var(--muted);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:10px"></div>
-  </div>
-</div>
-
-<!-- META -->
-<div class="panel" id="p-meta">
-  <div class="grid col2">
-    <div class="card">
-      <h3 style="color:var(--teal)">Meta Vision: How Aruga Maps</h3>
-      <table class="table" style="margin-top:8px">
-        <thead><tr><th>Meta Offering</th><th>Aruga Use</th><th>Status</th></tr></thead>
-        <tbody>
-          <tr><td>Muse Spark 1.3 contributor</td><td>5 surfaces, json_schema strict + Zod (<code>src/lib/meta/client.ts:14 api.meta.ai</code>)</td><td class="ok">✅ Runtime core</td></tr>
-          <tr><td>Muse Wonder 1.0</td><td>Harness-tested + selector <code>src/app/aruga-guide/page.tsx:279</code></td><td class="ok">✅ Runtime alt</td></tr>
-          <tr><td>SAM 3.1 → SAM 3D Body</td><td>SSE 700 engines + <code>facebookresearch/sam-3d-body</code> ROM-over-time</td><td class="ok">✅ Frontier</td></tr>
-          <tr><td>Muse Image</td><td>Spark spec → Image pipeline</td><td class="ok">✅ Shipped</td></tr>
-          <tr><td>Voice / Glimmer / Code</td><td>Roadmap — not claimed</td><td class="warn">⬜ Next</td></tr>
-          <tr><td>Spark Open</td><td>Coding assistant, disclosed</td><td class="ok">✅ Transparent</td></tr>
-        </tbody>
-      </table>
-      <div class="code" style="margin-top:10px">// src/lib/meta/spark.ts:66
-chat.completions.create({
-  model: config.models.spark,
-  response_format: { type:"json_schema",
-    json_schema:{ name:"draft_home_program", strict:true, schema }},
-  temperature: 0.2, max_tokens: 1500
-}) → JSON.parse → zod.safeParse → MetaRefusalError</div>
-    </div>
-    <div class="card">
-      <h3>Capabilities Check (Meta lists 10)</h3>
-      <div class="grid" style="grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-        <div class="card" style="border-color:rgba(16,185,129,.4)">✅ Structured output<br><span class="sub">json_schema strict + Zod</span></div>
-        <div class="card" style="border-color:rgba(16,185,129,.4)">✅ Streaming<br><span class="sub">SAM SSE + @meta-sam/parser</span></div>
-        <div class="card" style="border-color:rgba(16,185,129,.4)">✅ Prompt caching<br><span class="sub">byte-identical sys + DB &lt;15ms</span></div>
-        <div class="card" style="border-color:rgba(16,185,129,.4)">✅ Image understanding<br><span class="sub">Spark sees 4 frames</span></div>
-        <div class="card" style="border-color:rgba(16,185,129,.4)">✅ Media segmentation<br><span class="sub">SAM 700 engines</span></div>
-        <div class="card" style="border-color:rgba(16,185,129,.4)">✅ File handling<br><span class="sub">signed URL direct upload</span></div>
-        <div class="card" style="border-color:rgba(245,158,11,.5)">⚠️ Tool calling<br><span class="sub">Custom agent, not Model tool_call</span></div>
-        <div class="card" style="border-color:rgba(245,158,11,.5)">⚠️ Search grounding<br><span class="sub">Own PubMed/OpenAlex (HIPAA-safe)</span></div>
-        <div class="card" style="border-color:var(--muted)">⬜ Voice / Video-native</div>
-        <div class="card" style="border-color:rgba(16,185,129,.4)">✅ Safety<br><span class="sub">de-id + draft-only + 911</span></div>
-      </div>
-      <p class="sub" style="margin-top:8px">6/10 with intent — gaps named as roadmap in video last 10s, not hidden.</p>
-    </div>
-  </div>
-</div>
-
-<!-- TRACKS -->
-<div class="panel" id="p-tracks">
-  <div class="comparator">
-    <div class="track reco">
-      <div class="badge pass" style="margin-bottom:8px">★ ENTER THIS</div>
-      <h3>Build for Your World</h3>
-      <p class="sub" style="margin-top:6px">Bring Meta's models into your domain. Free up time/mental space. Make possible what wasn't.</p>
-      <ul style="margin:8px 0 0 18px;font-size:13px;color:var(--sub)">
-        <li>70% lose handouts → guided home practice</li>
-        <li>15–20m/patient unpaid admin → 73% saved</li>
-        <li>Personalized worksheets — didn't exist, now 60s</li>
-        <li>4 lifespan bands + caregiver co-runner = moat</li>
-        <li>Frontier as enabler sentence included</li>
-      </ul>
-      <div class="score ok" style="margin-top:8px">9/10 fit</div>
-    </div>
-    <div class="track">
-      <h3>Push the Frontier</h3>
-      <p class="sub" style="margin-top:6px">New machine capability · accelerate science · control physical systems.</p>
-      <ul style="margin:8px 0 0 18px;font-size:13px;color:var(--sub)">
-        <li>SAM kinematic from phone vs $80k Vicon — frontier-adjacent</li>
-        <li>But: no training, no benchmark, MHR is mock</li>
-        <li>Judged vs fine-tunes + sensor rigs → lose</li>
-        <li>Use as secondary narrative only</li>
-      </ul>
-      <div class="score warn" style="margin-top:8px">4/10 fit</div>
-    </div>
-  </div>
-  <div class="card" style="margin-top:10px">
-    <h3>Track Comparator — Live Cost vs Win Chance</h3>
-    <div class="grid col3" style="margin-top:8px">
-      <div><label class="sub">Video minutes (slider: 15–60)</label><input class="range" id="vmin" type="range" min="15" max="60" value="35"><div class="mono" id="vout">35m · $3.36 → $29 (88.4% margin)</div></div>
-      <div><label class="sub">Patients per clinic</label><input class="range" id="pat" type="range" min="5" max="30" value="15"><div class="mono" id="pout">15 patients · $81.30 → $499</div></div>
-      <div><label class="sub">Win-chance by track</label><div class="progress"><div class="fill" style="width:86%" id="wfill"></div></div><div class="mono" id="wout">Build 85% top-5 · Frontier 35%</div></div>
-    </div>
-  </div>
-</div>
-
-<!-- RUBRIC -->
-<div class="panel" id="p-rubric">
+<!-- TAB 0 -->
+<section class="tab on" id="t0">
   <div class="card">
-    <h3>Stage Two Rubric — 43 / 50 Projected (85th pct)</h3>
-    <p class="sub">Reconstructed from Meta hackathon patterns; weights hold even if official labels differ.</p>
-    <table class="table" style="margin-top:8px">
-      <thead><tr><th>Criterion</th><th>Weight</th><th>Looks For</th><th>Score</th><th>Why</th></tr></thead>
-      <tbody>
-        <tr><td><b>Use of Meta</b></td><td>25%</td><td>Multiple models, strict APIs</td><td class="score ok">9/10</td><td>5 Spark + SAM SSE + Image, Zod, host-validated — Meta-only verified <span class="mono">src/lib/meta/models.ts:17</span></td></tr>
-        <tr><td><b>Innovation</b></td><td>25%</td><td>Wasn't-possible-before</td><td class="score ok">8/10</td><td>700 taxonomy + worksheet pipeline; not research</td></tr>
-        <tr><td><b>Technical</b></td><td>20%</td><td>Security, tests, mobile</td><td class="score ok">9/10</td><td>56/56, 93/93, C1-H4, 375px zero-overflow</td></tr>
-        <tr><td><b>Impact</b></td><td>20%</td><td>Time saved, adoption</td><td class="score ok">9/10</td><td>73% saved, $29/$49/$499, RTM CPT, BAA v4</td></tr>
-        <tr><td><b>Polish</b></td><td>10%</td><td>Demo, docs, video</td><td class="score ok">8/10</td><td>Dark clinical, pitch deck, audits; needs 90s cut</td></tr>
-      </tbody>
+    <h2>What Changed — Two Threat Models</h2>
+    <table>
+      <tr><th>Dimension</th><th>Hosted model (1103261714)</th><th>Judge-local model (this edition)</th></tr>
+      <tr><td>Where it runs</td><td>Vercel + Supabase, public URL</td><td><b>Judge's machine, localhost:3000</b></td></tr>
+      <tr><td>Credentials</td><td>Full stack incl. Supabase keys</td><td><b>Meta Model API key only</b></td></tr>
+      <tr><td>Supabase</td><td>Required</td><td><b>Absent (env blank, admin = null)</b></td></tr>
+      <tr><td>Users / data</td><td>Therapists + real patients (ePHI)</td><td><b>One judge, judge-supplied video, no real patient data</b></td></tr>
+      <tr><td>Purpose of auth</td><td>Protect one tenant's ePHI from another</td><td><b>Nothing to protect — auth would block the demo</b></td></tr>
+      <tr><td>Timeout regime</td><td>Vercel 60s caps</td><td>Local — Vercel caps do not apply</td></tr>
+      <tr><td>Governing audit</td><td>HIPAA audit + P0s</td><td><b>This document; HIPAA P0-1 out of scope for judging</b></td></tr>
     </table>
-    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><span class="pill">Build total ~43/50 — advances (cut ~38)</span><span class="pill warn">Frontier total ~36/50 — misses</span><span class="pill">File Build.</span></div>
+    <h3>Three consequences</h3>
+    <ol>
+      <li><b>Unauthenticated demo routes are correct design, not a finding.</b> There is no tenant boundary on the judge's laptop; the only video is the one they uploaded. Requiring login would make the project unjudgeable — the only fatal Stage One outcome.</li>
+      <li><b>The HIPAA audit is scoped, not retracted.</b> Finding H-1 / P0-1 (agent-route authorization) remains mandatory before any hosted deployment with real patients. It does not apply to a single-user local demo with no ePHI. Never point judges at a hosted URL containing real data.</li>
+      <li><b>Two deductions shrink, one grows.</b> The Vercel 60s-vs-Modal-130s timeout does not bind locally; the 39/93 test suite matters only if a judge runs <code>npm test</code>. But docs assuming login/Supabase (<code>docs/DEMO.md</code>, <code>.env.example</code>) now actively mislead the only audience that matters.</li>
+    </ol>
+    <blockquote>"This local demo is intentionally unauthenticated — it runs on your machine with your videos. The production deployment adds Supabase auth, per-therapist ownership gates, and audit logging (HIPAA-audited configuration)." — the sentence to say in the room and print in the README.</blockquote>
   </div>
-  <div class="card" style="margin-top:10px">
-    <h3>What 10/10 Would Take (don't chase pre-submission)</h3>
-    <div class="grid col2" style="margin-top:8px">
-      <details open><summary>R1 10/10 — Voice SOAP</summary><p class="sub">Add Muse Voice live-dictated S/O/A/P (3–5 day build) — mention as roadmap last 10s, don't risk stability.</p></details>
-      <details open><summary>R4 10/10 — One LOI</summary><p class="sub">"Dr. X, OTR/L, 12-patient clinic, saved Y hrs/wk" — biggest ROI change tonight. 1 line in README + caption.</p></details>
-    </div>
-  </div>
-</div>
+</section>
 
-<!-- VIDEO -->
-<div class="panel" id="p-video">
+<!-- TAB 1 -->
+<section class="tab" id="t1">
   <div class="card">
-    <h3 style="color:var(--teal)">Winning Demo Arc — 90s Primary + 30s Deep Cut</h3>
-    <p class="sub">Judges watch on mute first. Burn captions. Hook first 3s. Physical prop beats slide.</p>
-    <div class="timeline" style="margin-top:10px">
-      <div class="step"><div class="time">0:00–0:08 COLD OPEN</div><b>Kitchen table: Leo 6y struggles with crayon</b><div class="sub">VO: "70% of families lose the handout. Practice happens without guidance." · Caption: Home rehab happens without clinicians watching.</div></div>
-      <div class="step"><div class="time">0:08–0:22 DRAFT PROGRAM</div><b>Shorthand → [Draft] → 3 steps + warnings</b><div class="sub">Spark json_schema strict + Zod — "75% faster, safety warnings, no hallucinated diagnosis."</div></div>
-      <div class="step"><div class="time">0:22–0:40 SAM MOMENT</div><b>30s recorder → SAM teal overlay snaps to crayon/grasp/lift (scrub-synced)</b><div class="sub">SAM 3.1 700-engine keyword specificity (crayon not object) — pause on box snap.</div></div>
-      <div class="step"><div class="time">0:40–0:55 PAYOFF</div><b>Confirmed obs → S/O/A/P → plain-English summary → PRINTED worksheet on table (Leo coloring) + phone canvas</b><div class="sub">Spark→Image two-stage. Physical print proves "wasn't possible before."</div></div>
-      <div class="step"><div class="time">0:55–1:05 LIFESPAN MONTAGE</div><b>Adolescent pen grip, adult washcloth, geriatric cup — age pills switch</b><div class="sub">Build-for-World depth + $29/$49/$499 in 10s.</div></div>
-      <div class="step"><div class="time">1:05–1:20 ARUGA GUIDE</div><b>"Is thumb grasp normal at 6?" → References + Send to clinician</b><div class="sub">Grounded, draft-only, 911 safety — human-in-the-loop invariant.</div></div>
-      <div class="step"><div class="time">1:20–1:30 CREDIBILITY CLOSE</div><b>Code: api.meta.ai + verify-rls 0 rows + 93 tests</b><div class="sub">"Same auth, same Spark, HIPAA C1-H4, mock demo no key needed." — judges remember last 10s.</div></div>
-      <div class="step"><div class="time">1:30–1:55 OPTIONAL DEEP CUT</div><b>Biomech: 8 frames → ROM card → flag → Add to notes</b><div class="sub">Lower-third: "Roadmap: SAM 3D Body on Modal L4, $0.002/clip — mock live, GPU Phase-1 next." Honesty builds trust.</div></div>
-    </div>
-  </div>
-  <div class="grid col2" style="margin-top:10px">
-    <div class="card">
-      <h3>Highlight / Hide</h3>
-      <table class="table">
-        <thead><tr><th>Linger</th><th>Cut</th></tr></thead>
-        <tbody>
-          <tr><td>Printed worksheet on table</td><td>Modal as hero (15s max)</td></tr>
-          <tr><td>SAM overlay synced to scrub</td><td>Raw JSON longer than 1s</td></tr>
-          <tr><td>&lt;15ms cached $0.00 flip</td><td>No non-Meta models — <span class="mono">src/</span> clean</td></tr>
-          <tr><td>3 steps + warnings</td><td>Long auth / empty DB</td></tr>
-          <tr><td>Caregiver + geriatric 55+</td><td>Next/Supabase plumbing narration</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="card">
-      <h3>Q&A — 30s Answers</h3>
-      <details><summary>Why not ChatGPT?</summary><p class="sub">Chat can't SAM-segment frame-by-frame or emit OTPF-4 warnings[] via json_schema. Keyframe 1/15 saves 93% ($16.20→$5.40) via Meta streaming.</p></details>
-      <details style="margin-top:6px"><summary>Not a clinician?</summary><p class="sub">Engineer-as-ally: shadowing [clinic, hrs], 3 sense-check questions in pitch, 20 templates co-designed. "World is the one we serve obsessively."</p></details>
-      <details style="margin-top:6px"><summary>Biomech real?</summary><p class="sub">Pipeline real, GPU not yet. Deterministic mock &lt;2s so judges click; Phase-1 L4 ONNX $0.002/clip, image commented in modal/app.py:53.</p></details>
-      <details style="margin-top:6px"><summary>HIPAA?</summary><p class="sub">Private buckets, 15m/60m nanoid URLs, 42 RLS dropped (verify-rls 0 rows), EXIF strip, de-id egress, immutable audit — 13/13 audit link in README.</p></details>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL + ALL MODELS ADDENDUM -->
-<div class="panel" id="p-modal">
-  <div class="card">
-    <h3 style="color:var(--teal)">11.1 Modal Partner Deep Dive — Phase 0 stub is the winning narrative</h3>
-    <p class="sub">Modal sponsors want GPU-native workloads that wouldn't exist without them. Your <span class="mono">aruga-mhr</span> is exactly that — SAM 3.1 segmentations (<code>BIOMECH_KEYWORDS 16 → U1-U11</code>) → <code>facebookresearch/sam-3d-body</code> on Modal L4 outputs ROM + changes in motion through time (<code>frames[].motionAnnotations timestampSeconds→angles</code>, <code>summary.rom/gait/comSway/bosMargin</code> → <code>biomech_jobs</code> → <code>BiomechPanel.tsx</code>). Frame honesty as fiscal prudence: <code>sam-3d-body-vith + MHR 1.0 (GPU)</code> vs <code>enriched-sim</code> deterministic mock share schema.</p>
-    <table class="table" style="margin-top:8px">
-      <thead><tr><th>Piece</th><th>Aruga Does</th><th>Judge Lens</th><th>Grade</th></tr></thead>
-      <tbody>
-        <tr><td><b>GPU App</b> <span class="mono">modal.App("aruga-mhr")</span></td><td>Phase 0 CPU stub <span class="mono">gpu=None FREE_TIER_NO_GPU</span> + Phase 1 <span class="mono">pytorch:2.4.0-cuda12.1 + sam-3d-body + Volume sam3db-ckpts</span> commented <span class="mono">app.py:44</span></td><td>Proves you chose Modal *because* L4 at $0.000222/s + Volume cache is only sane way to serve 1.69GB ckpts — not a cron</td><td class="ok">B+ story</td></tr>
-        <tr><td><b>Deploy DX</b> <span class="mono">modal deploy</span></td><td><span class="mono">deploy.sh</span> 9.7KB 180 lines — auth → secret sync from <span class="mono">.env.local</span> → URL parse → smoke test (<span class="mono">--prod|--check|--secret-only</span>)</td><td>Partner judges score DX — your deploy script is best artifact for Modal track. <span class="mono">DEPLOYMENT_GUIDE.md:260</span> with §3–§8</td><td class="ok">A</td></tr>
-        <tr><td><b>Contract</b> Next→Modal <span class="mono">/infer</span></td><td><span class="mono">POST /api/agent/biomech/run:1</span> 88 lines: <span class="mono">U1-U11→BIOMECH_KEYWORDS 16</span> → signed URL 600s → <span class="mono">x-modal-secret</span> → <span class="mono">biomech_jobs</span></td><td>Elegant dual-contract (mock for judges, real for prod) — BUT <span class="mono">route.ts:44</span> comment claims SAM pre-pass that isn't wired; fix wording (<span class="mono">SAM on Modal side</span>)</td><td class="warn">B — fix comment</td></tr>
-        <tr><td><b>Security</b></td><td><span class="mono">x-modal-secret</span> via <span class="mono">modal.experimental.raw_request</span> 401, 600s signed URLs, no PHI on GPU, RLS <span class="mono">therapist_owns_patient</span></td><td>Partner hygiene — secrets in env, not code</td><td class="ok">A-</td></tr>
-        <tr><td><b>Mock</b> <span class="mono">_mock_mhr</span></td><td>Deterministic <span class="mono">hash %10000</span> → 8 frames <span class="mono">shoulder 118± trunk 3.2 flags ROM processingMs:1840</span> <span class="mono">app.py:107</span></td><td>Lets judges click without deploy without lying — <span class="mono">modelId: ... (mock)</span> badge</td><td class="ok">A</td></tr>
-        <tr><td><b>Cost</b></td><td>L4 $0.002/clip 45 frames @3FPS <span class="mono">DEPLOYMENT_GUIDE.md:180</span> · SAM $0.009/pass batched</td><td>Quantified economics is partner catnip</td><td class="ok">A</td></tr>
-      </tbody>
+    <h2>Tier A — Works With Only a Meta Key (the judge path)</h2>
+    <table>
+      <tr><th>Surface</th><th>Route</th><th>Why it works without Supabase</th></tr>
+      <tr><td><b>Biomechanic playground</b> <code>/tools/biomech</code></td><td><code>POST /api/tools/biomech/run</code></td><td>Accepts uploaded <code>videoDataUrl</code>; admin client only used for storage paths (<code>route.ts:41</code>). Localhost bypasses the 4.5MB payload guard up to ~100MB (<code>route.ts:61</code>)</td></tr>
+      <tr><td><b>SAM workspace</b> <code>/sam-test</code></td><td><code>POST /api/sam-test</code>, <code>/api/agent/biomech/demo</code></td><td>In-memory ring buffer, no DB (<code>sam-test/route.ts:22</code>); demo route states "No DB required" (<code>demo/route.ts:10</code>)</td></tr>
+      <tr><td><b>Activity playground</b> <code>/activity-agent-playground</code></td><td>Spark → Muse Image</td><td>Worksheet generation needs no persistence to demonstrate</td></tr>
+      <tr><td><b>Meta helpers</b></td><td><code>/api/meta/draft-program</code>, <code>draft-feedback</code>, <code>/api/ot-chat</code></td><td>Zero database references in all three route files</td></tr>
     </table>
-    <div class="code" style="margin-top:10px">"Modal lets a tabletop phone clip become 3D joint angles in 1.8s without maintaining a GPU. Phase 0 stub proves wiring on free tier ($0 mock). Phase 1 is one uncomment + modal deploy → MODAL_MHR_URL. We show the path, not a fake."</div>
-    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><span class="pill">M1 10m: fix route.ts:44 comment wording</span><span class="pill">M2 5m: Modal badge in README</span></div>
+    <p>Bundled sample clips for judges: <code>public/demo/tabletop_exercise.mp4</code> · <code>cup_grasp_transfer.mp4</code> · <code>block_stacking.mp4</code> · <code>washcloth_supination.mp4</code></p>
   </div>
-  <div class="grid col2" style="margin-top:10px">
+  <div class="card amber">
+    <h2>Tier B — Inert Locally (document it, don't let judges discover it)</h2>
+    <p>Therapist/client login, submissions, <code>POST /api/agent/biomech/save</code>, goal/highlights runs, SOAP cache — all return clean 503/500 with blank Supabase env. Not broken: that is the production product, out of scope for a Meta-key-only demo. Until the <code>ARUGA_DEMO=1</code> gate ships (Sprint #2), judges find these by clicking and read "500" as breakage.</p>
+    <h3>The one extra dependency: Modal</h3>
+    <p>Full joint angles need <code>MODAL_MHR_URL</code> — the <b>team's already-deployed</b> Modal endpoint, pasted into the judge's <code>.env.local</code>. Judges must not be asked to <code>modal deploy</code>. Without it, Tier A degrades honestly: SAM + Spark run, biomech returns typed <code>503 MODAL_NOT_CONFIGURED</code>, no invented angles. If <code>MODAL_SECRET</code> is set on the deployment, unset it for judging or print the value — a 401 reads as a broken demo.</p>
+  </div>
+  <div class="card">
+    <h2>Design Rules for the Unauthenticated Approach</h2>
+    <ol>
+      <li><b>Judge-supplied data only.</b> Demo routes accept uploads and bundled samples; they can never expose another person's records — locally there is no other person. State this property explicitly.</li>
+      <li><b>Make demo mode visible.</b> <code>ARUGA_DEMO=1</code> → banner ("Judge demo — local, unauthenticated, not for patient data") + Tier B nav disabled with a tooltip, documented as forbidden for hosted deployments.</li>
+      <li><b>Fail loud and typed, never fake.</b> Missing key → 503 naming the env var; missing Modal → 503; SAM finds nothing → 422 per-concept. No mock-result fallbacks to hit the deadline.</li>
+      <li><b>Production story one sentence away</b> (see quote in Recalibration tab). If asked directly: "demo surface auth-free by design; clinic surface gated; agent routes get the same gate before any real deployment." Do not claim that gate is shipped.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- TAB 2 -->
+<section class="tab" id="t2">
+  <div class="card">
+    <h2>Stage Two — Official Rubric (Participant Guide §8)</h2>
+    <table>
+      <tr><th>Category</th><th>Weight</th><th>Was (hosted)</th><th>Now (judge-local)</th><th>Rationale</th></tr>
+      <tr><td>Impact</td><td>30%</td><td>8</td><td><b>8</b></td><td>Idea/market property — topology-independent. No LOI yet; quantified 73% time saving holds</td></tr>
+      <tr><td>Use of Meta AI Tooling</td><td>25%</td><td>9</td><td><b>9</b></td><td>Judges execute SAM/Spark/Image themselves — stronger evidence than video claims. 4 families, 13 surfaces</td></tr>
+      <tr><td>Technical Depth &amp; Execution</td><td>20%</td><td>6</td><td><b>7</b></td><td>DB-free demo architecture is craft for this brief; timeout doesn't bind locally; auth = intent. Suite (39/93) + 487 ESLint still deducted</td></tr>
+      <tr><td>Demo</td><td>25%</td><td>6</td><td><b>7</b></td><td>Runnable playgrounds + bundled clips exist. Missing guided path: no quickstart, <code>.env.example</code> says Supabase "required"</td></tr>
+    </table>
+    <p class="score-out">Weighted: 8×.30 + 9×.25 + 7×.20 + 7×.25 = 7.80 / 10 &nbsp;(hosted model was 7.35; projected 8.55 with the sprint below)</p>
+    <p class="mut">Stage One: <b>PASS</b> (was Conditional) — the remaining condition is shipping the quickstart so judges land on Tier A first try. Stage Three note: top 5 per prize track advance to live finals Nov 9; 8.55 is finalist-competitive in Startups.</p>
+  </div>
+  <div class="card">
+    <h2>Live Calculator</h2>
+    <label>Impact (30%): <b id="s1">8</b></label>
+    <input type="range" id="r1" min="0" max="10" step="0.5" value="8" oninput="calc()">
+    <label>Use of Meta AI Tooling (25%): <b id="s2">9</b></label>
+    <input type="range" id="r2" min="0" max="10" step="0.5" value="9" oninput="calc()">
+    <label>Technical Depth &amp; Execution (20%): <b id="s3">7</b></label>
+    <input type="range" id="r3" min="0" max="10" step="0.5" value="7" oninput="calc()">
+    <label>Demo (25%): <b id="s4">7</b></label>
+    <input type="range" id="r4" min="0" max="10" step="0.5" value="7" oninput="calc()">
+    <p class="score-out" id="out"></p>
+    <p class="mut">Try Technical 7.5 / Demo 9 (quickstart + demo gate + video shipped) → 8.55/10.</p>
+  </div>
+</section>
+
+<!-- TAB 3 -->
+<section class="tab" id="t3">
+  <div class="card">
+    <h2>Judge Quickstart (ship as JUDGE_DEMO.md + README top section)</h2>
+<pre>git clone https://github.com/ernestpascual/aruga &amp;&amp; cd aruga
+npm install
+cp .env.example .env.local   # fill ONLY the lines below
+npm run dev                  # http://localhost:3000</pre>
+    <ol>
+      <li><b>You need:</b> Node 20+ and a Meta Model API key (your hackathon credit key). No Supabase, no accounts, no login.</li>
+      <li><b>Set in <code>.env.local</code>:</b> <code>MODEL_API_KEY=&lt;key&gt;</code>, <code>AI_MODE=live</code>, <code>MODAL_MHR_URL=&lt;team's deployed endpoint&gt;</code>. Leave all <code>SUPABASE_*</code> blank.</li>
+      <li><b>Open in order:</b> <code>/tools/biomech</code> (upload <code>public/demo/cup_grasp_transfer.mp4</code>, allow ~2 min first run) → <code>/sam-test</code> → <code>/activity-agent-playground</code>.</li>
+      <li><b>Expected:</b> login areas are the production product and are inert without Supabase — intended, not a bug. Missing config returns explicit 503s; nothing fabricates results.</li>
+    </ol>
+    <p>Also fix: <code>.env.example</code> "Supabase (required)" → "(optional — leave blank for judge demo)", and point <code>docs/DEMO.md</code> at the judge quickstart for hackathon judging.</p>
+  </div>
+  <div class="card">
+    <h2>Remaining Sprint — ~1 Day (deadline Nov 4, 6:00 PM PST)</h2>
+    <table>
+      <tr><th>#</th><th>Item</th><th>Effort</th><th>Points</th></tr>
+      <tr><td>1</td><td>JUDGE_DEMO.md + README quickstart + .env.example fix + Modal URL printed</td><td>~1h</td><td>Demo 7→8</td></tr>
+      <tr><td>2</td><td><code>ARUGA_DEMO=1</code> banner + Tier B nav gating; verify clean-clone Tier A with blank Supabase</td><td>~½ day</td><td>Demo 8→9, Tech +0.5</td></tr>
+      <tr><td>3</td><td>Record 3-minute video <b>from the local demo path itself</b></td><td>~½ day</td><td>Demo holds under Stage Three re-watch</td></tr>
+      <tr><td>4</td><td>Honest-suite note in README; never cite 93/93 (do not spend deadline hours on 54 tests)</td><td>5 min</td><td>Caps Technical downside</td></tr>
+      <tr><td>5</td><td>Meta $150 credit (by Nov 4, 9 PM ET) + Modal $100; Startups track; Representative; repo Public + LICENSE</td><td>~1h</td><td>Eligibility</td></tr>
+    </table>
+    <p><b>Explicitly deferred past Nov 4</b> (still mandatory before any clinic pilot; see HIPAA audit): agent-route ownership gates, full test-suite restoration, hosted async/GPU biomech. They optimize for conditions judges will never encounter.</p>
+  </div>
+</section>
+
+<!-- TAB 4 -->
+<section class="tab" id="t4">
+  <div class="grid">
     <div class="card">
-      <h3 style="color:var(--teal)">Full Meta 7-Model Coverage</h3>
-      <table class="table" style="margin-top:8px">
-        <thead><tr><th>Model</th><th>Aruga</th><th>Action</th></tr></thead>
-        <tbody>
-          <tr><td><b>Muse Spark 1.2/1.3</b></td><td class="ok">✅ 6 surfaces — heavy</td><td>Add <span class="mono">reasoning.effort:medium</span> on SOAP/activity (10m, +R1)</td></tr>
-          <tr><td><b>Muse Wonder</b></td><td class="warn">⚠️ registered, not default</td><td>Add Wonder comparison card in Guide picker (5m)</td></tr>
-          <tr><td><b>SAM 3.1</b></td><td class="ok">✅ 700 engines — moat</td><td>Screenshot /sam-test cards for pitch deck</td></tr>
-          <tr><td><b>Muse Image</b></td><td class="ok">✅ WIRED — Meta-only verified (<span class="mono">src/lib/meta/models.ts:17</span>)</td><td class="ok">FIXED 1102260208 — <span class="mono">dall-e-3/gpt-image-1</span> removed, <span class="mono">src/</span> clean</td></tr>
-          <tr><td><b>Muse Voice</b></td><td class="bad">⭕ not wired — gap</td><td><b>30m thin path</b>: Mic → <span class="mono">/api/agent/voice/transcribe → api.meta.ai/v1/asr/transcribe</span> → Subjective ($0.003/min) → R1 8.5→9.5</td></tr>
-          <tr><td><b>Muse Glimmer</b></td><td>⭕ intentional — edge PWA</td><td>Add roadmap line in META_INTEGRATION.md (2m)</td></tr>
-          <tr><td><b>Spark Open 1026</b></td><td class="ok">✅ coding assistant transparent</td><td>Ensure hero: "Spark Open (coding) + api.meta.ai (runtime)"</td></tr>
-        </tbody>
+      <h2>Bonus Prizes ($50k pool)</h2>
+      <table>
+        <tr><th>Prize</th><th>Status</th></tr>
+        <tr><td>Best Agentic $5k</td><td>✅ Strongest fit — local trace inspection raises credibility</td></tr>
+        <tr><td>Best Creative $5k</td><td>✅ Muse Image worksheets; judges can generate their own</td></tr>
+        <tr><td>Most Viral $20k</td><td>X post at submission; engagement to Nov 8 EOD</td></tr>
+        <tr><td>Community Vote $10k</td><td>Gallery listing; winner Nov 16</td></tr>
+        <tr><td>Best Open Weight $10k</td><td>❌ Ineligible (API models) — skip</td></tr>
       </table>
-      <div style="margin-top:8px"><span class="pill">Today 5.5/7 live</span><span class="pill ok">With Voice 6.5/7 → R1 9.5</span><span class="pill">Muse Image fallback fix + Voice = unlock "all-Meta" claim</span></div>
     </div>
     <div class="card">
-      <h3>90-Min Tonight → +2.0 Rubric</h3>
-      <table class="table">
-        <thead><tr><th>Slot</th><th>Change</th><th>Effort</th></tr></thead>
-        <tbody>
-          <tr><td>30m</td><td>Voice thin path: MediaRecorder → <span class="mono">/asr/transcribe</span> → Subjective</td><td>R1 9.5</td></tr>
-          <tr><td>10m</td><td>✅ Patch <span class="mono">dall-e-3/gpt-image-1</span> — FIXED 1102260208</td><td class="ok">✅ done</td></tr>
-          <tr><td>10m</td><td><span class="mono">reasoning.effort:medium</span> on SOAP/activity</td><td>R1 depth</td></tr>
-          <tr><td>10m</td><td>Wonder card + Glimmer roadmap line</td><td>Vision</td></tr>
-          <tr><td>10m</td><td>Fix <span class="mono">route.ts:44</span> comment</td><td>Modal trust</td></tr>
-          <tr><td>10m</td><td>Modal badge in README</td><td>Partner</td></tr>
-        </tbody>
+      <h2>3-Minute Video (record the local path)</h2>
+      <table>
+        <tr><th>Time</th><th>Segment</th></tr>
+        <tr><td>0:00–0:25</td><td>Problem: eyeballing home video, 14–20 min review</td></tr>
+        <tr><td>0:25–1:15</td><td>Biomech hero: SAM 3.1 → Modal SAM 3D Body angles/ROM</td></tr>
+        <tr><td>1:15–1:50</td><td>Goal verdict + Highlights + family summary</td></tr>
+        <tr><td>1:50–2:20</td><td>Creative: Spark → Muse Image worksheet</td></tr>
+        <tr><td>2:20–2:50</td><td>Meta stack (4 families, 13 surfaces) + production sentence</td></tr>
+        <tr><td>2:50–3:00</td><td>Close: pricing, public repo, "built Oct 27–Nov 4"</td></tr>
       </table>
-      <div style="margin-top:10px" class="progress"><div class="fill" style="width:89%"></div></div>
-      <div class="mono" style="margin-top:6px"><span class="ok">43/50 → 44.5/50</span> (top-2 Build; Frontier 36→41 defensible)</div>
-      <div class="code" style="margin-top:8px">"Speech therapists dictate SOAP via Muse Voice, Spark drafts S/O/A/P, SAM tracks hands — on Modal L4." — say in video 0:55–1:00 after §11.2 row 5</div>
+      <p class="mut">Consented/self footage only · captions on · never "AI diagnoses/advises", "sports", "coach", or "93/93".</p>
     </div>
   </div>
+</section>
+
+<div class="card">
+  <h2>Final Checklist</h2>
+  <input type="search" placeholder="Search checklist…" oninput="filt(this.value)">
+  <p>Completion: <b id="pct"></b></p>
+  <div class="bar"><i id="bar"></i></div>
+  <label class="chk"><input type="checkbox" checked onchange="upd()"> Tier A playgrounds run with Meta key only, no Supabase (verified in source at e1d8d89)</label>
+  <label class="chk"><input type="checkbox" checked onchange="upd()"> Bundled sample clips present (public/demo/*.mp4 ×4)</label>
+  <label class="chk"><input type="checkbox" onchange="upd()"> Team Modal endpoint URL ready to paste (secret unset or printed)</label>
+  <label class="chk"><input type="checkbox" onchange="upd()"> JUDGE_DEMO.md + README quickstart + .env.example fix shipped</label>
+  <label class="chk"><input type="checkbox" onchange="upd()"> ARUGA_DEMO=1 banner + Tier B nav gating</label>
+  <label class="chk"><input type="checkbox" onchange="upd()"> Production-vs-demo sentence in video + README</label>
+  <label class="chk"><input type="checkbox" onchange="upd()"> 3-minute video recorded from local path, public link verified</label>
+  <label class="chk"><input type="checkbox" onchange="upd()"> Repo Public + LICENSE; Startups track; Representative; contributors listed</label>
+  <label class="chk"><input type="checkbox" onchange="upd()"> Credits claimed (Meta $150 by Nov 4 9 PM ET; Modal $100)</label>
+  <label class="chk"><input type="checkbox" onchange="upd()"> Anti-project language sweep (no medical-advice / sports framing)</label>
+  <label class="chk"><input type="checkbox" onchange="upd()"> Submitted before Nov 4, 6:00 PM PST — target Nov 4 morning</label>
 </div>
 
-<div class="card no-print" style="max-width:1280px;margin:12px auto;padding:10px 16px;text-align:center;color:var(--sub);font-size:12px">
-  HACKATHON_WINNING_CONDITIONS_1102260208 · 28bd077 · Stage One PASS → Build primary + Frontier defensible (43→44.5/50) — harness 32 sess + SAM3D Body ROM · <a href="HACKATHON_WINNING_CONDITIONS_1102260208.md">MD</a> · <a href="../docs/HACKATHON_WINNING_CONDITIONS_LATEST.md">Stable Copy</a> · audit/old/ · verify: tsc 0 · build 56/56 · 93/93
-</div>
+<p class="mut">Aruga · HACKATHON_WINNING_CONDITIONS_1103261726 · commit e1d8d89 · Full detail: <a href="../audit/HACKATHON_WINNING_CONDITIONS_1103261726.md">Markdown edition</a> · Production posture: HIPAA_COMPLIANCE_AUDIT_1103261642 governs hosted/real-patient deployment · Self-contained — print via browser (light layout applies).</p>
+</main>
 
 <script>
-const tabs=document.querySelectorAll(".tab"), panels=document.querySelectorAll(".panel");
-tabs.forEach(t=>t.addEventListener("click",()=>{
-  tabs.forEach(x=>x.classList.remove("active")); panels.forEach(p=>p.classList.remove("active"));
-  t.classList.add("active"); document.getElementById("p-"+t.dataset.tab).classList.add("active");
-  history.replaceState(null,"","#"+t.dataset.tab);
-}));
-if(location.hash) document.querySelector(`[data-tab="${location.hash.slice(1)}"]`)?.click();
-
-const boxes=document.querySelectorAll("#checklist input"), prog=document.getElementById("prog"), pct=document.getElementById("pct");
-function upd(){ const d=[...boxes].filter(b=>b.checked).length; prog.style.width=(d/boxes.length*100).toFixed(0)+"%"; pct.textContent=d+"/"+boxes.length+" · "+(d/boxes.length*100).toFixed(0)+"%"; localStorage.setItem("hck-checks", JSON.stringify([...boxes].map(b=>b.checked))); }
-boxes.forEach(b=>b.addEventListener("change",upd));
-try{ const s=JSON.parse(localStorage.getItem("hck-checks")||"[]"); boxes.forEach((b,i)=>b.checked=!!s[i]); upd(); }catch{}
-document.getElementById("search").addEventListener("input",e=>{
-  const q=e.target.value.toLowerCase();
-  document.querySelectorAll(".timeline .step, .table tr, details, .item").forEach(el=>{ if(!q) el.style.display=""; else el.style.display=(el.innerText.toLowerCase().includes(q)?"":"none"); });
-});
-
-const vmin=document.getElementById("vmin"), vout=document.getElementById("vout"), pat=document.getElementById("pat"), pout=document.getElementById("pout");
-function tier(v){ const c=(v*0.09 + (v>35? (v*0.0026): v*0.0022)).toFixed(2); const price=v<=15?"Free trial":v<=35?"$29":v<=60?"$49":"$49"; const m=v<=15?"—":(((price.slice(1)-c)/price.slice(1)*100).toFixed(1)+"%"); return `${v}m · $${c} → ${price}${m!=="—"?` (${m})`:""}`; }
-vmin?.addEventListener("input",()=>vout.textContent=tier(+vmin.value));
-pat?.addEventListener("input",()=>pout.textContent=`${pat.value} patients · $${(pat.value*5.71).toFixed(2)} → ${pat.value<=5?"$29":pat.value<=15?"$499":"$999"}`);
+function showTab(id, btn){
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('on'); });
+  document.getElementById(id).classList.add('on');
+  btn.parentElement.querySelectorAll('button').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+}
+function calc(){
+  var i=+document.getElementById('r1').value, m=+document.getElementById('r2').value,
+      t=+document.getElementById('r3').value, d=+document.getElementById('r4').value;
+  document.getElementById('s1').textContent=i;
+  document.getElementById('s2').textContent=m;
+  document.getElementById('s3').textContent=t;
+  document.getElementById('s4').textContent=d;
+  document.getElementById('out').textContent='Weighted Stage-Two score: ' + (i*0.30 + m*0.25 + t*0.20 + d*0.25).toFixed(2) + ' / 10';
+}
+function upd(){
+  var c=document.querySelectorAll('.chk input'), d=0;
+  c.forEach(function(x){ if(x.checked) d++; });
+  var p=c.length ? Math.round(d/c.length*100) : 0;
+  document.getElementById('pct').textContent = p + '% (' + d + '/' + c.length + ')';
+  document.getElementById('bar').style.width = p + '%';
+}
+function filt(v){
+  document.querySelectorAll('.chk').forEach(function(l){
+    l.style.display = l.textContent.toLowerCase().indexOf(v.toLowerCase()) !== -1 ? 'block' : 'none';
+  });
+}
+document.addEventListener('DOMContentLoaded', function(){ calc(); upd(); });
 </script>
 </body>
 </html>

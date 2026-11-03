@@ -1,4 +1,16 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+vi.mock("../src/lib/supabase/admin", async () => {
+  const { createFakeAdmin } = await import("./mocks/supabase-fake");
+  return { createAdminClient: () => createFakeAdmin() };
+});
+
+vi.mock("../src/lib/supabase/server", () => ({
+  createClient: async () => ({
+    auth: { getUser: async () => ({ data: { user: null }, error: null }) },
+  }),
+}));
+
 import { NextRequest } from "next/server";
 import {
   GET as getClients,
@@ -61,10 +73,13 @@ import {
   DEMO_PROGRAM_ID,
   DEMO_SUBMISSION_ID,
 } from "../src/lib/supabase/mock-store";
+import { createAdminClient } from "../src/lib/supabase/admin";
+import { __resetFakeAuth } from "./mocks/supabase-fake";
 
 describe("Therapist and Client Database CRUD Operations", () => {
   beforeEach(() => {
     resetMockStore();
+    __resetFakeAuth();
   });
 
   // 1. THERAPIST CLIENTS CRUD
@@ -91,7 +106,6 @@ describe("Therapist and Client Database CRUD Operations", () => {
       expect(data.client.name).toBe("Gabriel Santos");
       expect(data.client.therapist_id).toBe(customTherapistId);
       expect(data.client.client_category).toBe("old_people");
-      expect(data.client.role).toBe("client");
       expect(data.credentials).toBeDefined();
 
       // Verify that the user created by the therapist is strictly of client role in profiles
@@ -260,6 +274,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         method: "POST",
         body: JSON.stringify({
           patientId: DEMO_PATIENT_ID,
+          therapistId: DEMO_THERAPIST_ID,
           title: "Bilateral Tabletop Coordination Routine",
           mainInstructions: "Perform once daily with steady posture.",
           steps: [
@@ -295,6 +310,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         method: "PATCH",
         body: JSON.stringify({
           programId: DEMO_PROGRAM_ID,
+          therapistId: DEMO_THERAPIST_ID,
           title: "Advanced Precision Grasp Routine",
           mainInstructions: "Updated therapeutic instructions for week 4.",
           steps: [
@@ -319,6 +335,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         method: "POST",
         body: JSON.stringify({
           patientId: DEMO_PATIENT_ID,
+          therapistId: DEMO_THERAPIST_ID,
           title: "Scheduled Practice Session Routine",
           mainInstructions: "Practice on designated scheduled dates.",
           scheduledDates: initialDates,
@@ -341,6 +358,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         method: "PATCH",
         body: JSON.stringify({
           programId,
+          therapistId: DEMO_THERAPIST_ID,
           scheduledDates: updatedDates,
         }),
       });
@@ -358,6 +376,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         body: JSON.stringify({
           action: "assign",
           programId: DEMO_PROGRAM_ID,
+          therapistId: DEMO_THERAPIST_ID,
         }),
       });
       const assignRes = await postPrograms(assignReq);
@@ -369,6 +388,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         body: JSON.stringify({
           action: "archive",
           programId: DEMO_PROGRAM_ID,
+          therapistId: DEMO_THERAPIST_ID,
         }),
       });
       const archiveRes = await postPrograms(archiveReq);
@@ -380,6 +400,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         body: JSON.stringify({
           action: "duplicate",
           programId: DEMO_PROGRAM_ID,
+          therapistId: DEMO_THERAPIST_ID,
         }),
       });
       const dupRes = await postPrograms(dupReq);
@@ -407,7 +428,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
 
     it("deletes a home program (DELETE)", async () => {
       const delReq = new NextRequest(
-        `http://localhost:3000/api/therapist/programs?id=${DEMO_PROGRAM_ID}`,
+        `http://localhost:3000/api/therapist/programs?id=${DEMO_PROGRAM_ID}&requesterId=${DEMO_THERAPIST_ID}`,
         { method: "DELETE" }
       );
       const delRes = await deleteProgram(delReq);
@@ -739,6 +760,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         body: JSON.stringify({
           action: "save_draft",
           submissionId: DEMO_SUBMISSION_ID,
+          therapistId: DEMO_THERAPIST_ID,
           overallFeedback: "Smooth arm reach. Keep working on finger release.",
           stepReviews: [
             {
@@ -760,6 +782,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         body: JSON.stringify({
           action: "publish",
           submissionId: DEMO_SUBMISSION_ID,
+          therapistId: DEMO_THERAPIST_ID,
           overallFeedback: "Clinically approved: impressive bilateral dexterity improvement.",
           stepReviews: [
             {
@@ -805,6 +828,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         body: JSON.stringify({
           patientId: DEMO_PATIENT_ID,
           senderRole: "therapist",
+          senderId: DEMO_THERAPIST_ID,
           text: "Hi Marcus, remember to take short breath breaks between cup grasps today.",
           referencedProgramId: DEMO_PROGRAM_ID,
         }),
@@ -820,7 +844,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
 
       // Read thread
       const getReq = new NextRequest(
-        `http://localhost:3000/api/messages?patientId=${DEMO_PATIENT_ID}&isDemo=true`
+        `http://localhost:3000/api/messages?patientId=${DEMO_PATIENT_ID}&requesterId=${DEMO_THERAPIST_ID}&isDemo=true`
       );
       const getRes = await getMessages(getReq);
       expect(getRes.status).toBe(200);
@@ -832,7 +856,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
     it("supports 1 therapist to many clients with distinct conversation threads and multiple messages", async () => {
       // 1. Therapist fetches thread for Client 1 (Marcus Vance - Adult)
       const adultReq = new NextRequest(
-        `http://localhost:3000/api/messages?patientId=${DEMO_PATIENT_ID}&isDemo=true`
+        `http://localhost:3000/api/messages?patientId=${DEMO_PATIENT_ID}&requesterId=${DEMO_THERAPIST_ID}&isDemo=true`
       );
       const adultRes = await getMessages(adultReq);
       expect(adultRes.status).toBe(200);
@@ -842,7 +866,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
 
       // 2. Therapist fetches thread for Client 2 (Leo Chen - Pediatric)
       const pediaReq = new NextRequest(
-        `http://localhost:3000/api/messages?patientId=${DEMO_PEDIATRIC_PATIENT_ID}&isDemo=true`
+        `http://localhost:3000/api/messages?patientId=${DEMO_PEDIATRIC_PATIENT_ID}&requesterId=${DEMO_THERAPIST_ID}&isDemo=true`
       );
       const pediaRes = await getMessages(pediaReq);
       expect(pediaRes.status).toBe(200);
@@ -852,7 +876,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
 
       // 3. Therapist fetches thread for Client 3 (Eleanor Ramos - Geriatric)
       const geriatricReq = new NextRequest(
-        `http://localhost:3000/api/messages?patientId=${DEMO_GERIATRIC_PATIENT_ID}&isDemo=true`
+        `http://localhost:3000/api/messages?patientId=${DEMO_GERIATRIC_PATIENT_ID}&requesterId=${DEMO_THERAPIST_ID}&isDemo=true`
       );
       const geriatricRes = await getMessages(geriatricReq);
       expect(geriatricRes.status).toBe(200);
@@ -862,7 +886,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
 
       // 4. Therapist fetches thread for Client 4 (Jordan Miller - Adolescent)
       const adolescentReq = new NextRequest(
-        `http://localhost:3000/api/messages?patientId=${DEMO_ADOLESCENT_PATIENT_ID}&isDemo=true`
+        `http://localhost:3000/api/messages?patientId=${DEMO_ADOLESCENT_PATIENT_ID}&requesterId=${DEMO_THERAPIST_ID}&isDemo=true`
       );
       const adolescentRes = await getMessages(adolescentReq);
       expect(adolescentRes.status).toBe(200);
@@ -876,6 +900,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         body: JSON.stringify({
           patientId: DEMO_PEDIATRIC_PATIENT_ID,
           senderRole: "therapist",
+          senderId: DEMO_THERAPIST_ID,
           text: "Hi Sarah, excellent job with Leo's pincer grip today!",
           referencedProgramId: null,
         }),
@@ -892,6 +917,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         body: JSON.stringify({
           patientId: DEMO_PATIENT_ID,
           senderRole: "therapist",
+          senderId: DEMO_THERAPIST_ID,
           text: "Marcus, please practice this routine before dinner tonight.",
           referencedProgramId: DEMO_PROGRAM_ID,
         }),
@@ -911,6 +937,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         body: JSON.stringify({
           patientId: DEMO_PATIENT_ID,
           senderRole: "therapist",
+          senderId: DEMO_THERAPIST_ID,
           text: "This message will be deleted shortly.",
           referencedProgramId: null,
         }),
@@ -922,7 +949,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
 
       // 2. Delete the message
       const delReq = new NextRequest(
-        `http://localhost:3000/api/messages?id=${messageId}`,
+        `http://localhost:3000/api/messages?id=${messageId}&requesterId=${DEMO_THERAPIST_ID}`,
         { method: "DELETE" }
       );
       const delRes = await deleteMessages(delReq);
@@ -933,7 +960,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
 
       // 3. Confirm deletion
       const getReq = new NextRequest(
-        `http://localhost:3000/api/messages?patientId=${DEMO_PATIENT_ID}&isDemo=true`
+        `http://localhost:3000/api/messages?patientId=${DEMO_PATIENT_ID}&requesterId=${DEMO_THERAPIST_ID}&isDemo=true`
       );
       const getRes = await getMessages(getReq);
       const getData = await getRes.json();
@@ -949,7 +976,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         method: "POST",
         body: JSON.stringify({
           clientUserId: "test-client-usr-101",
-          therapistEmail: "elena.ramos@aruga.local",
+          therapistEmail: "dr.elena.ramos@aruga.local",
         }),
       });
 
@@ -1052,6 +1079,14 @@ describe("Therapist and Client Database CRUD Operations", () => {
 
   describe("7. Care Transfer Service", () => {
     it("successfully transfers client care to colleague with handover notes", async () => {
+      // Seed the colleague therapist profile the transfer targets
+      const admin = createAdminClient()!;
+      await admin.from("profiles").upsert({
+        id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        role: "therapist",
+        display_name: "Colleague Clinician",
+        email: "colleague.therapist@aruga.com",
+      });
       // 1. Create a client
       const createReq = new NextRequest("http://localhost:3000/api/therapist/clients", {
         method: "POST",
@@ -1061,6 +1096,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
           gender: "Male",
           condition: "Carpal Tunnel Rehabilitation",
           email: "carlos.delacruz@example.com",
+          therapistId: DEMO_THERAPIST_ID,
         }),
       });
       const createRes = await createClient(createReq);
@@ -1074,6 +1110,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
           patientId: client.id,
           targetTherapistEmail: "colleague.therapist@aruga.com",
           handoverNotes: "Progressing well with nerve gliding exercises. Recommended 3x weekly focus.",
+          originatingTherapistId: DEMO_THERAPIST_ID,
         }),
       });
 
@@ -1107,6 +1144,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         body: JSON.stringify({
           patientId: "patient-unknown-999",
           targetTherapistEmail: "valid.doc@aruga.com",
+          originatingTherapistId: DEMO_THERAPIST_ID,
         }),
       });
 
@@ -1275,6 +1313,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         body: JSON.stringify({
           patientId: "nonexistent-patient-999",
           targetTherapistEmail: "colleague@aruga.local",
+          originatingTherapistId: DEMO_THERAPIST_ID,
         }),
       });
       const res = await transferCare(transferReq);
@@ -1484,7 +1523,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
       expect(data2.soapNote.session_title).toContain("Session #6");
 
       // Verify therapist can fetch all notes for this patient
-      const getReq = new NextRequest(`http://localhost:3000/api/therapist/soap-notes?patientId=${DEMO_PATIENT_ID}&isDemo=true`);
+      const getReq = new NextRequest(`http://localhost:3000/api/therapist/soap-notes?patientId=${DEMO_PATIENT_ID}&requesterId=${DEMO_THERAPIST_ID}&isDemo=true`);
       const getRes = await getTherapistSoapNotes(getReq);
       expect(getRes.status).toBe(200);
       const getData = await getRes.json();
@@ -1519,6 +1558,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         method: "PATCH",
         body: JSON.stringify({
           id: noteId,
+          therapistId: DEMO_THERAPIST_ID,
           sessionTitle: "Updated Session Note",
           objective: "Updated O with 45° angle",
           clientSummary: "Updated friendly summary for client",
@@ -1532,7 +1572,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
       expect(patchData.soapNote.client_summary).toBe("Updated friendly summary for client");
 
       // 3. Delete note (DELETE)
-      const delReq = new NextRequest(`http://localhost:3000/api/therapist/soap-notes?id=${noteId}`, {
+      const delReq = new NextRequest(`http://localhost:3000/api/therapist/soap-notes?id=${noteId}&requesterId=${DEMO_THERAPIST_ID}`, {
         method: "DELETE",
       });
       const delRes = await deleteTherapistSoapNotes(delReq);
@@ -1541,7 +1581,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
       expect(delData.success).toBe(true);
 
       // Verify it is gone
-      const checkReq = new NextRequest(`http://localhost:3000/api/therapist/soap-notes?id=${noteId}&isDemo=true`);
+      const checkReq = new NextRequest(`http://localhost:3000/api/therapist/soap-notes?id=${noteId}&requesterId=${DEMO_THERAPIST_ID}&isDemo=true`);
       const checkRes = await getTherapistSoapNotes(checkReq);
       const checkData = await checkRes.json();
       expect(checkData.soapNotes.length).toBe(0);
@@ -1598,6 +1638,7 @@ describe("Therapist and Client Database CRUD Operations", () => {
         method: "PATCH",
         body: JSON.stringify({
           id: createData.soapNote.id,
+          therapistId: DEMO_THERAPIST_ID,
           sessionRecordingUrl: "https://meet.google.com/rec/eval-session-123-updated",
           assessmentLinks: [
             { title: "Updated Fugl-Meyer Scorecard", url: "https://clinic.org/fm-score-v2.pdf" },

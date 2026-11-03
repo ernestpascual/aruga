@@ -32,7 +32,7 @@ describe("HIPAA Compliance Safeguards", () => {
   });
 
   describe("Central Audit Logging (§ 164.312(b))", () => {
-    it("successfully creates and stores audit events in the mock store", async () => {
+    it("returns a well-formed audit event payload (DB is single source of truth, no mock mirroring)", async () => {
       const event = await logAuditEvent({
         actorId: "therapist-1",
         userRole: "therapist",
@@ -47,26 +47,29 @@ describe("HIPAA Compliance Safeguards", () => {
       expect(event?.action).toBe("EPHI_READ");
       expect(event?.affected_resource).toBe("soap_notes");
       expect(event?.resource_id).toBe("soap-101");
+      expect(event?.actor_id).toBe("therapist-1");
+      expect(event?.metadata?.patientId).toBe("patient-202");
 
+      // Audit events persist to the DB only — the mock store must stay untouched.
       const store = getMockStore();
-      expect(store.auditEvents).toHaveLength(1);
-      expect(store.auditEvents[0].actor_id).toBe("therapist-1");
-      expect(store.auditEvents[0].metadata.patientId).toBe("patient-202");
+      expect(store.auditEvents).toHaveLength(0);
     });
 
     it("logs ePHI AI synthesis dispatches with stripped telemetry", async () => {
-      await logAuditEvent({
+      const event = await logAuditEvent({
         actorId: "therapist-1",
         action: "EPHI_AI_SYNTHESIS",
         affectedResource: "soap_notes",
         patientId: "patient-555",
-        details: { model: "gemini-2.5-flash", deidentified: true },
+        metadata: { deidentified: true },
       });
 
+      expect(event).toBeDefined();
+      expect(event?.action).toBe("EPHI_AI_SYNTHESIS");
+      expect(event?.metadata?.deidentified).toBe(true);
+
       const store = getMockStore();
-      const aiEvent = store.auditEvents.find((e) => e.action === "EPHI_AI_SYNTHESIS");
-      expect(aiEvent).toBeDefined();
-      expect(aiEvent?.metadata.deidentified).toBe(true);
+      expect(store.auditEvents).toHaveLength(0);
     });
   });
 });
