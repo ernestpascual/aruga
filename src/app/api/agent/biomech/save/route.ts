@@ -74,6 +74,16 @@ export async function POST(req: NextRequest) {
     // megabytes of JSON and blow past Postgres statement timeouts on upsert.
     // Keep everything the review UI actually renders (summary, flags, angles,
     // insights, adherence, plan) and drop the heavy replay blobs.
+    // Segmentation boxes + masks are STRIDE-SAMPLED across the whole clip
+    // (never head-sliced): a head slice keeps only the first ~2s, so a reloaded
+    // analysis would show HUD everywhere but boxes nowhere past the opening.
+    function sampleEvery<T>(arr: T[], max: number): T[] {
+      if (arr.length <= max) return arr;
+      const step = arr.length / max;
+      const out: T[] = [];
+      for (let i = 0; i < max; i++) out.push(arr[Math.floor(i * step)]);
+      return out;
+    }
     function slimForStorage(input: Record<string, unknown>): Record<string, unknown> {
       const out: Record<string, unknown> = {};
       if (input.plan && typeof input.plan === "object") {
@@ -89,16 +99,18 @@ export async function POST(req: NextRequest) {
       if (Array.isArray(input.concepts)) out.concepts = (input.concepts as unknown[]).map(String).slice(0, 8);
       if (input.sam && typeof input.sam === "object") {
         const s = input.sam as Record<string, unknown>;
-        const boxes = Array.isArray(s.boxes) ? (s.boxes as unknown[]).slice(0, 40) : [];
+        const allBoxes = Array.isArray(s.boxes) ? (s.boxes as unknown[]) : [];
+        const allPaths = Array.isArray(s.svgPaths) ? (s.svgPaths as unknown[]) : [];
         const tracks = Array.isArray(s.tracks) ? (s.tracks as unknown[]).slice(0, 20) : [];
         const failures = Array.isArray(s.failures) ? (s.failures as unknown[]).slice(0, 10) : [];
         out.sam = {
           billedRequests: s.billedRequests,
           latencyMs: s.latencyMs,
-          boxes,
+          boxes: sampleEvery(allBoxes, 40),
+          svgPaths: sampleEvery(allPaths, 40),
           tracks,
           failures,
-          boxCount: Array.isArray(s.boxes) ? (s.boxes as unknown[]).length : 0,
+          boxCount: allBoxes.length,
         };
       }
       if (input.mhr && typeof input.mhr === "object") {

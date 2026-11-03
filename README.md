@@ -1,13 +1,32 @@
 <p align="center">
-  <img src="./public/icon.svg" width="72" height="72" alt="Aruga logo" />
+  <img src="./public/readme-hero.svg" width="100%" alt="Aruga — clinician-directed home-program companion for PT, OT and SLP. Five agents (Activity, Biomechanic, Goals, Highlights, Guide) turn a home program from prescription to performance to progress, with the therapist always approving." />
 </p>
 
 <h1 align="center">Aruga</h1>
 <p align="center"><b>Clinician-directed home-program companion for PT / OT / SLP</b></p>
 
-> **Quick description:** Therapists prescribe home programs. Clients record short exercise videos at home. Aruga's AI drafts worksheets, measures movement from video, checks goals, and explains progress in plain words. The therapist always reviews before anything reaches the patient.
+<p align="center">Built for the <b>Meta Global AI Developer Hackathon</b> — <b>Build for Your World</b> · Next.js 16 · Meta Model API · Supabase · Modal</p>
 
-Built for the **Meta Global AI Developer Hackathon** — Themes: **Build for Your World**.
+<p align="center">
+  <img src="https://img.shields.io/badge/Meta-AI_Developer_Hackathon-14b8a6?style=flat-square" alt="Meta Global AI Developer Hackathon" />
+  <img src="https://img.shields.io/badge/Next.js-16-black?style=flat-square" alt="Next.js 16" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square" alt="React 19" />
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square" alt="TypeScript 5" />
+  <img src="https://img.shields.io/badge/tests-93_passing-brightgreen?style=flat-square" alt="93 tests passing" />
+</p>
+
+> Home programs fail when they're generic. Aruga's five AI agents turn a prescription into a patient-aware worksheet, measure real movement from phone video (joint angles, ROM, compensation flags), check goals against evidence, and explain progress in plain words — with the therapist approving everything before it reaches the patient.
+
+<p align="center">
+  <a href="#what-it-does">What it does</a> ·
+  <a href="#who-uses-it">Who uses it</a> ·
+  <a href="#the-5-agents-1-line-each">Agents</a> ·
+  <a href="#modal-solution--sam-3d-body-backend-optional">Biomech backend</a> ·
+  <a href="#run-it">Run it</a> ·
+  <a href="docs/AGENTS_GUIDE.md">Agents guide</a>
+</p>
+
+> ⚠️ **Important:** Aruga does not replace therapy — it cannot diagnose, treat, or give medical advice. It only measures movement, drafts materials, and organizes the home program; a licensed therapist reviews and approves everything.
 
 ---
 

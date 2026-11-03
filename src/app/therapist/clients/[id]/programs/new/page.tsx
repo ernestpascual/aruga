@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, use } from "react";
+import React, { useState, use, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Plus,
@@ -60,9 +60,14 @@ function NewHomeProgramContent({
   params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const resolvedParams = use(params);
   const patientId = resolvedParams.id;
+  const editingProgramId = searchParams.get("edit") || searchParams.get("programId");
+  const isEditing = Boolean(editingProgramId);
   const { user } = useAuth();
+  const [loadingProgram, setLoadingProgram] = useState(false);
+  const [editLoaded, setEditLoaded] = useState(false);
 
   const [title, setTitle] = useState("");
   const [mainInstructions, setMainInstructions] = useState("");
@@ -127,6 +132,48 @@ function NewHomeProgramContent({
       instructions: "Reach forward toward the target object and secure a controlled cylindrical grasp.",
     },
   ]);
+
+  // Load existing program when editing — uses same full-page UI as create
+  useEffect(() => {
+    if (!editingProgramId || editLoaded) return;
+    let cancelled = false;
+    setLoadingProgram(true);
+    const load = async () => {
+      try {
+        const qs = user?.id ? `&requesterId=${user.id}` : "";
+        const res = await fetch(`/api/therapist/programs?programId=${editingProgramId}${qs}`);
+        const data = await res.json();
+        const prog = data.program || data.programs?.find((p: { id: string }) => p.id === editingProgramId);
+        if (!prog || cancelled) return;
+        setTitle(prog.title || "");
+        setMainInstructions(prog.main_instructions || "");
+        if (prog.discipline) setDiscipline(prog.discipline as never);
+        setScheduledDates(prog.scheduled_dates ? [...prog.scheduled_dates].sort() : []);
+        if (Array.isArray(prog.steps) && prog.steps.length) {
+          setSteps(
+            prog.steps
+              .slice()
+              .sort((a: StepItem, b: StepItem) => (a.position || 0) - (b.position || 0))
+              .map((s: StepItem) => ({
+                id: s.id,
+                position: s.position,
+                title: s.title || `Step ${s.position}`,
+                instructions: s.instructions || "",
+                generatedActivityId: (s as unknown as { generated_activity_id?: string | null }).generated_activity_id || null,
+                generatedActivity: (s as unknown as { generated_activity?: { id: string; title: string; base_image_url?: string | null } | null }).generated_activity || null,
+              }))
+          );
+        }
+        setEditLoaded(true);
+      } catch (e) {
+        console.warn("Failed to load program for edit:", e);
+      } finally {
+        if (!cancelled) setLoadingProgram(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [editingProgramId, user?.id, editLoaded]);
 
   // Refine with Meta modal state
   const [isRefineModalOpen, setIsRefineModalOpen] = useState(false);
@@ -243,7 +290,7 @@ function NewHomeProgramContent({
     setScheduledDates(scheduledDates.filter((d) => d !== dateToRemove));
   };
 
-  // Save Program (Draft or Assign)
+  // Save Program (Draft or Assign) — supports both create and edit (draft with agent)
   const handleSave = async (action: "draft" | "assign") => {
     if (submitting) return;
     setPageError(null);
@@ -266,7 +313,6 @@ function NewHomeProgramContent({
 
     setSubmitting(true);
     try {
-      // 1. Create program — include requester identity for RLS/owns check (route:165 reads x-requester-id/creatorId/requesterId)
       let requesterId: string | null = user?.id || null;
       if (!requesterId) {
         try {
@@ -285,6 +331,58 @@ function NewHomeProgramContent({
       if (!requesterId) {
         throw new Error("Not authenticated — please wait for sign-in to finish and retry (requesterId required).");
       }
+
+      // Edit mode: update existing program via PATCH, keep draft-with-agent workflow
+      if (isEditing && editingProgramId) {
+        const patchRes = await fetch("/api/therapist/programs", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-requester-id": requesterId,
+          },
+          body: JSON.stringify({
+            programId: editingProgramId,
+            title: title.trim(),
+            mainInstructions: mainInstructions.trim(),
+            scheduledDates,
+            steps: steps.map((s, idx) => ({
+              id: s.id && !s.id.startsWith("step-") ? s.id : undefined,
+              position: idx + 1,
+              title: s.title.trim() || `Step ${idx + 1}`,
+              instructions: s.instructions.trim(),
+              generated_activity_id: s.generatedActivityId || undefined,
+              generatedActivityId: s.generatedActivityId || undefined,
+            })),
+          }),
+        });
+        const patchData = await patchRes.json();
+        if (!patchRes.ok) throw new Error(patchData.error || "Failed to update program.");
+
+        if (action === "assign") {
+          const assignRes = await fetch("/api/therapist/programs", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-requester-id": requesterId,
+            },
+            body: JSON.stringify({
+              action: "assign",
+              programId: editingProgramId,
+              requesterId,
+              creatorId: requesterId,
+              therapistId: requesterId,
+            }),
+          });
+          if (!assignRes.ok) {
+            const ad = await assignRes.json();
+            throw new Error(ad.error || "Failed to assign program.");
+          }
+        }
+        router.push(`/therapist/clients/${patientId}`);
+        return;
+      }
+
+      // Create mode (original)
       const res = await fetch("/api/therapist/programs", {
         method: "POST",
         headers: {
@@ -304,13 +402,10 @@ function NewHomeProgramContent({
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to save program.");
-      }
+      if (!res.ok) throw new Error(data.error || "Failed to save program.");
 
       const createdProgramId = data.program.id;
 
-      // 2. If assigning immediately, trigger assign transition
       if (action === "assign") {
         const assignRes = await fetch("/api/therapist/programs", {
           method: "POST",
@@ -326,7 +421,6 @@ function NewHomeProgramContent({
             therapistId: requesterId,
           }),
         });
-
         if (!assignRes.ok) {
           const assignData = await assignRes.json();
           throw new Error(assignData.error || "Failed to assign program.");
@@ -352,18 +446,22 @@ function NewHomeProgramContent({
         </Link>
       </div>
 
-      {/* Editor Header */}
+      {/* Editor Header — same full-page UI for create & edit, draft with agent allowed in both */}
       <div className="flex flex-col gap-3 border-b border-zinc-800 pb-4">
         <div className="min-w-0">
           <h1 className="text-lg sm:text-xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
             <span className="w-9 h-9 rounded-xl bg-teal-950/40 border border-teal-500/20 grid place-items-center shrink-0">
               <Layers className="w-5 h-5 text-teal-400" />
             </span>
-            Create Home Program
+            {isEditing ? "Edit Home Program" : "Create Home Program"}
+            {isEditing && <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400">Draft • Agent available</span>}
           </h1>
           <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-            Build ordered exercise steps. Freeze upon assignment to publish instructions.
+            {isEditing
+              ? "Update title, instructions, schedule or steps. Save as draft to keep editing with the agent, or re-assign when ready. Draft keeps agent refine available."
+              : "Build ordered exercise steps. Freeze upon assignment to publish instructions."}
           </p>
+          {loadingProgram && <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1.5"><span className="w-3 h-3 border-2 border-zinc-600 border-t-teal-500 rounded-full animate-spin" /> Loading program for edit…</p>}
         </div>
 
 
@@ -798,21 +896,23 @@ function NewHomeProgramContent({
             type="button"
             variant="outline"
             isLoading={submitting}
+            disabled={loadingProgram}
             onClick={() => handleSave("draft")}
             className="gap-2 text-zinc-200 h-10 sm:h-9 text-xs justify-center"
           >
             <Save className="w-4 h-4" />
-            Save Draft
+            {isEditing ? "Update Draft" : "Save Draft"}
           </Button>
 
           <Button
             type="button"
             isLoading={submitting}
+            disabled={loadingProgram}
             onClick={() => handleSave("assign")}
             className="gap-2 bg-teal-600 hover:bg-teal-500 text-zinc-950 font-semibold h-10 sm:h-9 text-xs justify-center"
           >
             <Send className="w-4 h-4" />
-            Assign to Client
+            {isEditing ? "Update & Re-Assign" : "Assign to Client"}
           </Button>
         </div>
       </div>

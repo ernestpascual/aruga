@@ -582,31 +582,9 @@ function TherapistClientDetailContent({
     }
   };
 
-  // Open Edit Program Modal
+  // Open Edit Program — now uses full-page /programs/new?edit=... (same UI as create, draft with agent allowed) instead of popup
   const handleOpenEditProgramModal = (prog: HomeProgram) => {
-    setEditingProgramId(prog.id);
-    setEditProgramTitle(prog.title);
-    setEditProgramInstructions(prog.main_instructions);
-    setEditProgramStatus(prog.status);
-    setEditProgramDates(prog.scheduled_dates ? [...prog.scheduled_dates] : []);
-    setEditNewDateInput("");
-    const mappedSteps =
-      prog.steps && prog.steps.length > 0
-        ? prog.steps.map((s, idx) => ({
-            id: s.id,
-            position: s.position || idx + 1,
-            title: s.title || `Step ${idx + 1}`,
-            instructions: s.instructions || "",
-          }))
-        : [
-            {
-              position: 1,
-              title: "Step 1",
-              instructions: "",
-            },
-          ];
-    setEditProgramSteps(mappedSteps);
-    setIsEditProgramModalOpen(true);
+    router.push(`/therapist/clients/${clientId}/programs/new?edit=${prog.id}`);
   };
 
   const handleAddStepToProgram = () => {

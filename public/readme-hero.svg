@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-label="Aruga — clinician-directed home-program companion for PT, OT and SLP">
+  <defs>
+    <linearGradient id="tealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf"/>
+      <stop offset="100%" stop-color="#0f766e"/>
+    </linearGradient>
+    <radialGradient id="glowTeal" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#14b8a6" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#14b8a6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowViolet" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#1b1b20" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <!-- backdrop -->
+  <rect x="0" y="0" width="1200" height="520" rx="28" fill="#09090b" stroke="#27272a" stroke-width="2"/>
+  <rect x="2" y="2" width="1196" height="516" rx="26" fill="url(#grid)" opacity="0.55"/>
+  <ellipse cx="900" cy="230" rx="330" ry="210" fill="url(#glowTeal)"/>
+  <ellipse cx="180" cy="430" rx="280" ry="150" fill="url(#glowViolet)"/>
+
+  <!-- ============ LEFT: brand ============ -->
+  <!-- wordmark -->
+  <text x="72" y="152" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="62" fill="#fafafa" letter-spacing="1">Aruga</text>
+  <!-- tagline -->
+  <text x="72" y="210" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="23" fill="#d4d4d8">Clinician-directed home-program companion</text>
+  <text x="72" y="242" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#8b8b93">for PT · OT · SLP — prescription → performance → progress</text>
+  <!-- hackathon pill -->
+  <rect x="72" y="266" width="352" height="34" rx="17" fill="rgba(45,212,191,0.08)" stroke="#14b8a6" stroke-width="1.5"/>
+  <text x="248" y="288" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" letter-spacing="1.5" fill="#2dd4bf">META GLOBAL AI DEVELOPER HACKATHON</text>
+  <!-- rule -->
+  <text x="72" y="322" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#71717a">5 agents · 1 button each · nothing publishes without approval</text>
+  <!-- agent chips -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#d4d4d8">
+    <rect x="72" y="344" width="102" height="34" rx="17" fill="#121215" stroke="#27272a" stroke-width="1.5"/>
+    <circle cx="92" cy="361" r="4" fill="#2dd4bf"/>
+    <text x="125" y="366" text-anchor="middle">Activity</text>
+    <rect x="184" y="344" width="124" height="34" rx="17" fill="#121215" stroke="#27272a" stroke-width="1.5"/>
+    <circle cx="204" cy="361" r="4" fill="#60a5fa"/>
+    <text x="250" y="366" text-anchor="middle">Biomechanic</text>
+    <rect x="318" y="344" width="78" height="34" rx="17" fill="#121215" stroke="#27272a" stroke-width="1.5"/>
+    <circle cx="338" cy="361" r="4" fill="#a78bfa"/>
+    <text x="361" y="366" text-anchor="middle">Goals</text>
+    <rect x="406" y="344" width="116" height="34" rx="17" fill="#121215" stroke="#27272a" stroke-width="1.5"/>
+    <circle cx="426" cy="361" r="4" fill="#fbbf24"/>
+    <text x="468" y="366" text-anchor="middle">Highlights</text>
+    <rect x="532" y="344" width="78" height="34" rx="17" fill="#121215" stroke="#27272a" stroke-width="1.5"/>
+    <circle cx="552" cy="361" r="4" fill="#34d399"/>
+    <text x="575" y="366" text-anchor="middle">Guide</text>
+  </g>
+  <!-- model strip -->
+  <text x="72" y="446" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" fill="#52525b">SAM 3.1 · Muse Spark 1.3 · Muse Image 1.0 · Muse Wonder 1.0 · SAM 3D Body</text>
+
+  <!-- ============ RIGHT: product motif ============ -->
+  <!-- video frame -->
+  <rect x="700" y="92" width="420" height="296" rx="18" fill="#0e0e11" stroke="#2a2a2e" stroke-width="1.5"/>
+  <circle cx="724" cy="114" r="4" fill="#3f3f46"/>
+  <circle cx="740" cy="114" r="4" fill="#3f3f46"/>
+  <circle cx="756" cy="114" r="4" fill="#3f3f46"/>
+  <text x="772" y="119" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#71717a">cup_lift_session3.mp4 · 0:07</text>
+  <!-- tracking status chip -->
+  <rect x="996" y="104" width="108" height="24" rx="12" fill="#18181b" stroke="#3f3f46" stroke-width="1"/>
+  <circle cx="1010" cy="116" r="3.5" fill="#f87171"/>
+  <text x="1020" y="120" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" letter-spacing="1" fill="#d4d4d8">TRACKING</text>
+  <!-- tracking box -->
+  <rect x="788" y="156" width="210" height="164" rx="12" fill="rgba(45,212,191,0.06)" stroke="#2dd4bf" stroke-width="2" stroke-dasharray="8 6"/>
+  <!-- concept label -->
+  <rect x="788" y="124" width="124" height="24" rx="12" fill="#14b8a6"/>
+  <text x="850" y="141" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#05302a">hand · wrist</text>
+  <!-- kinematic chain: shoulder → elbow → wrist → fingertip -->
+  <polyline points="816,292 874,248 934,270 968,234" fill="none" stroke="#2dd4bf" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+  <circle cx="816" cy="292" r="6.5" fill="#0b3b36" stroke="#2dd4bf" stroke-width="2.5"/>
+  <circle cx="874" cy="248" r="6.5" fill="#0b3b36" stroke="#2dd4bf" stroke-width="2.5"/>
+  <circle cx="934" cy="270" r="6.5" fill="#0b3b36" stroke="#2dd4bf" stroke-width="2.5"/>
+  <circle cx="968" cy="234" r="6.5" fill="#0b3b36" stroke="#2dd4bf" stroke-width="2.5"/>
+  <!-- joint-angle arc at elbow -->
+  <path d="M896.6 256.2 A24 24 0 0 1 854.9 262.6" fill="none" stroke="#fbbf24" stroke-width="2.5"/>
+  <text x="874" y="302" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" fill="#fcd34d">142°</text>
+  <!-- rating chip -->
+  <rect x="716" y="338" width="130" height="30" rx="15" fill="rgba(52,211,153,0.12)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="781" y="358" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#6ee7b7">Good · 142°</text>
+
+  <!-- mini cards -->
+  <rect x="700" y="404" width="204" height="64" rx="14" fill="#121215" stroke="#27272a" stroke-width="1.5"/>
+  <text x="720" y="430" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#fafafa">↑ +14° shoulder</text>
+  <text x="720" y="452" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#71717a">vs last month · U1 UE ROM</text>
+  <rect x="916" y="404" width="204" height="64" rx="14" fill="#121215" stroke="#27272a" stroke-width="1.5"/>
+  <text x="936" y="430" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#fafafa">92% adherence</text>
+  <rect x="936" y="440" width="164" height="7" rx="3.5" fill="#26262b"/>
+  <rect x="936" y="440" width="151" height="7" rx="3.5" fill="#2dd4bf"/>
+  <text x="936" y="461" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" fill="#71717a">13 of 14 sessions this month</text>
+</svg>

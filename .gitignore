@@ -51,3 +51,7 @@ ckpts
 humandot3d.jpg
 dots.png
 studies 
+supabase/migrations
+audit/old
+audit/business-model
+audit/others

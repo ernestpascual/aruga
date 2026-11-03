@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { X, Zap, Loader2, AlertTriangle, Activity, Sparkles, ClipboardCheck, Film, Brain } from "lucide-react";
+import { X, Zap, Loader2, AlertTriangle, Activity, Sparkles, ClipboardCheck, Film, Brain, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -270,6 +270,13 @@ export function BiomechAnalysisModal({
     onClose();
   }
 
+  function startRerun() {
+    setIsSaved(false);
+    setSavedAt(null);
+    setArtifactState("none");
+    handleRun();
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
@@ -365,8 +372,8 @@ export function BiomechAnalysisModal({
 
           {/* Results — segmentation + 3D mirror of /tools/biomech steps 2–4.
               Segmentation (SAM boxes/masks) + skeleton + HUD render from the DB save too:
-              the slim row carries boxes + angles, and the storage artifact restores
-              full 3D frames + masks on load. */}
+              the slim row carries stride-sampled boxes + masks across the whole clip,
+              and the storage artifact restores full 3D frames + masks on load. */}
           {result && (
             <div className="space-y-4">
               {videoUrl ? (
@@ -375,13 +382,24 @@ export function BiomechAnalysisModal({
                   {artifactState === "loading" && (
                     <p className="text-[11px] text-zinc-500 flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" /> Loading masks + full 3D from storage…</p>
                   )}
-                  <SamOverlay
-                    videoSrc={videoUrl}
-                    boxes={(result.sam?.boxes as any[]) ?? []}
-                    svgPaths={(result.sam?.svgPaths as any[]) ?? []}
-                    mhr={mhr}
-                    modelProvenance="SAM 3.1 + SAM 3D Body"
-                  />
+                  {(result.sam?.boxes?.length ?? 0) === 0 && artifactState !== "loading" ? (
+                    <div className="rounded-lg border border-amber-800/50 bg-amber-950/20 p-3 text-xs text-amber-200 flex flex-col gap-2">
+                      <p>No segmentation boxes in this result — only the measurements (HUD) below. This happens when the saved summary outlived its 3D replay, or SAM found no segment on this clip. Re-running restores the moving boxes + masks.</p>
+                      <div>
+                        <Button onClick={startRerun} disabled={isRunning} size="sm" className="h-8 text-xs gap-1.5 bg-teal-600 hover:bg-teal-500 text-white font-semibold">
+                          {isRunning ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /> Analyzing…</>) : (<><Zap className="w-3.5 h-3.5" /> Re-run analysis</>)}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <SamOverlay
+                      videoSrc={videoUrl}
+                      boxes={(result.sam?.boxes as any[]) ?? []}
+                      svgPaths={(result.sam?.svgPaths as any[]) ?? []}
+                      mhr={mhr}
+                      modelProvenance="SAM 3.1 + SAM 3D Body"
+                    />
+                  )}
                 </Card>
               ) : null}
               <Card className="p-4 border-zinc-800 bg-zinc-900/70 space-y-2">
@@ -507,6 +525,9 @@ export function BiomechAnalysisModal({
                     {isSaving ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving…</>) : "Review done — Save to database"}
                   </Button>
                 )}
+                <Button onClick={startRerun} disabled={isRunning || isSaving} variant="outline" className="h-9 text-xs gap-1.5 border-zinc-700 text-zinc-300">
+                  {isRunning ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /> Analyzing…</>) : (<><RefreshCw className="w-3.5 h-3.5" /> Re-run analysis</>)}
+                </Button>
                 <Button onClick={handleInsert} disabled={!isSaved} title={isSaved ? "Insert into Objective" : "Save first, then insert"} className="h-9 text-xs gap-1.5 bg-teal-600 hover:bg-teal-500 text-white font-semibold disabled:opacity-40">
                   Insert summary into Objective
                 </Button>
