@@ -261,6 +261,7 @@ export default function BiomechPlaygroundPage() {
   function saveAsPrevious(){ if(result?.mhr) { setPreviousRun(result); setError(null); } }
 
   const plan: PlannerResult | null = result?.plan ?? null;
+  const analysis: { movementAnalysis?: string; targets?: Array<{ metric?: string; direction?: string; expectedRange?: string; why?: string }>; watchFor?: string[] } | null = (result as any)?.analysis ?? null;
   const insights: Insight[] = result?.insights ?? [];
   const mhr = result?.mhr ?? null;
   const trend = result?.trend ?? null;
@@ -450,6 +451,30 @@ export default function BiomechPlaygroundPage() {
         {/* Results — 4 steps */}
         {result && (
           <div className="space-y-4">
+            {/* Step 0 — what the agent understood (from the task-analysis call) */}
+            <Card className="p-4 border-zinc-800 bg-zinc-900/70 space-y-3">
+              <h3 className="text-xs font-semibold tracking-wide uppercase text-zinc-300 flex items-center gap-2"><Brain className="w-3.5 h-3.5 text-violet-400" /> Step 0 — What the agent understood</h3>
+              {analysis ? (
+                <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
+                  <p className="text-xs text-zinc-200 leading-relaxed">{analysis.movementAnalysis || "Functional movement analysis."}</p>
+                  {Array.isArray(analysis.targets) && analysis.targets.length > 0 && (
+                    <div className="grid gap-1.5">
+                      {analysis.targets.map((t, i) => (
+                        <div key={i} className="flex items-start justify-between gap-2 text-xs">
+                          <span className="font-semibold text-zinc-100">{t.metric || `Target ${i+1}`}</span>
+                          <span className="text-right text-zinc-400">{t.direction || ""}{t.expectedRange ? ` • expect ${t.expectedRange}` : ""}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {Array.isArray(analysis.watchFor) && analysis.watchFor.length > 0 && (
+                    <p className="text-[11px] text-amber-200/80">Watch for: {analysis.watchFor.join(" · ")}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-zinc-500">No task analysis for this run — concepts were picked directly from the activity text.</p>
+              )}
+            </Card>
             {/* Step 1 trace */}
             <Card className="p-4 border-zinc-800 bg-zinc-900/70 space-y-3">
               <h3 className="text-xs font-semibold tracking-wide uppercase text-zinc-300 flex items-center gap-2"><Sparkles className="w-3.5 h-3.5 text-violet-400" /> Step 1 — Determine <Badge variant="teal" className="text-[11px] font-mono ml-1">{plan?.source==="spark"?"Spark":"Heuristic"} {plan?.latencyMs ? `• ${plan.latencyMs}ms` : ""}</Badge></h3>
@@ -459,6 +484,9 @@ export default function BiomechPlaygroundPage() {
                   {result.concepts.map((c:string,i:number)=> (<span key={c} className="px-2.5 py-1 rounded-full text-xs font-medium border flex items-center gap-1.5" style={{ backgroundColor:`${PALETTE[i%PALETTE.length]}18`, borderColor: `${PALETTE[i%PALETTE.length]}50`, color: PALETTE[i%PALETTE.length] }}><span className="w-2 h-2 rounded-full" style={{backgroundColor: PALETTE[i%PALETTE.length]}} />{c}</span>))}
                 </div>
                 <p className="text-xs text-zinc-400 leading-relaxed"><span className="font-semibold text-violet-300">Rationale:</span> {plan?.rationale}</p>
+                {Array.isArray((plan as any)?.dropped) && (plan as any).dropped.length > 0 && (
+                  <p className="text-[11px] text-zinc-500">Final review dropped: {(plan as any).dropped.map((d: any) => d.concept).join(", ")} — kept only what the measurement targets need.</p>
+                )}
                 <p className="text-[11px] text-zinc-600">Locked to <code className="px-1 py-0.5 rounded bg-zinc-800 border border-zinc-700">BIOMECH_KEYWORDS 16</code> — concepts validated via <code className="text-[11px]">biomech-prompt.ts:5</code>. No 700 word bank.</p>
               </div>
             </Card>

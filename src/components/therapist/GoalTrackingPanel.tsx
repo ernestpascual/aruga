@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { Target, Sparkles, Loader2, AlertCircle, CheckCircle2, TrendingUp, TrendingDown, Minus, Wand2, ChevronDown, ChevronUp, FileText, Send } from "lucide-react";
+import { Target, Sparkles, Loader2, AlertCircle, CheckCircle2, TrendingUp, TrendingDown, Minus, Wand2, ChevronDown, ChevronUp, FileText, Send, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,7 @@ export function GoalTrackingPanel({ patientId, longTermGoals, shortTermGoals, so
   const [draft, setDraft] = useState<{ verdicts: Verdict[]; summary: any; suggestions: any[]; modelId: string } | null>(null);
   const [traceOpen, setTraceOpen] = useState(false);
   const [published, setPublished] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const hasGoals = longTermGoals.length + shortTermGoals.length > 0;
   const totalGoals = longTermGoals.length + shortTermGoals.length;
 
@@ -74,6 +75,18 @@ export function GoalTrackingPanel({ patientId, longTermGoals, shortTermGoals, so
     setPublished(true);
   }
 
+  async function handleReset() {
+    setResetting(true);
+    setError(null);
+    try {
+      await fetch(`/api/agent/goal-tracking/run?patientId=${encodeURIComponent(patientId)}`, { method: "DELETE" });
+    } catch {}
+    setDraft(null);
+    setPublished(false);
+    setTraceOpen(false);
+    setResetting(false);
+  }
+
   return (
     <Card className="border-zinc-800 bg-zinc-900/90 overflow-hidden">
       <div className="p-3.5 sm:p-4 space-y-3">
@@ -92,6 +105,20 @@ export function GoalTrackingPanel({ patientId, longTermGoals, shortTermGoals, so
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {!hasGoals && <span className="text-[11px] text-amber-300 hidden sm:inline">Create a goal first</span>}
+            {(draft || error) && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleReset}
+                disabled={loading || resetting}
+                className="h-8 gap-1.5 text-xs border-zinc-700 text-zinc-300"
+                title="Clear this check and delete stored drafts — next Check goals starts fresh"
+              >
+                {resetting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                Reset
+              </Button>
+            )}
             <Button
               type="button"
               size="sm"

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { BIOMECH_KEYWORDS } from "@/lib/meta/biomech-prompt";
 import { sam3Engine } from "@/lib/meta/sam-engine";
-import { planBiomechConcepts, deriveExpectation, thresholdBand } from "@/lib/meta/biomech-planner";
+import { planBiomechConcepts, analyzeBiomechTask, finalizeBiomechPrompt, deriveExpectation, thresholdBand } from "@/lib/meta/biomech-planner";
 
 export const maxDuration = 60;
 
@@ -62,14 +62,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Video data URL is ${(videoDataUrl.length/1_000_000).toFixed(1)} MB — exceeds Vercel function payload (4.5 MB). Sign in to use Storage upload (up to 100 MB) or run on localhost:3000 (allows 100 MB direct) or use a shorter clip ≤15s / <3 MB.`, code: "PAYLOAD_TOO_LARGE" }, { status: 413 });
     }
 
-    // Step 1: Determine — Spark planner picks 2-8 concepts from BIOMECH_KEYWORDS 16 only
-    const plan = await planBiomechConcepts({ prescribedTitle, prescribedInstructions, ageBand, therapistNeed });
-    const concepts = plan.concepts.filter(c=> (BIOMECH_KEYWORDS as readonly string[]).includes(c));
+    // Step 0: Analyze — Spark reads the prescription like a clinician and decides
+    // what the agent should try to get out of the video (movement, measurable
+    // targets, compensations to watch). Advisory: null when Spark is unavailable.
+    // Step 1: Draft — planner picks 2-8 concepts (grounded in the analysis when present).
+    // Step 2: Finalize — reviewer locks the exact SAM 3.1 tracking list (subset
+    // of the draft, person-first, lock-enforced deterministically).
+    const analysis = await analyzeBiomechTask({ prescribedTitle, prescribedInstructions, ageBand, therapistNeed }).catch(() => null);
+    const draft = await planBiomechConcepts({ prescribedTitle, prescribedInstructions, ageBand, therapistNeed }, analysis ? { analysis } : undefined);
+    const final = await finalizeBiomechPrompt({
+      draftConcepts: draft.concepts,
+      analysis,
+      input: { prescribedTitle, prescribedInstructions, ageBand, therapistNeed },
+    });
+    const plan = {
+      ...draft,
+      concepts: final.concepts,
+      rationale: final.rationale,
+      dropped: final.dropped,
+      perConceptUse: final.perConceptUse,
+    };
+    const concepts = final.concepts.filter(c=> (BIOMECH_KEYWORDS as readonly string[]).includes(c));
     if (concepts.length < 2 || !concepts.includes("person")) {
       return NextResponse.json({ error: `Planner returned invalid concepts: ${concepts.join(", ")}` }, { status: 500 });
     }
 
-    // Step 2: Segment → Forward
+    // Step 3: Segment → Forward (SAM 3.1 tracks the finalized concepts, Modal measures)
     const modalUrl = process.env.MODAL_MHR_URL || process.env.MODAL_MHR_ENDPOINT;
     if (!modalUrl) {
       return NextResponse.json(
@@ -128,7 +146,7 @@ export async function POST(req: NextRequest) {
     }
     const mhr = await modalRes.json();
 
-    // Step 3: Compare — deterministic adherence + ROM/thresholds + previous comparison
+    // Step 4: Compare — deterministic adherence + ROM/thresholds + previous comparison
     const expectations = deriveExpectation(prescribedTitle, prescribedInstructions);
     // helper to resolve metricPath to value
     function resolveMetric(path: string, mhrObj: any): number | null {
@@ -229,9 +247,9 @@ export async function POST(req: NextRequest) {
 
     const processingMs = Date.now() - t0;
     // Cleanup playground file best-effort (optional, keep for replay) — delete after 24h via Supabase retention; no immediate delete
-    // Return full agentic trace
+    // Return full agentic trace (analysis → draft → finalized SAM prompt → SAM → MHR)
     return NextResponse.json({
-      plan, concepts,
+      plan, concepts, analysis,
       sam: { boxes: samResult.boxes, svgPaths: samResult.svgPaths, tracks: samResult.tracks, failures: samResult.failures, billedRequests: samResult.billedRequests, latencyMs: samResult.latencyMs },
       mhr,
       insights, adherence, trend,

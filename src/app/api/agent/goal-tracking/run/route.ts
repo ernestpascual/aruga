@@ -212,3 +212,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 }
+
+/**
+ * DELETE /api/agent/goal-tracking/run?patientId=... — reset: deletes stored
+ * draft goal_reviews for the patient so the next Check goals starts clean.
+ * Published history is never touched (publish is what the client sees).
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const rawPatientId = req.nextUrl.searchParams.get("patientId");
+    if (!rawPatientId) return NextResponse.json({ error: "patientId required" }, { status: 400 });
+    const admin = createAdminClient();
+    if (!admin) return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+    let patientId = rawPatientId;
+    const { data: byId } = await admin.from("patients").select("id").eq("id", rawPatientId).maybeSingle();
+    if (!byId?.id) {
+      const { data: byClient } = await admin.from("patients").select("id").eq("client_user_id", rawPatientId).maybeSingle();
+      if (byClient?.id) patientId = byClient.id;
+      else return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+    }
+    const { error, count } = await admin
+      .from("goal_reviews")
+      .delete({ count: "exact" })
+      .eq("patient_id", patientId)
+      .eq("status", "draft");
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, deleted: count ?? 0 });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
+  }
+}

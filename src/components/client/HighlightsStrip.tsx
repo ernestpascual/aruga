@@ -24,6 +24,7 @@ export function HighlightsStrip({ patientId, isTherapist=false }: { patientId?: 
   const [traceOpen, setTraceOpen] = useState(false);
   const [published, setPublished] = useState(false);
   const [error, setError] = useState<string|null>(null);
+  const [warnings, setWarnings] = useState<string[]|null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
 
   // Load saved highlights on mount / when patient changes — persists until regenerated
@@ -51,6 +52,14 @@ export function HighlightsStrip({ patientId, isTherapist=false }: { patientId?: 
       const r = await fetch(url, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ patientId, month: new Date().toISOString().slice(0,7) }) });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || data.message || "Failed to generate highlights");
+      // Degraded = Spark failed and highlights are placeholders, not answers.
+      // Never render those — keep previous real results (or none) and show why.
+      if (data.degraded) {
+        const reason = (Array.isArray(data.warnings) && data.warnings.length > 0 ? data.warnings : [data.modelId].filter(Boolean));
+        setWarnings(reason.length ? reason : null);
+        throw new Error("Couldn't generate highlights — AI unavailable. Previous results kept.");
+      }
+      setWarnings(null);
       if (Array.isArray(data.highlights) && data.highlights.length > 0) { setItems(data.highlights); setPublished(false); }
       else if (Array.isArray(data)) { setItems(data); setPublished(false); }
       else throw new Error(data.error || "No highlights — insufficient evidence");
@@ -92,6 +101,11 @@ export function HighlightsStrip({ patientId, isTherapist=false }: { patientId?: 
         <CardContent className="p-4 pt-0">
           <p className="text-xs text-zinc-500">Review this month in one click. We check your notes, goals, attendance, and activity results to pick what matters most. Your draft stays private until you publish.</p>
           {error && <p className="text-xs text-rose-400 mt-2">{error}</p>}
+          {warnings && warnings.length > 0 && (
+            <div className="rounded-lg border border-amber-800/50 bg-amber-950/20 p-2.5 mt-2 text-[11px] text-amber-200/90 leading-relaxed">
+              {warnings.map((w, i) => <p key={i} className="break-words">{w}</p>)}
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -120,6 +134,11 @@ export function HighlightsStrip({ patientId, isTherapist=false }: { patientId?: 
         <p className="text-[11px] text-zinc-500">Picked by what changed most and felt steadiest · arrows compare to last month · {isTherapist ? "Private draft until you publish" : "Checked by your therapist"}</p>
       </CardHeader>
       <CardContent className="p-3.5 sm:p-4 pt-0 space-y-3">
+        {warnings && warnings.length > 0 && (
+          <div className="rounded-lg border border-amber-800/50 bg-amber-950/20 p-2.5 text-[11px] text-amber-200/90 leading-relaxed">
+            {warnings.map((w, i) => <p key={i} className="break-words">{w}</p>)}
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 auto-rows-fr">
           {items.map((h)=>{
             const Arrow = arrowIcon(h.arrow);

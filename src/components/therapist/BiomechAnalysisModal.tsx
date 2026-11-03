@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { X, Zap, Loader2, AlertTriangle, Activity, Sparkles, ClipboardCheck, Film } from "lucide-react";
+import { X, Zap, Loader2, AlertTriangle, Activity, Sparkles, ClipboardCheck, Film, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -218,6 +218,7 @@ export function BiomechAnalysisModal({
   }
 
   const plan = result?.plan ?? null;
+  const analysis = (result as any)?.analysis ?? null;
   const insights: Array<{ id: string; label: string; value: number | null; unit: string; rating: string; score: number; explanation: string }> = result?.insights ?? [];
   const mhr = result?.mhr ?? null;
   const adherence = result?.adherence ?? null;
@@ -385,6 +386,31 @@ export function BiomechAnalysisModal({
               ) : null}
               <Card className="p-4 border-zinc-800 bg-zinc-900/70 space-y-2">
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-300 flex items-center gap-2">
+                  <Brain className="w-3.5 h-3.5 text-violet-400" /> Step 0 — What the agent understood
+                </h4>
+                {analysis ? (
+                  <div className="space-y-2">
+                    <p className="text-xs text-zinc-300 leading-relaxed">{analysis.movementAnalysis || "Functional movement analysis."}</p>
+                    {Array.isArray(analysis.targets) && analysis.targets.length > 0 && (
+                      <div className="grid gap-1.5">
+                        {analysis.targets.map((t: any, i: number) => (
+                          <div key={i} className="flex items-start justify-between gap-2 rounded-lg bg-zinc-950 border border-zinc-800 px-2.5 py-1.5 text-xs">
+                            <span className="font-semibold text-zinc-100">{t.metric}</span>
+                            <span className="text-right text-zinc-400">{t.direction}{t.expectedRange ? ` • expect ${t.expectedRange}` : ""}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {Array.isArray(analysis.watchFor) && analysis.watchFor.length > 0 && (
+                      <p className="text-[11px] text-amber-200/80">Watch for: {analysis.watchFor.join(" · ")}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-zinc-500">No task analysis for this run — concepts were picked directly from the activity text (heuristic path).</p>
+                )}
+              </Card>
+              <Card className="p-4 border-zinc-800 bg-zinc-900/70 space-y-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-300 flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-violet-400" /> Step 1 — Determine
                   <Badge variant="teal" className="text-[11px] font-mono ml-1">{plan?.source === "spark" ? "Spark" : "Heuristic"}</Badge>
                 </h4>
@@ -396,6 +422,9 @@ export function BiomechAnalysisModal({
                   ))}
                 </div>
                 {plan?.rationale && <p className="text-xs text-zinc-400"><span className="font-semibold text-violet-300">Rationale:</span> {plan.rationale}</p>}
+                {Array.isArray((plan as any)?.dropped) && (plan as any).dropped.length > 0 && (
+                  <p className="text-[11px] text-zinc-500">Final review dropped: {(plan as any).dropped.map((d: any) => d.concept).join(", ")} — kept only what the measurement targets need.</p>
+                )}
               </Card>
 
               <Card className="p-4 border-zinc-800 bg-zinc-900/70 space-y-2">

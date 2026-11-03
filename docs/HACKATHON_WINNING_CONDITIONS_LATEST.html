@@ -1,266 +1,300 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hackathon Winning Conditions 1103261726 — Aruga (Judge-Local Recalibration)</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aruga — Hackathon Winning Conditions 1103261848 (Judge-Local, Code-Only)</title>
 <style>
-:root{--bg:#09090b;--panel:#121215;--panel2:#18181b;--line:#27272a;--teal:#14b8a6;--amber:#f59e0b;--sky:#0284c7;--red:#f87171;--txt:#e4e4e7;--mut:#a1a1aa}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.6}
-code,.mono{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;font-size:.86em;color:#5eead4}
-pre{background:#09090b;border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px;line-height:1.55;color:#d4d4d8}
-header{max-width:1100px;margin:0 auto;padding:28px 20px 8px}
-main{max-width:1100px;margin:0 auto;padding:0 20px 48px}
-h1{font-size:27px;line-height:1.25;margin:8px 0 10px}
-h2{color:var(--teal);font-size:19px;margin:26px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
-h3{font-size:15px;margin:16px 0 6px;color:#fafafa}
-p,li{font-size:14.5px}
-.mut{color:var(--mut)}
-.badge{display:inline-block;padding:2px 10px;border-radius:99px;border:1px solid var(--teal);color:var(--teal);font-size:12px;margin:0 6px 6px 0}
-.badge.warn{border-color:var(--amber);color:var(--amber)}
-.badge.bad{border-color:var(--red);color:var(--red)}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0}
-.card.amber{border-color:#92600a}
-table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0}
-th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
-th{color:var(--teal);background:var(--panel2)}
-nav{margin:14px 0 4px}
-button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer;margin:0 6px 6px 0;font-size:13.5px}
-button.on{border-color:var(--teal);color:var(--teal)}
-.tab{display:none}
-.tab.on{display:block}
-input[type=range]{width:100%;accent-color:var(--teal)}
-input[type=search]{width:100%;padding:9px 11px;background:#09090b;border:1px solid var(--line);border-radius:8px;color:var(--txt);font-size:14px}
-.bar{height:10px;background:#27272a;border-radius:99px;overflow:hidden;margin:8px 0 12px}
-.bar>i{display:block;height:100%;background:var(--teal);width:0;transition:width .3s}
-label.chk{display:block;padding:5px 0;cursor:pointer;font-size:14px}
-.chk input{accent-color:var(--teal)}
-a{color:#38bdf8}
-.score-out{font-family:'JetBrains Mono',monospace;font-size:16px;color:#5eead4}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:760px){.grid{grid-template-columns:1fr}}
-blockquote{border-left:3px solid var(--teal);margin:12px 0;padding:4px 14px;color:#d4d4d8;background:var(--panel)}
-@media print{body{background:#fff;color:#000}button,input[type=search]{display:none}.card,th{background:#fff}h2,th{color:#0f766e}code,.mono,.score-out{color:#0f766e}pre{background:#f4f4f5;color:#18181b}}
+  :root{
+    --bg:#09090b; --bg2:#121215; --card:#141417; --border:#27272a;
+    --text:#f4f4f5; --muted:#a1a1aa; --faint:#71717a;
+    --teal:#14b8a6; --teal-dim:rgba(20,184,166,.12);
+    --amber:#f59e0b; --amber-dim:rgba(245,158,11,.12);
+    --sky:#0284c7; --emerald:#10b981; --rose:#f43f5e;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"Inter",-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);margin:0;line-height:1.6;font-size:14px}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
+  header.hero{border:1px solid var(--border);border-radius:14px;padding:26px;background:linear-gradient(180deg,#101013,#0b0b0d);margin-bottom:18px}
+  header.hero h1{margin:0 0 6px;font-size:22px;letter-spacing:-.02em}
+  header.hero h1 .tag{font-size:11px;vertical-align:middle;background:var(--teal-dim);border:1px solid rgba(20,184,166,.4);color:var(--teal);border-radius:999px;padding:2px 10px;margin-left:10px;font-weight:600}
+  .meta{color:var(--muted);font-size:12.5px}
+  .meta code{font-family:var(--mono);font-size:11.5px;color:#d4d4d8;background:#1b1b1f;padding:1px 6px;border-radius:5px}
+  .statusline{margin-top:12px;font-size:13px;color:var(--emerald);font-weight:600}
+  nav.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+  nav.tabs button{background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:9px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer}
+  nav.tabs button.active{background:var(--teal-dim);border-color:rgba(20,184,166,.5);color:var(--teal)}
+  .tabpage{display:none}
+  .tabpage.active{display:block}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px}
+  .card h2{margin:0 0 10px;font-size:15px}
+  .card h3{margin:14px 0 8px;font-size:13px;color:var(--teal)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  td code, li code, p code{font-family:var(--mono);font-size:11px;background:#1b1b1f;padding:1px 5px;border-radius:4px;color:#d4d4d8}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;border-radius:999px;padding:1px 9px;border:1px solid}
+  .pill.ok{color:var(--emerald);border-color:rgba(16,185,129,.5);background:rgba(16,185,129,.1)}
+  .pill.no{color:var(--rose);border-color:rgba(244,63,94,.5);background:rgba(244,63,94,.1)}
+  .pill.warn{color:var(--amber);border-color:rgba(245,158,11,.5);background:var(--amber-dim)}
+  .pill.info{color:var(--sky);border-color:rgba(2,132,199,.5);background:rgba(2,132,199,.1)}
+  /* score lab */
+  .sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0}
+  .slider{background:#101013;border:1px solid var(--border);border-radius:10px;padding:12px}
+  .slider label{font-size:12px;font-weight:700;display:flex;justify-content:space-between}
+  .slider label b{font-family:var(--mono);color:var(--teal)}
+  .slider input[type=range]{width:100%;accent-color:var(--teal)}
+  .slider .w{font-size:11px;color:var(--faint)}
+  #totalBox{font-size:15px;font-weight:800;margin-top:6px}
+  #totalBox b{font-family:var(--mono);font-size:26px;color:var(--teal)}
+  .presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .presets button{background:#1b1b1f;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer}
+  .presets button:hover{border-color:var(--teal);color:var(--text)}
+  /* checklist */
+  .chk{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border:1px solid var(--border);border-radius:9px;margin-bottom:8px;background:#101013;cursor:pointer}
+  .chk input{margin-top:3px;accent-color:var(--teal)}
+  .chk.done{opacity:.75}
+  .chk.done .t{text-decoration:line-through;color:var(--faint)}
+  .chk .t{font-size:13px}
+  .chk .s{font-size:11px;color:var(--faint)}
+  #progWrap{background:#1b1b1f;border-radius:8px;height:10px;overflow:hidden;margin:8px 0}
+  #progBar{height:100%;width:0;background:linear-gradient(90deg,var(--teal),var(--emerald));transition:width .3s}
+  #progTxt{font-size:12px;color:var(--muted)}
+  ol.steps{margin:8px 0;padding-left:20px;font-size:13px}
+  ol.steps li{margin-bottom:6px}
+  pre.cmd{background:#0c0c0e;border:1px solid var(--border);border-radius:9px;padding:12px;font-family:var(--mono);font-size:12px;overflow-x:auto;color:#d4d4d8}
+  .note{border-left:3px solid var(--amber);padding:8px 12px;background:var(--amber-dim);border-radius:0 8px 8px 0;font-size:12.5px;margin:10px 0}
+  .note.teal{border-color:var(--teal);background:var(--teal-dim)}
+  footer{color:var(--faint);font-size:11.5px;margin-top:22px}
+  @media print{
+    body{background:#fff;color:#000;font-size:11px}
+    .wrap{max-width:100%;padding:0}
+    nav.tabs,.presets,.chk input{display:none}
+    .tabpage{display:block !important}
+    .card{border:1px solid #ccc;break-inside:avoid}
+  }
+  @media (max-width:640px){ header.hero h1{font-size:18px} }
 </style>
 </head>
 <body>
-<header>
-  <div class="mono">1103261726 · e1d8d89 · e1d8d8987f14e5355bdc8a3fae7cf2802000dfb2 · 2026-11-03 17:26 PST</div>
-  <h1>Hackathon Winning Conditions — Judge-Local Recalibration</h1>
-  <p>
-    <span class="badge">STAGE ONE: PASS</span>
-    <span class="badge">Stage Two 7.80/10</span>
-    <span class="badge">Projected 8.55/10</span>
-    <span class="badge warn">Deadline Nov 4 · 6:00 PM PST (9 PM EST)</span>
-  </p>
-  <p><b>Recalibration trigger (participant-confirmed):</b> judges will only have Meta APIs, will not use Supabase, and will only run the project locally. The demo therefore uses an <b>intentionally unauthenticated</b> approach.</p>
-  <p><b>Demo topology:</b> <code>git clone → npm i → .env.local (MODEL_API_KEY + AI_MODE=live + MODAL_MHR_URL) → npm run dev → three unauthenticated playgrounds. No login. No Supabase.</code></p>
-  <p class="mut">Problem statement: <b>Build for Your World</b> (Push the Frontier = secondary narrative) · Prize track: <b>Startups</b> · Previous editions: <a href="../audit/old/HACKATHON_WINNING_CONDITIONS_1103261714.md">1103261714 (hosted model, 7.35/10)</a> · <a href="../audit/HACKATHON_WINNING_CONDITIONS_1103261726.md">Full Markdown audit</a></p>
-</header>
+<div class="wrap">
+  <header class="hero">
+    <h1>Aruga — Hackathon Winning Conditions <span class="tag">1103261848 · judge-local · code-only</span></h1>
+    <div class="meta">
+      Head commit <code>412978b7ce7ba17a8c8785ed749729bf2c82a3a1</code> (“update test suite and docs”) · tree verified clean ·
+      Previous: <code>audit/old/HACKATHON_WINNING_CONDITIONS_1103261726.md</code> (7.80/10) ·
+      No Supabase · No login · Meta key only · Demo/mock output excluded from scoring
+    </div>
+    <div class="statusline">✅ STAGE ONE: PASS &nbsp;·&nbsp; Stage Two estimate <b>7.90/10</b> (was 7.80) &nbsp;·&nbsp; Projected <b>8.50/10</b> with §8 shipped</div>
+  </header>
 
-<main>
-<nav>
-  <button class="on" onclick="showTab('t0',this)">Recalibration</button>
-  <button onclick="showTab('t1',this)">Judge-Local Surface</button>
-  <button onclick="showTab('t2',this)">Score Calculator</button>
-  <button onclick="showTab('t3',this)">Quickstart &amp; Sprint</button>
-  <button onclick="showTab('t4',this)">Bonus &amp; Video</button>
-</nav>
+  <nav class="tabs" role="tablist">
+    <button class="active" data-tab="overview" role="tab">Overview &amp; Deltas</button>
+    <button data-tab="surface" role="tab">Demo Surface (Tier A/B)</button>
+    <button data-tab="scores" role="tab">Score Lab</button>
+    <button data-tab="sprint" role="tab">Sprint + Checklist</button>
+  </nav>
 
-<!-- TAB 0 -->
-<section class="tab on" id="t0">
-  <div class="card">
-    <h2>What Changed — Two Threat Models</h2>
-    <table>
-      <tr><th>Dimension</th><th>Hosted model (1103261714)</th><th>Judge-local model (this edition)</th></tr>
-      <tr><td>Where it runs</td><td>Vercel + Supabase, public URL</td><td><b>Judge's machine, localhost:3000</b></td></tr>
-      <tr><td>Credentials</td><td>Full stack incl. Supabase keys</td><td><b>Meta Model API key only</b></td></tr>
-      <tr><td>Supabase</td><td>Required</td><td><b>Absent (env blank, admin = null)</b></td></tr>
-      <tr><td>Users / data</td><td>Therapists + real patients (ePHI)</td><td><b>One judge, judge-supplied video, no real patient data</b></td></tr>
-      <tr><td>Purpose of auth</td><td>Protect one tenant's ePHI from another</td><td><b>Nothing to protect — auth would block the demo</b></td></tr>
-      <tr><td>Timeout regime</td><td>Vercel 60s caps</td><td>Local — Vercel caps do not apply</td></tr>
-      <tr><td>Governing audit</td><td>HIPAA audit + P0s</td><td><b>This document; HIPAA P0-1 out of scope for judging</b></td></tr>
-    </table>
-    <h3>Three consequences</h3>
-    <ol>
-      <li><b>Unauthenticated demo routes are correct design, not a finding.</b> There is no tenant boundary on the judge's laptop; the only video is the one they uploaded. Requiring login would make the project unjudgeable — the only fatal Stage One outcome.</li>
-      <li><b>The HIPAA audit is scoped, not retracted.</b> Finding H-1 / P0-1 (agent-route authorization) remains mandatory before any hosted deployment with real patients. It does not apply to a single-user local demo with no ePHI. Never point judges at a hosted URL containing real data.</li>
-      <li><b>Two deductions shrink, one grows.</b> The Vercel 60s-vs-Modal-130s timeout does not bind locally; the 39/93 test suite matters only if a judge runs <code>npm test</code>. But docs assuming login/Supabase (<code>docs/DEMO.md</code>, <code>.env.example</code>) now actively mislead the only audience that matters.</li>
-    </ol>
-    <blockquote>"This local demo is intentionally unauthenticated — it runs on your machine with your videos. The production deployment adds Supabase auth, per-therapist ownership gates, and audit logging (HIPAA-audited configuration)." — the sentence to say in the room and print in the README.</blockquote>
-  </div>
-</section>
+  <section id="tab-overview" class="tabpage active">
+    <div class="card">
+      <h2>§0 — What “no demo in the analysis” means</h2>
+      <p>Scored surface = <b>shipped code paths at HEAD that execute real Meta API calls on judge-supplied inputs</b>. Excluded as evidence: mock/placeholder fallbacks, <code>DEMO_*</code> fixtures, <code>isDemo</code>/mock branches, the in-test Supabase fake, demo video and walkthrough materials. Tier A playgrounds stay in scope — they are real routes, not mock output.</p>
+      <div class="note teal"><b>Auditor rule applied throughout:</b> every load-bearing claim cites a file + line verified in the working tree at <code>412978b</code> (verified clean). Carried-forward claims were re-checked; corrections are listed in §1.</div>
+      <h3>Delta since 1103261726 (same constraint, new commit)</h3>
+      <table>
+        <tr><th>#</th><th>Item</th><th>1726</th><th>HEAD verification</th><th>Effect</th></tr>
+        <tr><td>1</td><td>Test suite</td><td>39/93 liability</td><td><b>93/93 hermetic</b> — <code>npm test</code>, ~1s, no env (<code>tests/mocks/supabase-fake.ts</code>)</td><td><span class="pill ok">Technical +0.5</span></td></tr>
+        <tr><td>2</td><td><code>npm run build</code></td><td>Implied</td><td>Passes on identical tree (incl. tests)</td><td>Supports Technical</td></tr>
+        <tr><td>3</td><td>Tier A table</td><td>Verified at e1d8d89</td><td>Re-verified line-by-line at HEAD — all rows hold</td><td>Confirms, no movement</td></tr>
+        <tr><td>4</td><td>Agentic bonus evidence</td><td>“Inspect <code>agent_runs</code> traces locally”</td><td><b>Corrected:</b> goal/highlights/clinical-biomech <code>run</code> routes 503 without DB — no traces exist locally. Re-runnable loop = tools/biomech + activity pipeline</td><td>Fit unchanged, evidence fixed</td></tr>
+        <tr><td>5</td><td>Goal Tracking × home-program step results</td><td>Not claimed</td><td><b>Not present:</b> type carries per-step fields (<code>goal-agent.ts:20</code>) but route selects only <code>id,state,created_at</code> and the prompt uses state/date only</td><td>Recorded as deferred Tier B work</td></tr>
+        <tr><td>6</td><td>§8 items (quickstart, demo gate, env fix, video, Modal URL)</td><td>All ❌</td><td>Still ❌ — <code>JUDGE_DEMO.md</code> absent, no <code>ARUGA_DEMO</code> in <code>src/</code>, <code>.env.example:4</code> still “required”, <code>docs/DEMO.md</code> login-first, Modal live status not verifiable from repo</td><td>Projection basis unchanged</td></tr>
+        <tr><td>7</td><td><code>modal/deploy.sh</code></td><td>Referenced flow</td><td><b>Deleted at HEAD</b> — deploy via direct <code>modal deploy modal/app.py</code> only</td><td>One-line docs note in §8</td></tr>
+        <tr><td>8</td><td>ESLint deduction</td><td>“487 problems”</td><td><b>Withdrawn:</b> no ESLint config ships — figure not reproducible from the commit. Verified replacement deduction: monolith pages (3120/1784/1123 lines)</td><td>Part of Technical +0.5</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Stage One — PASS (judge-local topology)</h2>
+      <p>Viable idea · fits Build for Your World · <b>reasonably uses the Meta Model API</b> — the Meta-powered surfaces are precisely the DB-free ones, so what judges run <i>is</i> the Meta integration. Condition (unchanged): ship the §8 quickstart so judges land on Tier A first try.</p>
+    </div>
+  </section>
 
-<!-- TAB 1 -->
-<section class="tab" id="t1">
-  <div class="card">
-    <h2>Tier A — Works With Only a Meta Key (the judge path)</h2>
-    <table>
-      <tr><th>Surface</th><th>Route</th><th>Why it works without Supabase</th></tr>
-      <tr><td><b>Biomechanic playground</b> <code>/tools/biomech</code></td><td><code>POST /api/tools/biomech/run</code></td><td>Accepts uploaded <code>videoDataUrl</code>; admin client only used for storage paths (<code>route.ts:41</code>). Localhost bypasses the 4.5MB payload guard up to ~100MB (<code>route.ts:61</code>)</td></tr>
-      <tr><td><b>SAM workspace</b> <code>/sam-test</code></td><td><code>POST /api/sam-test</code>, <code>/api/agent/biomech/demo</code></td><td>In-memory ring buffer, no DB (<code>sam-test/route.ts:22</code>); demo route states "No DB required" (<code>demo/route.ts:10</code>)</td></tr>
-      <tr><td><b>Activity playground</b> <code>/activity-agent-playground</code></td><td>Spark → Muse Image</td><td>Worksheet generation needs no persistence to demonstrate</td></tr>
-      <tr><td><b>Meta helpers</b></td><td><code>/api/meta/draft-program</code>, <code>draft-feedback</code>, <code>/api/ot-chat</code></td><td>Zero database references in all three route files</td></tr>
-    </table>
-    <p>Bundled sample clips for judges: <code>public/demo/tabletop_exercise.mp4</code> · <code>cup_grasp_transfer.mp4</code> · <code>block_stacking.mp4</code> · <code>washcloth_supination.mp4</code></p>
-  </div>
-  <div class="card amber">
-    <h2>Tier B — Inert Locally (document it, don't let judges discover it)</h2>
-    <p>Therapist/client login, submissions, <code>POST /api/agent/biomech/save</code>, goal/highlights runs, SOAP cache — all return clean 503/500 with blank Supabase env. Not broken: that is the production product, out of scope for a Meta-key-only demo. Until the <code>ARUGA_DEMO=1</code> gate ships (Sprint #2), judges find these by clicking and read "500" as breakage.</p>
-    <h3>The one extra dependency: Modal</h3>
-    <p>Full joint angles need <code>MODAL_MHR_URL</code> — the <b>team's already-deployed</b> Modal endpoint, pasted into the judge's <code>.env.local</code>. Judges must not be asked to <code>modal deploy</code>. Without it, Tier A degrades honestly: SAM + Spark run, biomech returns typed <code>503 MODAL_NOT_CONFIGURED</code>, no invented angles. If <code>MODAL_SECRET</code> is set on the deployment, unset it for judging or print the value — a 401 reads as a broken demo.</p>
-  </div>
-  <div class="card">
-    <h2>Design Rules for the Unauthenticated Approach</h2>
-    <ol>
-      <li><b>Judge-supplied data only.</b> Demo routes accept uploads and bundled samples; they can never expose another person's records — locally there is no other person. State this property explicitly.</li>
-      <li><b>Make demo mode visible.</b> <code>ARUGA_DEMO=1</code> → banner ("Judge demo — local, unauthenticated, not for patient data") + Tier B nav disabled with a tooltip, documented as forbidden for hosted deployments.</li>
-      <li><b>Fail loud and typed, never fake.</b> Missing key → 503 naming the env var; missing Modal → 503; SAM finds nothing → 422 per-concept. No mock-result fallbacks to hit the deadline.</li>
-      <li><b>Production story one sentence away</b> (see quote in Recalibration tab). If asked directly: "demo surface auth-free by design; clinic surface gated; agent routes get the same gate before any real deployment." Do not claim that gate is shipped.</li>
-    </ol>
-  </div>
-</section>
+  <section id="tab-surface" class="tabpage">
+    <div class="card">
+      <h2>Tier A — works with only a Meta key <span class="pill ok">judge path</span></h2>
+      <table>
+        <tr><th>Surface</th><th>Route(s)</th><th>Why it works without Supabase</th></tr>
+        <tr><td>Biomechanic playground <code>/tools/biomech</code></td><td><code>POST /api/tools/biomech/run</code></td><td>Admin touched only in the <code>videoStoragePath</code> branch (<code>route.ts:41</code>); direct <code>videoDataUrl</code> uploads skip it. Localhost bypasses the 4.5&nbsp;MB Vercel cap (<code>route.ts:58-62</code>)</td></tr>
+        <tr><td>SAM workspace <code>/sam-test</code></td><td><code>POST /api/sam-test</code>, <code>POST /api/agent/biomech/demo</code></td><td>In-memory ring buffer by design (<code>route.ts:22</code>); DB insert best-effort in <code>if&nbsp;(admin)</code>. Demo route: “No DB required”, needs <code>MODAL_MHR_URL</code></td></tr>
+        <tr><td>Activity playground <code>/activity-agent-playground</code></td><td><code>POST /api/activities/generate</code></td><td>Every <code>admin</code> use guarded — generation proceeds, persistence skipped. Template failures caught → empty shelf</td></tr>
+        <tr><td>Meta helpers + chat</td><td><code>/api/meta/draft-program</code>, <code>/api/meta/draft-feedback</code>, <code>/api/ot-chat</code></td><td>Zero admin/server-client references in any of the three files. <code>/aruga-guide</code> renders logged-out; history fetches are try/catch-guarded</td></tr>
+        <tr><td>Bundled clips <code>public/demo/*.mp4</code> ×4</td><td>—</td><td>Present at HEAD for judges who won't record</td></tr>
+        <tr><td>Craft proof</td><td><code>npm test</code> / <code>npm run build</code></td><td>93/93 hermetic (~1s, no env); build type-checks clean</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Tier B — inert locally (document, don't discover) <span class="pill warn">needs Supabase</span></h2>
+      <p>Login, all CRUD, goal/highlights/clinical-biomech/activity agents, SOAP summary cache, uploads, reviews, messages, notifications — every data route hard-requires <code>createAdminClient()</code> (500/503 with blank env). Production product, out of demo scope. Dashboards have no forced login redirect — they render inert empty states, not crashes.</p>
+      <p><b>External deps beyond Meta:</b> Modal endpoint for joint angles (<code>MODAL_MHR_URL</code>; secret optional per deployment guide — confirm the deployment is live and ungated before submitting). Without it: typed <code>503 MODAL_NOT_CONFIGURED</code>, SAM-only still runs where the route reaches SAM.</p>
+    </div>
+  </section>
 
-<!-- TAB 2 -->
-<section class="tab" id="t2">
-  <div class="card">
-    <h2>Stage Two — Official Rubric (Participant Guide §8)</h2>
-    <table>
-      <tr><th>Category</th><th>Weight</th><th>Was (hosted)</th><th>Now (judge-local)</th><th>Rationale</th></tr>
-      <tr><td>Impact</td><td>30%</td><td>8</td><td><b>8</b></td><td>Idea/market property — topology-independent. No LOI yet; quantified 73% time saving holds</td></tr>
-      <tr><td>Use of Meta AI Tooling</td><td>25%</td><td>9</td><td><b>9</b></td><td>Judges execute SAM/Spark/Image themselves — stronger evidence than video claims. 4 families, 13 surfaces</td></tr>
-      <tr><td>Technical Depth &amp; Execution</td><td>20%</td><td>6</td><td><b>7</b></td><td>DB-free demo architecture is craft for this brief; timeout doesn't bind locally; auth = intent. Suite (39/93) + 487 ESLint still deducted</td></tr>
-      <tr><td>Demo</td><td>25%</td><td>6</td><td><b>7</b></td><td>Runnable playgrounds + bundled clips exist. Missing guided path: no quickstart, <code>.env.example</code> says Supabase "required"</td></tr>
-    </table>
-    <p class="score-out">Weighted: 8×.30 + 9×.25 + 7×.20 + 7×.25 = 7.80 / 10 &nbsp;(hosted model was 7.35; projected 8.55 with the sprint below)</p>
-    <p class="mut">Stage One: <b>PASS</b> (was Conditional) — the remaining condition is shipping the quickstart so judges land on Tier A first try. Stage Three note: top 5 per prize track advance to live finals Nov 9; 8.55 is finalist-competitive in Startups.</p>
-  </div>
-  <div class="card">
-    <h2>Live Calculator</h2>
-    <label>Impact (30%): <b id="s1">8</b></label>
-    <input type="range" id="r1" min="0" max="10" step="0.5" value="8" oninput="calc()">
-    <label>Use of Meta AI Tooling (25%): <b id="s2">9</b></label>
-    <input type="range" id="r2" min="0" max="10" step="0.5" value="9" oninput="calc()">
-    <label>Technical Depth &amp; Execution (20%): <b id="s3">7</b></label>
-    <input type="range" id="r3" min="0" max="10" step="0.5" value="7" oninput="calc()">
-    <label>Demo (25%): <b id="s4">7</b></label>
-    <input type="range" id="r4" min="0" max="10" step="0.5" value="7" oninput="calc()">
-    <p class="score-out" id="out"></p>
-    <p class="mut">Try Technical 7.5 / Demo 9 (quickstart + demo gate + video shipped) → 8.55/10.</p>
-  </div>
-</section>
+  <section id="tab-scores" class="tabpage">
+    <div class="card">
+      <h2>Stage Two — official weights, live calculator</h2>
+      <p>Drag to explore. Presets reproduce the editions. Weights are fixed (30/25/20/25).</p>
+      <div class="sliders">
+        <div class="slider"><label>Impact (30%) <b id="v-impact">8.0</b></label><input id="s-impact" type="range" min="0" max="10" step="0.5" value="8"><div class="w">Beneficiaries · magnitude · problem fit</div></div>
+        <div class="slider"><label>Meta Tooling (25%) <b id="v-meta">9.0</b></label><input id="s-meta" type="range" min="0" max="10" step="0.5" value="9"><div class="w">Executed integrations, beyond-basic</div></div>
+        <div class="slider"><label>Technical (20%) <b id="v-tech">7.5</b></label><input id="s-tech" type="range" min="0" max="10" step="0.5" value="7.5"><div class="w">Soundness · craft · verification</div></div>
+        <div class="slider"><label>Demo (25%) <b id="v-demo">7.0</b></label><input id="s-demo" type="range" min="0" max="10" step="0.5" value="7"><div class="w">Self-serve in 5 min · story</div></div>
+      </div>
+      <div id="totalBox">Weighted total: <b id="total">7.90</b> / 10</div>
+      <div class="presets">
+        <button data-p="8,9,6,6">Hosted 1103261714 · 7.35</button>
+        <button data-p="8,9,7,7">1726 judge-local · 7.80</button>
+        <button data-p="8,9,7.5,7">This edition · 7.90</button>
+        <button data-p="8,9,8,9">Projected +§8 · 8.50</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Tier comparator — same product, three framings</h2>
+      <table>
+        <tr><th></th><th>Hosted (1714)</th><th>Judge-local 1726</th><th>This edition</th></tr>
+        <tr><td>Test suite</td><td>39/93 liability</td><td>39/93 liability</td><td><b>93/93 hermetic</b> (no env)</td></tr>
+        <tr><td>Demo evidence</td><td>Video/walkthrough</td><td>Playgrounds (verified)</td><td>Playgrounds (re-verified) — demo materials excluded</td></tr>
+        <tr><td>Unauthenticated routes</td><td>P0 finding</td><td>Intent</td><td>Intent (unchanged)</td></tr>
+        <tr><td>Agentic proof</td><td>Traces claimed</td><td>Traces claimed</td><td><b>Corrected:</b> tools/biomech loop only</td></tr>
+        <tr><td>Total</td><td>7.35</td><td>7.80</td><td><b>7.90</b> (→ 8.50 projected)</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Bonuses</h2>
+      <p>✅ <b>Best Agentic</b> — re-runnable loop = tools/biomech + activity pipeline (traces claim withdrawn, see §1.4). ✅ <b>Best Creative</b> — participatory worksheets. ➖ Most Viral / Community Vote mechanics unchanged. ❌ <b>Best Open Weight</b> — ineligible (API models).</p>
+    </div>
+  </section>
 
-<!-- TAB 3 -->
-<section class="tab" id="t3">
-  <div class="card">
-    <h2>Judge Quickstart (ship as JUDGE_DEMO.md + README top section)</h2>
-<pre>git clone https://github.com/ernestpascual/aruga &amp;&amp; cd aruga
+  <section id="tab-sprint" class="tabpage">
+    <div class="card">
+      <h2>Remaining sprint (~1 day)</h2>
+      <table>
+        <tr><th>#</th><th>Item</th><th>Effort</th><th>Stakes</th></tr>
+        <tr><td>1</td><td><code>JUDGE_DEMO.md</code> + README quickstart + <code>.env.example</code> fix + printed Modal URL (note: <code>modal/deploy.sh</code> deleted at HEAD — use direct <code>modal deploy modal/app.py</code>)</td><td>~1h</td><td>Demo 7→8</td></tr>
+        <tr><td>2</td><td><code>ARUGA_DEMO=1</code> gate: banner + Tier B nav gating; verify Tier A from clean clone, blank Supabase env</td><td>~half day</td><td>Demo 8→9, Tech +0.5</td></tr>
+        <tr><td>3</td><td>3-minute video from the local path</td><td>~half day</td><td>Demo holds 9</td></tr>
+        <tr><td>4</td><td>Credits + forms (Meta $150 by Nov 4 9PM ET; Modal $100; track; rep; contributors; Public + LICENSE)</td><td>~1h</td><td>Eligibility</td></tr>
+      </table>
+      <p><b>Done since 1726:</b> suite restoration (cite 93/93 freely). <b>Deferred past deadline (not abandoned):</b> agent-route ownership gates, Goal Tracking home-program step results (type-only at HEAD), hosted GPU/timeout work.</p>
+    </div>
+    <div class="card">
+      <h2>Final checklist <span id="progTxt">— 0/11</span></h2>
+      <div id="progWrap"><div id="progBar"></div></div>
+      <div id="checklist"></div>
+    </div>
+    <div class="card">
+      <h2>Judge quickstart (ship as <code>JUDGE_DEMO.md</code>)</h2>
+      <pre class="cmd">git clone https://github.com/ernestpascual/aruga &amp;&amp; cd aruga
 npm install
-cp .env.example .env.local   # fill ONLY the lines below
+cp .env.example .env.local   # fill ONLY: MODEL_API_KEY, AI_MODE=live, MODAL_MHR_URL
 npm run dev                  # http://localhost:3000</pre>
-    <ol>
-      <li><b>You need:</b> Node 20+ and a Meta Model API key (your hackathon credit key). No Supabase, no accounts, no login.</li>
-      <li><b>Set in <code>.env.local</code>:</b> <code>MODEL_API_KEY=&lt;key&gt;</code>, <code>AI_MODE=live</code>, <code>MODAL_MHR_URL=&lt;team's deployed endpoint&gt;</code>. Leave all <code>SUPABASE_*</code> blank.</li>
-      <li><b>Open in order:</b> <code>/tools/biomech</code> (upload <code>public/demo/cup_grasp_transfer.mp4</code>, allow ~2 min first run) → <code>/sam-test</code> → <code>/activity-agent-playground</code>.</li>
-      <li><b>Expected:</b> login areas are the production product and are inert without Supabase — intended, not a bug. Missing config returns explicit 503s; nothing fabricates results.</li>
-    </ol>
-    <p>Also fix: <code>.env.example</code> "Supabase (required)" → "(optional — leave blank for judge demo)", and point <code>docs/DEMO.md</code> at the judge quickstart for hackathon judging.</p>
-  </div>
-  <div class="card">
-    <h2>Remaining Sprint — ~1 Day (deadline Nov 4, 6:00 PM PST)</h2>
-    <table>
-      <tr><th>#</th><th>Item</th><th>Effort</th><th>Points</th></tr>
-      <tr><td>1</td><td>JUDGE_DEMO.md + README quickstart + .env.example fix + Modal URL printed</td><td>~1h</td><td>Demo 7→8</td></tr>
-      <tr><td>2</td><td><code>ARUGA_DEMO=1</code> banner + Tier B nav gating; verify clean-clone Tier A with blank Supabase</td><td>~½ day</td><td>Demo 8→9, Tech +0.5</td></tr>
-      <tr><td>3</td><td>Record 3-minute video <b>from the local demo path itself</b></td><td>~½ day</td><td>Demo holds under Stage Three re-watch</td></tr>
-      <tr><td>4</td><td>Honest-suite note in README; never cite 93/93 (do not spend deadline hours on 54 tests)</td><td>5 min</td><td>Caps Technical downside</td></tr>
-      <tr><td>5</td><td>Meta $150 credit (by Nov 4, 9 PM ET) + Modal $100; Startups track; Representative; repo Public + LICENSE</td><td>~1h</td><td>Eligibility</td></tr>
-    </table>
-    <p><b>Explicitly deferred past Nov 4</b> (still mandatory before any clinic pilot; see HIPAA audit): agent-route ownership gates, full test-suite restoration, hosted async/GPU biomech. They optimize for conditions judges will never encounter.</p>
-  </div>
-</section>
-
-<!-- TAB 4 -->
-<section class="tab" id="t4">
-  <div class="grid">
-    <div class="card">
-      <h2>Bonus Prizes ($50k pool)</h2>
-      <table>
-        <tr><th>Prize</th><th>Status</th></tr>
-        <tr><td>Best Agentic $5k</td><td>✅ Strongest fit — local trace inspection raises credibility</td></tr>
-        <tr><td>Best Creative $5k</td><td>✅ Muse Image worksheets; judges can generate their own</td></tr>
-        <tr><td>Most Viral $20k</td><td>X post at submission; engagement to Nov 8 EOD</td></tr>
-        <tr><td>Community Vote $10k</td><td>Gallery listing; winner Nov 16</td></tr>
-        <tr><td>Best Open Weight $10k</td><td>❌ Ineligible (API models) — skip</td></tr>
-      </table>
+      <ol class="steps">
+        <li>Node 20+ · Meta key only. No Supabase, no accounts, no login.</li>
+        <li>Open <code>/tools/biomech</code> → upload <code>public/demo/cup_grasp_transfer.mp4</code> (≤15s; ~2 min first run) → <code>/sam-test</code> → <code>/activity-agent-playground</code>.</li>
+        <li>Optional craft check (no keys): <code>npm test</code> (93/93) · <code>npm run build</code>.</li>
+        <li>Login areas are the inert production product — intended, not a bug. Missing key/Modal → explicit 503 naming the env var.</li>
+      </ol>
     </div>
-    <div class="card">
-      <h2>3-Minute Video (record the local path)</h2>
-      <table>
-        <tr><th>Time</th><th>Segment</th></tr>
-        <tr><td>0:00–0:25</td><td>Problem: eyeballing home video, 14–20 min review</td></tr>
-        <tr><td>0:25–1:15</td><td>Biomech hero: SAM 3.1 → Modal SAM 3D Body angles/ROM</td></tr>
-        <tr><td>1:15–1:50</td><td>Goal verdict + Highlights + family summary</td></tr>
-        <tr><td>1:50–2:20</td><td>Creative: Spark → Muse Image worksheet</td></tr>
-        <tr><td>2:20–2:50</td><td>Meta stack (4 families, 13 surfaces) + production sentence</td></tr>
-        <tr><td>2:50–3:00</td><td>Close: pricing, public repo, "built Oct 27–Nov 4"</td></tr>
-      </table>
-      <p class="mut">Consented/self footage only · captions on · never "AI diagnoses/advises", "sports", "coach", or "93/93".</p>
-    </div>
-  </div>
-</section>
+  </section>
 
-<div class="card">
-  <h2>Final Checklist</h2>
-  <input type="search" placeholder="Search checklist…" oninput="filt(this.value)">
-  <p>Completion: <b id="pct"></b></p>
-  <div class="bar"><i id="bar"></i></div>
-  <label class="chk"><input type="checkbox" checked onchange="upd()"> Tier A playgrounds run with Meta key only, no Supabase (verified in source at e1d8d89)</label>
-  <label class="chk"><input type="checkbox" checked onchange="upd()"> Bundled sample clips present (public/demo/*.mp4 ×4)</label>
-  <label class="chk"><input type="checkbox" onchange="upd()"> Team Modal endpoint URL ready to paste (secret unset or printed)</label>
-  <label class="chk"><input type="checkbox" onchange="upd()"> JUDGE_DEMO.md + README quickstart + .env.example fix shipped</label>
-  <label class="chk"><input type="checkbox" onchange="upd()"> ARUGA_DEMO=1 banner + Tier B nav gating</label>
-  <label class="chk"><input type="checkbox" onchange="upd()"> Production-vs-demo sentence in video + README</label>
-  <label class="chk"><input type="checkbox" onchange="upd()"> 3-minute video recorded from local path, public link verified</label>
-  <label class="chk"><input type="checkbox" onchange="upd()"> Repo Public + LICENSE; Startups track; Representative; contributors listed</label>
-  <label class="chk"><input type="checkbox" onchange="upd()"> Credits claimed (Meta $150 by Nov 4 9 PM ET; Modal $100)</label>
-  <label class="chk"><input type="checkbox" onchange="upd()"> Anti-project language sweep (no medical-advice / sports framing)</label>
-  <label class="chk"><input type="checkbox" onchange="upd()"> Submitted before Nov 4, 6:00 PM PST — target Nov 4 morning</label>
+  <footer>
+    Generated for <code>aruga@412978b7ce7ba17a8c8785ed749729bf2c82a3a1</code> · Family: <code>HACKATHON_WINNING_CONDITIONS</code> ·
+    Previous: <code>audit/old/HACKATHON_WINNING_CONDITIONS_1103261726.md</code> (7.80/10) ·
+    Stable copy: <code>docs/HACKATHON_WINNING_CONDITIONS_LATEST.*</code> ·
+    Excluded from scoring per §0: mock/placeholder fallbacks, DEMO fixtures, demo video/walkthrough materials ·
+    Production posture: <code>HIPAA_COMPLIANCE_AUDIT_1103261642.md</code> governs hosted/real-patient use.
+  </footer>
 </div>
-
-<p class="mut">Aruga · HACKATHON_WINNING_CONDITIONS_1103261726 · commit e1d8d89 · Full detail: <a href="../audit/HACKATHON_WINNING_CONDITIONS_1103261726.md">Markdown edition</a> · Production posture: HIPAA_COMPLIANCE_AUDIT_1103261642 governs hosted/real-patient deployment · Self-contained — print via browser (light layout applies).</p>
-</main>
-
 <script>
-function showTab(id, btn){
-  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('on'); });
-  document.getElementById(id).classList.add('on');
-  btn.parentElement.querySelectorAll('button').forEach(function(b){ b.classList.remove('on'); });
-  btn.classList.add('on');
-}
-function calc(){
-  var i=+document.getElementById('r1').value, m=+document.getElementById('r2').value,
-      t=+document.getElementById('r3').value, d=+document.getElementById('r4').value;
-  document.getElementById('s1').textContent=i;
-  document.getElementById('s2').textContent=m;
-  document.getElementById('s3').textContent=t;
-  document.getElementById('s4').textContent=d;
-  document.getElementById('out').textContent='Weighted Stage-Two score: ' + (i*0.30 + m*0.25 + t*0.20 + d*0.25).toFixed(2) + ' / 10';
-}
-function upd(){
-  var c=document.querySelectorAll('.chk input'), d=0;
-  c.forEach(function(x){ if(x.checked) d++; });
-  var p=c.length ? Math.round(d/c.length*100) : 0;
-  document.getElementById('pct').textContent = p + '% (' + d + '/' + c.length + ')';
-  document.getElementById('bar').style.width = p + '%';
-}
-function filt(v){
-  document.querySelectorAll('.chk').forEach(function(l){
-    l.style.display = l.textContent.toLowerCase().indexOf(v.toLowerCase()) !== -1 ? 'block' : 'none';
+(function(){
+  // tabs
+  var btns = document.querySelectorAll('nav.tabs button');
+  btns.forEach(function(b){
+    b.addEventListener('click', function(){
+      btns.forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      document.querySelectorAll('.tabpage').forEach(function(p){ p.classList.remove('active'); });
+      document.getElementById('tab-' + b.dataset.tab).classList.add('active');
+    });
   });
-}
-document.addEventListener('DOMContentLoaded', function(){ calc(); upd(); });
+  // score lab
+  var ids = ['impact','meta','tech','demo'];
+  var weights = {impact:.30, meta:.25, tech:.20, demo:.25};
+  function recalc(){
+    var t = 0;
+    ids.forEach(function(k){
+      var v = parseFloat(document.getElementById('s-'+k).value);
+      document.getElementById('v-'+k).textContent = v.toFixed(1);
+      t += v * weights[k];
+    });
+    document.getElementById('total').textContent = t.toFixed(2);
+  }
+  ids.forEach(function(k){ document.getElementById('s-'+k).addEventListener('input', recalc); });
+  document.querySelectorAll('.presets button').forEach(function(b){
+    b.addEventListener('click', function(){
+      var p = b.dataset.p.split(',').map(Number);
+      ids.forEach(function(k,i){ document.getElementById('s-'+k).value = p[i]; });
+      recalc();
+    });
+  });
+  recalc();
+  // checklist
+  var items = [
+    ["Tier A verified from clean clone, blank SUPABASE_*", "Run the three playgrounds + chat with only a Meta key", false],
+    ["Sample clips present (public/demo ×4)", "In repo at HEAD", true],
+    ["Team Modal URL ready (secret unset or printed)", "Live status not verifiable from repo — confirm", false],
+    ["JUDGE_DEMO.md + README quickstart + .env.example fix", "§8.1 (~1h)", false],
+    ["ARUGA_DEMO=1 banner + Tier B nav gating", "§8.2 (~half day)", false],
+    ["Production-vs-demo sentence in video + README", "At recording", false],
+    ["3-minute local-path video, link verified", "§8.3", false],
+    ["Repo Public + LICENSE; track; rep; contributors", "§8.4", false],
+    ["Credits claimed (Meta $150; Modal $100)", "Today", false],
+    ["npm test 93/93 hermetic + build clean", "Verified at HEAD this session", true],
+    ["Submitted before Nov 4, 6:00 PM PST", "Target Nov 4 morning", false]
+  ];
+  var list = document.getElementById('checklist');
+  var done = 0;
+  items.forEach(function(it, i){
+    var row = document.createElement('label');
+    row.className = 'chk' + (it[2] ? ' done' : '');
+    var cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = !!it[2];
+    if (it[2]) done++;
+    cb.addEventListener('change', function(){
+      row.classList.toggle('done', cb.checked);
+      done += cb.checked ? 1 : -1;
+      paint();
+    });
+    var tx = document.createElement('span');
+    var t1 = document.createElement('div'); t1.className = 't'; t1.textContent = (i+1) + '. ' + it[0];
+    var t2 = document.createElement('div'); t2.className = 's'; t2.textContent = it[1];
+    tx.appendChild(t1); tx.appendChild(t2);
+    row.appendChild(cb); row.appendChild(tx);
+    list.appendChild(row);
+  });
+  function paint(){
+    var pct = Math.round(done / items.length * 100);
+    document.getElementById('progBar').style.width = pct + '%';
+    document.getElementById('progTxt').textContent = '— ' + done + '/' + items.length + ' (' + pct + '%)';
+  }
+  paint();
+  // deep-link tabs
+  var h = (location.hash || '').replace('#','');
+  if (['overview','surface','scores','sprint'].indexOf(h) >= 0) {
+    document.querySelector('nav.tabs button[data-tab="' + h + '"]')?.click();
+  }
+})();
 </script>
 </body>
 </html>

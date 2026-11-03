@@ -78,7 +78,13 @@ export async function POST(req: NextRequest) {
       const out: Record<string, unknown> = {};
       if (input.plan && typeof input.plan === "object") {
         const p = input.plan as Record<string, unknown>;
-        out.plan = { source: p.source, rationale: p.rationale, latencyMs: p.latencyMs };
+        out.plan = {
+          source: p.source,
+          rationale: p.rationale,
+          latencyMs: p.latencyMs,
+          dropped: Array.isArray(p.dropped) ? (p.dropped as unknown[]).slice(0, 8) : [],
+          perConceptUse: Array.isArray(p.perConceptUse) ? (p.perConceptUse as unknown[]).slice(0, 8) : [],
+        };
       }
       if (Array.isArray(input.concepts)) out.concepts = (input.concepts as unknown[]).map(String).slice(0, 8);
       if (input.sam && typeof input.sam === "object") {
@@ -112,6 +118,15 @@ export async function POST(req: NextRequest) {
         out.mhr = { summary: m.summary, flags: m.flags, frames, modelId: m.modelId, processingMs: m.processingMs };
       }
       if (Array.isArray(input.insights)) out.insights = (input.insights as unknown[]).slice(0, 12);
+    if (input.analysis && typeof input.analysis === "object") {
+      const a = input.analysis as Record<string, unknown>;
+      out.analysis = {
+        movementAnalysis: a.movementAnalysis,
+        targets: Array.isArray(a.targets) ? (a.targets as unknown[]).slice(0, 8) : [],
+        watchFor: Array.isArray(a.watchFor) ? (a.watchFor as unknown[]).slice(0, 8) : [],
+        candidateConcepts: Array.isArray(a.candidateConcepts) ? (a.candidateConcepts as unknown[]).slice(0, 8) : [],
+      };
+    }
       if (input.adherence && typeof input.adherence === "object") out.adherence = input.adherence;
       if (input.trend) out.trend = input.trend;
       if (input.meta && typeof input.meta === "object") {

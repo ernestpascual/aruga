@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
         priorCompare,
         counts,
         trace,
-        modelId: `degraded — ${sparkWarning || SPARK_REQUIRED_MSG_FAILED}`.slice(0, 180),
+        modelId: `degraded — ${sparkWarning || SPARK_REQUIRED_MSG_FAILED}`,
         warnings: [sparkWarning || SPARK_REQUIRED_MSG_FAILED],
         degraded: true,
         sparkRequired: true,

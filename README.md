@@ -117,7 +117,17 @@ MODAL_MHR_URL=https://<workspace>--aruga-mhr-infer.modal.run
 
 **Try it:** `Tools → Biomechanic Agent` (`/tools/biomech`) or submission → `Analyze biomechanics (Agent)` → ROM cards + overlay. Full steps: [`modal/DEPLOYMENT_GUIDE.md`](modal/DEPLOYMENT_GUIDE.md)
 
-> **Note:** 30s clips on Modal CPU (2 cores) take ~90–130s. We sample 10 frames spaced across the clip — just wait a bit longer or check Modal app logs for `processingMs`. For ~10× speed, redeploy Modal with GPU (see `modal/app.py` `cpu` → `gpu`).
+**Reading Modal logs (all of this is normal startup noise, not errors):**
+- `Momentum is not enabled` / `No Flash Attention` / `timm ... deprecated` — library chatter on import. Ignore.
+- `model and loaded state dict do not match` + `missing keys ...` — the checkpoint ships without optional heads (face-expression model, hand pose correctives, character mesh/texture extras). The loader skips them and runs on the body-pose weights. Caveat: fine finger articulation is approximated, not fully modeled — trust wrist-ROM-level insights, don't over-claim finger-joint precision.
+- `No human detector is used` — intentional: we bypass ViTDet and feed it SAM boxes directly (that's the ~10× per-frame saving).
+- `Mask-condition inference is not supported` — it runs in box-conditioned mode, which is what we send. Fine.
+- `No FOV estimator ... default FOV` — focal length falls back to a default. Affects absolute depth scale slightly; joint *angles* (what the insights use) are essentially unaffected.
+- `Please make sure the input image is in RGB format` — informational; frames are converted BGR→RGB before inference.
+
+What matters is what comes *after* those lines: a completed execution with duration (first run after deploy includes ~60–120s model load; allow ~2 min, warm runs are much faster) vs. an actual `timed out`/`internal error`, which means per-request inference was too slow — trim to a ≤15s clip and re-run.
+
+> **Note:** 30s clips on Modal CPU (2 cores) take ~90–130s. We sample 8 frames spaced across the clip — use ≤15s clips and, on a cold start, just wait for the first run (retries are warm and much faster). Check Modal app logs for `processingMs`.
 
 ---
 
