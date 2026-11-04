@@ -147,6 +147,16 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
                 className="w-full h-full"
               />
             </div>
+            {/* Realistic therapy photo (OT fine-motor) — drop the file at
+                public/hero-therapy.jpg (≥1920×1080 landscape, subject right
+                of center, ≤500 KB). Until then the gradient below shows. */}
+            <img
+              src="/hero-therapy.jpg"
+              alt=""
+              aria-hidden
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
             {/* Dark overlay for text legibility like peg's eye photo */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/5 to-black/45" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-transparent" />
