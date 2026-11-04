@@ -155,7 +155,7 @@ function LandingContent() {
             <h2 className="mt-3 text-[22px] sm:text-[30px] font-bold leading-[1.1] tracking-[-0.02em] text-black max-w-xl"><ScrollRevealText segments={[{ text: "A simple, supervised home-program — for people and practitioners." }]} /></h2>
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
               {/* Step 1 — New Program form */}
-              <div className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
+              <Parallax speed={50} pop className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
                 <div className="h-[200px] bg-zinc-950 p-3 relative overflow-hidden">
                   <div className="absolute top-3 left-3 bg-white text-black text-[10px] px-2 py-1 rounded-full font-medium">01</div>
                   <div className="mt-7 bg-white rounded-xl p-3 space-y-2.5 border border-zinc-100 shadow-sm">
@@ -173,9 +173,9 @@ function LandingContent() {
                   </div>
                 </div>
                 <div className="p-4"><div className="text-xs font-semibold text-black">Create in seconds</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Type a short goal. Get a clear draft to approve.</div></div>
-              </div>
+              </Parallax>
               {/* Step 2 — My Programs MediaUploader */}
-              <div className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
+              <Parallax speed={100} pop popDelay={0.12} className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
                 <div className="h-[200px] bg-zinc-900 p-3 relative overflow-hidden flex flex-col">
                   <div className="absolute top-3 left-3 bg-white text-black text-[10px] px-2 py-1 rounded-full font-medium">02</div>
                   <div className="mt-7 bg-white rounded-xl overflow-hidden border border-zinc-200 shadow-sm flex-1 flex flex-col">
@@ -191,9 +191,9 @@ function LandingContent() {
                   </div>
                 </div>
                 <div className="p-4"><div className="text-xs font-semibold text-black">Client records at home</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Clients open it on their phone and send a photo or short clip.</div></div>
-              </div>
+              </Parallax>
               {/* Step 3 — Submissions review */}
-              <div className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
+              <Parallax speed={150} pop popDelay={0.24} className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
                 <div className="h-[200px] bg-zinc-950 p-3 relative overflow-hidden">
                   <div className="absolute top-3 left-3 bg-white text-black text-[10px] px-2 py-1 rounded-full font-medium">03</div>
                   <div className="mt-7 bg-white rounded-xl overflow-hidden border border-zinc-200 shadow-sm">
@@ -215,7 +215,7 @@ function LandingContent() {
                   </div>
                 </div>
                 <div className="p-4"><div className="text-xs font-semibold text-black">You review and publish</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Watch the clip and share feedback. Clients see only what you publish.</div></div>
-              </div>
+              </Parallax>
             </div>
           </div>
         </div>
@@ -241,18 +241,24 @@ function LandingContent() {
           </p>
 
           <div className="mt-10 border-y border-black/10 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-black/10">
+            <Parallax speed={30} pop>
             <div className="py-6 px-6 flex gap-4 items-start text-left">
               <span className="text-xs font-mono text-black/20 shrink-0">01</span>
               <div className="text-left"><div className="text-xs font-semibold text-black">You set the plan</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Write a short goal. Check the draft.</div></div>
             </div>
+            </Parallax>
+            <Parallax speed={30} pop popDelay={0.1}>
             <div className="py-6 px-6 flex gap-4 items-start text-left">
               <span className="text-xs font-mono text-black/20 shrink-0">02</span>
               <div className="text-left"><div className="text-xs font-semibold text-black">They practice at home</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">They send a photo or short clip.</div></div>
             </div>
+            </Parallax>
+            <Parallax speed={30} pop popDelay={0.2}>
             <div className="py-6 px-6 flex gap-4 items-start text-left">
               <span className="text-xs font-mono text-black/20 shrink-0">03</span>
               <div className="text-left"><div className="text-xs font-semibold text-black">You review it</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Send clear next steps.</div></div>
             </div>
+            </Parallax>
           </div>
 
           <div className="mt-0 border-b border-black/10 grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-black/10">
@@ -260,12 +266,12 @@ function LandingContent() {
               { img: "/pegs/ot-inspired.svg", title: "Occupational Therapy", desc: "Turn fine motor goals into simple home steps. Families follow and share a quick photo." },
               { img: "/pegs/pt-inspired.svg", title: "Physical Therapy", desc: "Keep strength and balance going at home. Clients rest when needed." },
               { img: "/pegs/sp-inspired.svg", title: "Speech-Language Pathology", desc: "Send short speech practice for home. You listen and reply — no auto scores." },
-            ].map((d) => (
-              <div key={d.title} className="p-8 flex flex-col items-start text-left space-y-3">
+            ].map((d, i) => (
+              <Parallax key={d.title} speed={50 + i * 50} pop popDelay={i * 0.12} className="p-8 flex flex-col items-start text-left space-y-3">
                 <img src={d.img} alt={d.title} className="w-20 h-16 object-contain" />
                 <h3 className="text-sm font-semibold text-black">{d.title}</h3>
                 <p className="text-xs text-black/60 leading-relaxed">{d.desc}</p>
-              </div>
+              </Parallax>
             ))}
           </div>
           <div className="mt-8 h-px w-full bg-black/10" />
@@ -291,7 +297,7 @@ function LandingContent() {
           </p>
 
           <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-0 border border-black/10 divide-y md:divide-y-0 md:divide-x divide-black/10 bg-white">
-            <div className="p-6 sm:p-8 space-y-3">
+            <Parallax speed={50} pop className="p-6 sm:p-8 space-y-3">
               <img src="/pegs/optimize-time.svg" alt="Saves time" className="w-16 h-12 object-contain" />
               <h3 className="text-sm font-semibold text-black">Saves time for clinicians</h3>
               <p className="text-xs text-black/60 leading-relaxed">Write a short goal and get a clear draft in seconds. Schedule up to 10 dates at once. Review all submissions in one place.</p>
@@ -300,8 +306,8 @@ function LandingContent() {
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />One program covers many days</li>
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />Publish feedback in one tap</li>
               </ul>
-            </div>
-            <div className="p-6 sm:p-8 space-y-3">
+            </Parallax>
+            <Parallax speed={100} pop popDelay={0.12} className="p-6 sm:p-8 space-y-3">
               <img src="/pegs/optimize-resources.svg" alt="Uses resources wisely" className="w-16 h-12 object-contain" />
               <h3 className="text-sm font-semibold text-black">Uses resources wisely</h3>
               <p className="text-xs text-black/60 leading-relaxed">No new apps to manage. Photos and videos live in your private cloud. Reuse activities and messages instead of extra visits and calls.</p>
@@ -310,8 +316,8 @@ function LandingContent() {
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />Activity Studio: reusable worksheets</li>
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />Messaging and handover in one place</li>
               </ul>
-            </div>
-            <div className="p-6 sm:p-8 space-y-3">
+            </Parallax>
+            <Parallax speed={150} pop popDelay={0.24} className="p-6 sm:p-8 space-y-3">
               <img src="/pegs/optimize-care.svg" alt="Better care at home" className="w-16 h-12 object-contain" />
               <h3 className="text-sm font-semibold text-black">Better care at home</h3>
               <p className="text-xs text-black/60 leading-relaxed">Clients send a photo or short clip — or skip with a reason when tired. You see it clearly and reply in plain language.</p>
@@ -320,7 +326,7 @@ function LandingContent() {
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />Visual support highlights what matters</li>
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />SOAP + plain summary families understand</li>
               </ul>
-            </div>
+            </Parallax>
           </div>
           <p className="mt-6 text-[11px] text-black/40 leading-relaxed max-w-3xl">Every step stays clinician-approved. AI helps draft, you decide. Families see only what you publish.</p>
         </FadeContent>
@@ -403,7 +409,7 @@ function LandingContent() {
               { label: "Adult  18–64", title: "Neuro & Orthopedic Recovery", desc: "Aruga brings rehab routines home after stroke or injury. Short clips help you adjust daily tasks.", points: ["Daily tasks made simple","You adjust based on video","Pacing that respects fatigue"], img: "/pegs/lifespan-adult.svg" },
               { label: "Geriatrics  65+", title: "Dynamic Balance & Fall Prevention", desc: "Aruga supports safe movement at home. Simple steps and family follow-through help prevent falls.", points: ["Safer movement at home","Family-friendly steps","Easy to read and use"], img: "/pegs/lifespan-geriatric.svg" },
             ].map((c, i) => (
-              <div key={i} className="p-6 sm:p-8 space-y-4 bg-white">
+              <Parallax key={i} speed={40 + i * 40} pop popDelay={i * 0.1} className="p-6 sm:p-8 space-y-4 bg-white">
                 <div className="flex items-center justify-between">
                   <img src={c.img} alt={c.label} className="w-14 h-10 object-contain" />
                   <span className="text-[10px] tracking-[0.14em] uppercase border border-black/10 px-2.5 py-1 text-black/40">{c.label}</span>
@@ -413,7 +419,7 @@ function LandingContent() {
                 <ul className="pt-3 border-t border-black/10 space-y-1.5 text-xs text-black/55">
                   {c.points.map(p => <li key={p} className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />{p}</li>)}
                 </ul>
-              </div>
+              </Parallax>
             ))}
           <div className="mt-8 h-px w-full bg-black/10" />
           </div>
@@ -437,7 +443,7 @@ function LandingContent() {
             />
           </h2>
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-0 border border-black/10 divide-y lg:divide-y-0 lg:divide-x divide-black/10">
-            <div className="p-6 sm:p-8 space-y-4">
+            <Parallax speed={50} pop className="p-6 sm:p-8 space-y-4">
               <img src="/pegs/soap-notes.svg" alt="SOAP notes" className="w-16 h-12 object-contain" />
               <h3 className="text-sm font-semibold text-black">Standardized Progress Notes (SOAP)</h3>
               <p className="text-xs text-black/40 leading-relaxed">Separate documentation into Subjective, Objective, Assessment, Plan with auto-filled kinematic observations.</p>
@@ -447,8 +453,8 @@ function LandingContent() {
                 <span className="border border-black/10 py-2 text-center text-black/50">A: Assessment</span>
                 <span className="border border-black/10 py-2 text-center text-black/50">P: Plan</span>
               </div>
-            </div>
-            <div className="p-6 sm:p-8 space-y-4">
+            </Parallax>
+            <Parallax speed={100} pop popDelay={0.12} className="p-6 sm:p-8 space-y-4">
               <img src="/pegs/telehealth.svg" alt="Telehealth" className="w-16 h-12 object-contain" />
               <h3 className="text-sm font-semibold text-black">Telehealth & Standardized Tests</h3>
               <p className="text-xs text-black/40 leading-relaxed">Attach Google Meet / Zoom recordings and link validated sheets (PDMS-2, BBS, Fugl-Meyer, TUG).</p>
@@ -456,8 +462,8 @@ function LandingContent() {
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25" /> One-click session video playback</li>
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25" /> Attach verified standardized reports</li>
               </ul>
-            </div>
-            <div className="p-6 sm:p-8 space-y-4">
+            </Parallax>
+            <Parallax speed={150} pop popDelay={0.24} className="p-6 sm:p-8 space-y-4">
               <img src="/pegs/record-lock.svg" alt="Record lock" className="w-16 h-12 object-contain" />
               <h3 className="text-sm font-semibold text-black">Record Lock & Feedback Edits</h3>
               <p className="text-xs text-black/40 leading-relaxed">Once published, submission locks for integrity. Clinicians can revise feedback anytime.</p>
@@ -465,7 +471,7 @@ function LandingContent() {
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25" /> Client locked after review</li>
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25" /> Clinician updates anytime</li>
               </ul>
-            </div>
+            </Parallax>
           <div className="mt-8 h-px w-full bg-black/10" />
           </div>
         </FadeContent>
@@ -496,11 +502,11 @@ function LandingContent() {
                 { Icon: ShieldCheck, t: "Audit log", d: "Every view and publish is tracked." },
                 { Icon: Lock, t: "De-identified", d: "Names are removed before any AI help." },
                 { Icon: FileText, t: "Private storage", d: "Videos stay in your private, secure space." },
-              ].map((f) => (
-                <div key={f.t} className="space-y-2 border-t border-white/10 pt-4">
+              ].map((f, i) => (
+                <Parallax key={f.t} speed={40 + i * 40} pop popDelay={i * 0.1} className="space-y-2 border-t border-white/10 pt-4">
                   <div className="flex items-center gap-2"><f.Icon className="w-4 h-4 text-white/60" /><h3 className="text-xs font-semibold text-white">{f.t}</h3></div>
                   <p className="text-[11px] text-white/50 leading-relaxed">{f.d}</p>
-                </div>
+                </Parallax>
               ))}
             </div>
           </div>
