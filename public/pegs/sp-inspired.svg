@@ -11,9 +11,6 @@
   <circle cx="92" cy="26" r="20" fill="#FFE66D" stroke="#111" stroke-width="3.5"/>
   <circle cx="85" cy="26" r="1.8" fill="#111"/><circle cx="99" cy="26" r="1.8" fill="#111"/>
   <path d="M85 32 Q92 38 99 32" stroke="#111" stroke-width="2" fill="none"/>
-  <!-- cat ears -->
-  <path d="M76 14 L70 2 L82 6 Z" fill="#FF8FAB" stroke="#111" stroke-width="2.5"/>
-  <path d="M108 14 L114 2 L102 6 Z" fill="#FF8FAB" stroke="#111" stroke-width="2.5"/>
   <path d="M162 45 L165 51 L171 54 L165 57 L162 63 L159 57 L153 54 L159 51 Z" fill="#FFD93D" stroke="#111" stroke-width="1.6"/>
 </g>
 </svg>
