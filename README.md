@@ -15,6 +15,16 @@
 
 > ⚠️ **Important:** Aruga does not replace therapy — it cannot diagnose, treat, or give medical advice. It only measures movement, drafts materials, and organizes the home program; a licensed therapist reviews and approves everything.
 
+## Demo video
+
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=gclpfojMlU8">
+    <img src="https://img.youtube.com/vi/gclpfojMlU8/hqdefault.jpg" width="720" alt="Watch the Aruga demo video on YouTube" />
+  </a>
+  <br />
+  <em><a href="https://www.youtube.com/watch?v=gclpfojMlU8">▶ Watch the Aruga demo on YouTube</a></em>
+</p>
+
 ---
 
 ## About Aruga
@@ -141,7 +151,7 @@ npx tsc --noEmit && npm run build && npm test  # 98 tests
 
 ## Demo flows — try it with your own Meta API key
 
-Two self-contained demo flows are linked from `/login`. They need **no login and no Supabase** — they exist so anyone (judges included) can run the real agents locally with only a Meta API key. Nothing in either demo is persisted to a database.
+Two self-contained demo flows are linked from `/login`. They need **no login and no Supabase** — they exist so anyone (judges included) can run the real agents locally with only a Meta API key. Nothing in either demo is persisted to a database. New here? [Watch the demo video](https://www.youtube.com/watch?v=gclpfojMlU8) first.
 
 ### Setup — add your Meta API key
 
