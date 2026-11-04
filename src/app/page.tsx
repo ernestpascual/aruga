@@ -147,9 +147,9 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
                 className="w-full h-full"
               />
             </div>
-            {/* Realistic therapy photo (OT fine-motor) — drop the file at
-                public/hero-therapy.jpg (≥1920×1080 landscape, subject right
-                of center, ≤500 KB). Until then the gradient below shows. */}
+            {/* Realistic therapy photo (OT fine-motor) — public/hero-therapy.jpg.
+                OT hand-splint session; credit "DFAT / Wikimedia Commons (CC BY 2.0)"
+                https://commons.wikimedia.org/wiki/File:Occupational_Therapist_Melanie_Glapa_works_with_student_George_Hage_to_assist_hand_therapy_patient_%E2%80%98Pemoli%E2%80%99_at_the_physiotherapy_ward_at_the_National_Referral_Hospital,_Honiara._(10711262355).jpg */}
             <img
               src="/hero-therapy.jpg"
               alt=""
@@ -178,6 +178,7 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
             <motion.div style={{ opacity: arrowOpacity }} className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 hidden sm:flex">
               <a href="#disciplines" className="w-7 h-7 rounded-full bg-white/15 border border-white/20 flex items-center justify-center text-white/70 hover:text-white"><ChevronDown className="w-3.5 h-3.5" /></a>
             </motion.div>
+            <div className="absolute bottom-3 right-4 z-10 text-[10px] text-white/50">Photo: DFAT / Wikimedia Commons (CC BY 2.0)</div>
           </div>
 
           {/* Below hero — full width, no card */}
