@@ -137,8 +137,8 @@ function LandingContent() {
             </motion.div>
           </div>
 
-          {/* Below hero — full width, no card */}
-          <div className="w-full bg-[#F6F3EF] px-5 sm:px-6 lg:px-8 py-8 sm:py-10">
+          {/* Below hero — full width + full height */}
+          <div className="w-full min-h-screen bg-[#F6F3EF] px-5 sm:px-8 lg:px-12 py-10 sm:py-14 flex flex-col justify-center">
             <h2 className="mt-3 text-[22px] sm:text-[30px] font-bold leading-[1.1] tracking-[-0.02em] text-black max-w-xl">A simple, supervised home-program — for people and practitioners.</h2>
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
               {/* Step 1 — New Program form */}
