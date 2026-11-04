@@ -33,13 +33,13 @@
 
 ## About Aruga
 
-**Aruga** (Filipino: *to take care of, to nurture*) is a **clinician-directed home-program companion** for PT, OT, and SLP that makes the home half of rehabilitation **visible, measurable, and personal** — bringing the clinic's eyes into real life, where recovery actually happens. It is **asynchronous by design**: prescribe, practice, measure, validate, feedback, and family story — all store-and-forward, with no appointments, no live video, and no wearables.
+**Aruga** (Filipino: *to take care of, to nurture*) is a **clinician-directed home-program companion** for PT, OT, and SLP that makes the home half of rehabilitation **visible, measurable, and personal** — bringing the clinic's eyes into real life, where recovery actually happens. It is **asynchronous by design** — no appointments, no live video, no wearables. Everything is store-and-forward.
 
-The name is the idea. In Filipino, *aruga* is what a caregiver does — staying close, guiding the hands, watching the small reps no one else sees. That's the gap Aruga fills: Clinic sessions help, but gains fade unless they survive the kitchen, the workplace, the playground — home is where life happens, so that's where therapy has to work. Yet most practice happens alone, from memory or a handout, with progress reported by chat. **Unobserved practice silently fails 50–65% of the time**<sup>[1](#studies-cited)</sup> — not for lack of effort, but **invisibility**.
+The name is the idea. In Filipino, *aruga* is what a caregiver does — staying close, guiding the hands, watching the small reps no one else sees. That's the gap Aruga fills: clinic gains fade unless they survive real life, but most practice happens alone and unseen. **Unobserved practice silently fails 50–65% of the time**<sup>[1](#studies-cited)</sup> — not for lack of effort, but **invisibility**.
 
-The loop is simple. A therapist writes the home program in shorthand — Aruga turns it into clear, ordered steps, with an **optional worksheet illustrated for that one patient** (big print for grandma, playful for kids, or just the steps alone). The client practices and records a short video per step — that video becomes **evidence**. **SAM 3.1 segments the movement**, and a **SAM 3D Body stage on Modal computes joint angles, ROM, and compensation flags**, forming a per-patient **movement twin** — kinematic, never diagnostic. Every submission updates the twin; every judgment is read from it.
+The loop is simple. The therapist writes the program in shorthand — Aruga turns it into clear steps, with an **optional illustrated worksheet** for that patient. The client practices, records a short video per step, and that video becomes **evidence**: measured for angles, ROM, and compensation flags — never diagnosis.
 
-**Four bounded agents do the prep work** — Activity drafts steps and worksheets, Biomechanic rates movement **Good / Watch / Needs support**, Goal Tracking re-validates every goal after every session, Highlights curates the month's best seven — **each produces only a draft**. **Nothing reaches a patient until the therapist taps Approve or Publish.** Aruga never treats, diagnoses, or advises; it exists to **help therapists give their best care**, where clients actually live.
+**Four agents prep, two help assess.** Activity drafts steps and worksheets, Biomechanic rates movement **Good / Watch / Needs support**, Goal Tracking re-checks every goal, Highlights curates the month's best seven. Aruga Guide and the drafting helpers then help the therapist assess and explain. **Every output is a draft — nothing reaches a patient until the therapist taps Approve or Publish.** Aruga never treats, diagnoses, or advises.
 
 ### Quick glossary
 
@@ -191,7 +191,7 @@ What matters is what comes *after* those lines: a completed execution with durat
 
 ## Use of Baseten
 
-Baseten runs our open-weights development loop — it is not in the patient-facing path. Our coding agent harness (`opencode.jsonc`) points at Baseten's OpenAI-compatible endpoint (`inference.baseten.co/v1`, model `meta-models/muse-spark-open-1026`) to prototype prompts, audit code, and test ideas against Muse Spark Open before anything ships. Runtime patient features always go through the Meta Model API; Baseten is where we iterate safely and cheaply during development.
+Baseten runs our open-weights development loop — it is not in the patient-facing path. We use its hosted inference for Muse Spark Open to prototype prompts, audit code, and test ideas before anything ships. Runtime patient features always go through the Meta Model API; Baseten is where we iterate safely and cheaply during development.
 
 ---
 
