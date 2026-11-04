@@ -297,7 +297,7 @@ export default function DemoHomeProgramPage() {
     fetch("/demo/analysis/latest.json")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("no seed"))))
       .then((data) => {
-        applyLoadedAnalysis(data, "Seeded tendon-gliding analysis from /demo/analysis/latest.json — segmentation, skeleton, and insights replay with no live run.");
+        applyLoadedAnalysis(data, "Seeded tendon-gliding analysis from /demo/analysis/latest.json — segmentation and insights replay with no live run.");
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -479,7 +479,7 @@ export default function DemoHomeProgramPage() {
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <h2 className="text-sm font-bold text-zinc-100">5 — Results & replay</h2>
-                  <p className="text-xs text-zinc-400 mt-0.5">The latest seeded analysis loads automatically — no live run. Segmentation, skeleton, 3D, and insights replay as saved. To refresh it, load a downloaded analysis JSON, or replace <span className="font-mono">public/demo/analysis/latest.json</span>.</p>
+                  <p className="text-xs text-zinc-400 mt-0.5">The latest seeded analysis loads automatically — no live run. Segmentation, 3D, and insights replay as saved. To refresh it, load a downloaded analysis JSON, or replace <span className="font-mono">public/demo/analysis/latest.json</span>.</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -494,7 +494,7 @@ export default function DemoHomeProgramPage() {
               </div>
             </Card>
             {bioError && <Card className="p-3 border-amber-800/40 bg-amber-950/20 text-xs text-amber-200">{bioError} — feedback still replays below; biomech needs MODEL_API_KEY + MODAL_MHR_URL.</Card>}
-            <ReplayViewer videoUrl={videoSrc} result={biomech} feedback={published ? { overall: feedback } : null} />
+            <ReplayViewer videoUrl={videoSrc} result={biomech} feedback={published ? { overall: feedback } : null} hideSkeleton />
             <div className="flex flex-wrap gap-2">
               <Link href="/demo/insights"><Button variant="outline" className="h-9 text-xs gap-1.5"><Sparkles className="w-3.5 h-3.5" /> Try Goal + Highlights agents</Button></Link>
               <Button variant="outline" onClick={() => setStep(0)} className="h-9 text-xs">Restart flow</Button>

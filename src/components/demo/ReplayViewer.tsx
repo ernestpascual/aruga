@@ -19,10 +19,13 @@ export function ReplayViewer({
   videoUrl,
   result,
   feedback,
+  hideSkeleton = false,
 }: {
   videoUrl: string | null;
   result: any | null;
   feedback?: { overall?: string; subjective?: string; objective?: string; assessment?: string; plan?: string } | null;
+  /** Segmentation-only view: no skeleton layer or skeleton toggles. */
+  hideSkeleton?: boolean;
 }) {
   const [dotsTime, setDotsTime] = useState(0);
   if (!result) {
@@ -30,7 +33,7 @@ export function ReplayViewer({
       <Card className="p-6 border-dashed border-zinc-700 bg-zinc-900/40 text-center space-y-2">
         <Activity className="w-8 h-8 text-zinc-600 mx-auto" />
         <p className="text-sm font-semibold text-zinc-300">No analysis loaded yet</p>
-        <p className="text-xs text-zinc-500 max-w-md mx-auto">Run the Biomechanic Agent on a clip, or open a saved analysis — segmentation, skeleton, 3D, and insights will replay here without re-running.</p>
+        <p className="text-xs text-zinc-500 max-w-md mx-auto">Run the Biomechanic Agent on a clip, or open a saved analysis — segmentation, {hideSkeleton ? "" : "skeleton, "}3D, and insights will replay here without re-running.</p>
       </Card>
     );
   }
@@ -46,9 +49,9 @@ export function ReplayViewer({
     <div className="space-y-4">
       {videoUrl ? (
         <Card className="p-4 border-zinc-800 bg-zinc-900/70 space-y-2">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-300">Segmentation + skeleton — tracked overlays</h4>
-          <p className="text-[11px] text-zinc-500">Segmentation (SAM 3.1 masks, one colour per concept) is the main overlay — switch it and the skeleton on or off above the video.</p>
-          <SamOverlay videoSrc={videoUrl} boxes={result.sam?.boxes ?? []} svgPaths={result.sam?.svgPaths ?? []} mhr={mhr} modelProvenance="SAM 3.1 + SAM 3D Body" />
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-300">{hideSkeleton ? "Segmentation — tracked overlays" : "Segmentation + skeleton — tracked overlays"}</h4>
+          <p className="text-[11px] text-zinc-500">Segmentation (SAM 3.1 masks, one colour per concept) is the main overlay — switch it{hideSkeleton ? "" : " and the skeleton"} on or off above the video.</p>
+          <SamOverlay videoSrc={videoUrl} boxes={result.sam?.boxes ?? []} svgPaths={result.sam?.svgPaths ?? []} mhr={mhr} modelProvenance="SAM 3.1 + SAM 3D Body" hideSkeleton={hideSkeleton} />
         </Card>
       ) : null}
 
