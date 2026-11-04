@@ -155,10 +155,10 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
 
             {/* Headline — middle left */}
             <div className="absolute inset-0 flex flex-col justify-center z-10 px-6 sm:px-8 lg:px-12 gap-6">
-              <h1 className="text-[42px] sm:text-[60px] lg:text-[72px] font-semibold leading-[0.9] tracking-[-0.02em] text-white max-w-[680px]">
+              <h1 className="text-[54px] sm:text-[80px] lg:text-[104px] font-semibold leading-[0.9] tracking-[-0.02em] text-white max-w-[850px]">
                 Therapy doesn&apos;t<br />stop at the<br />clinic door.
               </h1>
-              <p className="text-[15px] sm:text-lg text-white/80 leading-relaxed max-w-[480px]">It continues in the real world — at home, between visits, with your clinician guiding every step.</p>
+              <p className="text-[15px] sm:text-lg text-white/80 leading-relaxed max-w-[480px] lg:max-w-none lg:whitespace-nowrap">It continues in the real world — at home, between visits, with your clinician guiding every step.</p>
             </div>
 
 
