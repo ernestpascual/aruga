@@ -137,7 +137,7 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
                 scale={1.15}
                 softness={0.9}
                 silk={0.25}
-                grainAmount={0.03}
+                grainAmount={0.2}
                 grainSize={0.5}
                 contrast={1.15}
                 saturation={1.15}
