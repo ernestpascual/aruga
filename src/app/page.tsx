@@ -21,8 +21,8 @@ import {
   Clock,
   Video,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Grainient } from "@/components/ui/grainient";
+import { VariableProximity } from "@/components/ui/variable-proximity";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { siteConfig } from "@/config/site";
 
@@ -58,11 +58,10 @@ export default function LandingPage() {
     );
   }
 
-  return <LandingContent dashboardHref={dashboardHref} />;
+  return <LandingContent />;
 }
 
-function LandingContent({ dashboardHref }: { dashboardHref: string }) {
-  const { user } = useAuth();
+function LandingContent() {
   const heroRef = useRef<HTMLElement>(null);
   // Only run useScroll when the hero element is mounted — avoids
   // "Target ref is defined but not hydrated" from motion when the
@@ -74,39 +73,8 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
 
   const arrowOpacity = useTransform(scrollYProgress, [0, 0.25], [1, 0]);
 
-  const headerBg = useTransform(
-    scrollYProgress,
-    [0.55, 0.85],
-    ["rgba(0,0,0,0)", "rgba(0,0,0,1)"]
-  );
-  const headerBorder = useTransform(
-    scrollYProgress,
-    [0.55, 0.85],
-    ["rgba(255,255,255,0)", "rgba(255,255,255,0.12)"]
-  );
-
   return (
     <div className="min-h-screen bg-[#F6F3EF] text-black selection:bg-black selection:text-white scroll-smooth">
-      {/* NAV */}
-      <motion.header
-        style={{ backgroundColor: headerBg, borderBottomColor: headerBorder }}
-        className="fixed top-0 inset-x-0 z-50 w-full border-b pt-3 sm:pt-4 pb-2 sm:pb-3"
-      >
-        <div className="container mx-auto flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] h-12 sm:h-14 px-5 sm:px-6 max-w-7xl">
-          <div className="flex justify-start shrink-0" aria-hidden />
-          <div className="hidden md:block" aria-hidden />
-          <div className="flex justify-end items-center gap-2.5 sm:gap-3 shrink-0 ml-auto md:ml-0">
-            {user && (
-              <Link href={dashboardHref}>
-                <Button size="sm" className="text-xs bg-white hover:bg-zinc-100 text-black font-semibold rounded-none px-5">
-                  Dashboard <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                </Button>
-              </Link>
-            )}
-          </div>
-        </div>
-      </motion.header>
-
       {/* HERO — peg e6373c full-bleed, no card frame */}
       <section ref={heroRef} id="overview" className="w-full min-h-screen flex flex-col bg-white">
         <div className="w-full flex-1 flex flex-col overflow-hidden">
@@ -142,16 +110,22 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
 
             {/* Headline — centered */}
             <div className="absolute inset-0 flex flex-col justify-center items-center text-center z-10 px-6 sm:px-8 lg:px-12 gap-6">
-              <h1
-                style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}
-                className="text-[clamp(2.5rem,9vw,7rem)] font-normal leading-[1.1] whitespace-nowrap text-white"
-              >
-                Aruga
+              <h1 className="text-[clamp(2.5rem,9vw,7rem)] font-normal leading-[1.1] whitespace-nowrap text-white">
+                <VariableProximity
+                  label="Aruga"
+                  containerRef={heroRef}
+                  fromFontVariationSettings="'wght' 100"
+                  toFontVariationSettings="'wght' 400"
+                  radius={140}
+                  falloff="gaussian"
+                  style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}
+                />
               </h1>
-              <p className="text-[13px] md:text-[15px] lg:text-base text-white/80 leading-relaxed max-w-[420px] md:max-w-none md:whitespace-nowrap">It continues in the real world — at home, between visits, with your clinician guiding every step.</p>
-              <Link href="/login">
-                <span className="inline-flex items-center gap-2.5 bg-white/10 text-white border border-white/25 backdrop-blur-xl rounded-full pl-7 pr-2.5 py-2.5 text-sm sm:text-base font-semibold shadow-xl hover:bg-white/20 transition-colors">Start your recovery <span className="bg-white text-black rounded-full w-8 h-8 flex items-center justify-center text-base">→</span></span>
-              </Link>
+              <div>
+                <Link href="/login">
+                  <span className="inline-flex items-center gap-2.5 bg-white/10 text-white border border-white/25 backdrop-blur-xl rounded-full pl-7 pr-2.5 py-2.5 text-sm sm:text-base font-semibold shadow-xl hover:bg-white/20 transition-colors">Start your recovery <span className="bg-white text-black rounded-full w-8 h-8 flex items-center justify-center text-base">→</span></span>
+                </Link>
+              </div>
             </div>
 
 
@@ -338,33 +312,33 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
               <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-tight">A little AI.<br/><span className="text-white/40">All human care.</span></h2>
               <p className="mt-3 text-xs text-white/50 leading-relaxed">Muse Spark helps you see more. You stay in control.</p>
             </div>
-            <div className="flex-1 lg:max-w-3xl">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div className="flex-1 lg:max-w-5xl">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
                 <div className="overflow-hidden">
-                  <div className="h-40 sm:h-44 overflow-hidden bg-transparent flex items-center justify-center">
+                  <div className="h-56 sm:h-64 lg:h-72 overflow-hidden bg-transparent flex items-center justify-center">
                     <img src="/pegs/understanding-videos-inspired.svg" alt="Understanding videos illustration" className="w-full h-full object-contain scale-110" />
                   </div>
                   <div className="pt-4">
-                    <div className="text-xs font-semibold text-white">Understanding videos</div>
-                    <p className="text-[11px] text-white/50 leading-relaxed mt-1">AI spots key moments so you can give quick, clear feedback.</p>
+                    <div className="text-sm sm:text-base font-semibold text-white">Understanding videos</div>
+                    <p className="text-xs sm:text-sm text-white/50 leading-relaxed mt-1.5">AI spots key moments so you can give quick, clear feedback.</p>
                   </div>
                 </div>
                 <div className="overflow-hidden">
-                  <div className="h-40 sm:h-44 overflow-hidden bg-transparent flex items-center justify-center">
+                  <div className="h-56 sm:h-64 lg:h-72 overflow-hidden bg-transparent flex items-center justify-center">
                     <img src="/pegs/performance-tracking-inspired.svg" alt="Performance tracking illustration" className="w-full h-full object-contain scale-110" />
                   </div>
                   <div className="pt-4">
-                    <div className="text-xs font-semibold text-white">Dynamic insights</div>
-                    <p className="text-[11px] text-white/50 leading-relaxed mt-1">Get tailored tracking based on your clinician's goal.</p>
+                    <div className="text-sm sm:text-base font-semibold text-white">Dynamic insights</div>
+                    <p className="text-xs sm:text-sm text-white/50 leading-relaxed mt-1.5">Get tailored tracking based on your clinician's goal.</p>
                   </div>
                 </div>
                 <div className="overflow-hidden">
-                  <div className="h-40 sm:h-44 overflow-hidden bg-transparent flex items-center justify-center">
+                  <div className="h-56 sm:h-64 lg:h-72 overflow-hidden bg-transparent flex items-center justify-center">
                     <img src="/pegs/activity-sheets-inspired.svg" alt="Activity sheets illustration" className="w-full h-full object-contain scale-110" />
                   </div>
                   <div className="pt-4">
-                    <div className="text-xs font-semibold text-white">Made for you</div>
-                    <p className="text-[11px] text-white/50 leading-relaxed mt-1">Activity sheets made just for you, based on your progress.</p>
+                    <div className="text-sm sm:text-base font-semibold text-white">Made for you</div>
+                    <p className="text-xs sm:text-sm text-white/50 leading-relaxed mt-1.5">Activity sheets made just for you, based on your progress.</p>
                   </div>
                 </div>
               </div>
