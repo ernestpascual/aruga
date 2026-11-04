@@ -132,8 +132,8 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
                 type="linear"
                 angle={60}
                 bands={1}
-                speed={0.25}
-                flow={0.35}
+                speed={0.1}
+                flow={0.15}
                 scale={1.15}
                 softness={0.9}
                 silk={0.25}
@@ -142,7 +142,7 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
                 contrast={1.15}
                 saturation={1.15}
                 interactive={true}
-                stir={0.8}
+                stir={0.4}
                 clickSwirl={true}
                 className="w-full h-full"
               />
