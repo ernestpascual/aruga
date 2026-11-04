@@ -155,7 +155,7 @@ function LandingContent() {
             <h2 className="mt-3 text-[22px] sm:text-[30px] font-bold leading-[1.1] tracking-[-0.02em] text-black max-w-xl"><ScrollRevealText segments={[{ text: "A simple, supervised home-program — for people and practitioners." }]} /></h2>
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
               {/* Step 1 — New Program form */}
-              <Parallax speed={50} pop className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
+              <div className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
                 <div className="h-[200px] bg-zinc-950 p-3 relative overflow-hidden">
                   <div className="absolute top-3 left-3 bg-white text-black text-[10px] px-2 py-1 rounded-full font-medium">01</div>
                   <div className="mt-7 bg-white rounded-xl p-3 space-y-2.5 border border-zinc-100 shadow-sm">
@@ -173,9 +173,9 @@ function LandingContent() {
                   </div>
                 </div>
                 <div className="p-4"><div className="text-xs font-semibold text-black">Create in seconds</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Type a short goal. Get a clear draft to approve.</div></div>
-              </Parallax>
+              </div>
               {/* Step 2 — My Programs MediaUploader */}
-              <Parallax speed={100} pop popDelay={0.12} className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
+              <div className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
                 <div className="h-[200px] bg-zinc-900 p-3 relative overflow-hidden flex flex-col">
                   <div className="absolute top-3 left-3 bg-white text-black text-[10px] px-2 py-1 rounded-full font-medium">02</div>
                   <div className="mt-7 bg-white rounded-xl overflow-hidden border border-zinc-200 shadow-sm flex-1 flex flex-col">
@@ -191,9 +191,9 @@ function LandingContent() {
                   </div>
                 </div>
                 <div className="p-4"><div className="text-xs font-semibold text-black">Client records at home</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Clients open it on their phone and send a photo or short clip.</div></div>
-              </Parallax>
+              </div>
               {/* Step 3 — Submissions review */}
-              <Parallax speed={150} pop popDelay={0.24} className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
+              <div className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
                 <div className="h-[200px] bg-zinc-950 p-3 relative overflow-hidden">
                   <div className="absolute top-3 left-3 bg-white text-black text-[10px] px-2 py-1 rounded-full font-medium">03</div>
                   <div className="mt-7 bg-white rounded-xl overflow-hidden border border-zinc-200 shadow-sm">
@@ -215,7 +215,7 @@ function LandingContent() {
                   </div>
                 </div>
                 <div className="p-4"><div className="text-xs font-semibold text-black">You review and publish</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Watch the clip and share feedback. Clients see only what you publish.</div></div>
-              </Parallax>
+              </div>
             </div>
           </div>
         </div>
