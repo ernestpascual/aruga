@@ -219,7 +219,7 @@ export default function LoginPage() {
 
   if (user) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-zinc-400 space-y-4">
+      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-[#0a1428] to-zinc-950 flex flex-col items-center justify-center text-zinc-400 space-y-4">
         <div className="w-10 h-10 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
         <div className="text-center space-y-1">
           <p className="text-sm font-semibold text-zinc-200">Welcome to Aruga</p>
@@ -230,9 +230,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col justify-between selection:bg-teal-500/30 selection:text-teal-200">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-zinc-950 via-[#0a1428] to-zinc-950 flex flex-col justify-between selection:bg-teal-500/30 selection:text-teal-200">
+      {/* Ambient glow behind the glass */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 -left-32 w-[480px] h-[480px] rounded-full bg-teal-500/20 blur-[120px]" />
+        <div className="absolute top-1/3 -right-40 w-[520px] h-[520px] rounded-full bg-blue-600/20 blur-[130px]" />
+        <div className="absolute -bottom-40 left-1/4 w-[420px] h-[420px] rounded-full bg-sky-400/10 blur-[120px]" />
+      </div>
       {/* Top Header */}
-      <header className="border-b border-zinc-800/80 px-6 py-4 flex items-center justify-between">
+      <header className="relative z-10 border-b border-white/10 bg-white/[0.02] backdrop-blur-xl px-6 py-4 flex items-center justify-between">
         <Link href="/" className="group flex items-center">
           <span
             className="font-aruga text-xl font-normal text-zinc-100 tracking-wide hover:text-teal-300 transition-colors"
@@ -254,7 +260,7 @@ export default function LoginPage() {
       </header>
 
       {/* Main Container */}
-      <main className="container mx-auto px-4 py-8 max-w-xl flex-1 flex flex-col justify-center items-center">
+      <main className="relative z-10 container mx-auto px-4 py-8 max-w-xl flex-1 flex flex-col justify-center items-center">
         <div className="w-full space-y-6">
           {/* Header */}
           <div className="flex flex-col items-center space-y-2 text-center pt-2">
@@ -298,7 +304,7 @@ export default function LoginPage() {
               </span>
             </div>
           ) : (
-            <div className="flex p-1 rounded-xl bg-zinc-900 border border-zinc-800">
+            <div className="flex p-1 rounded-xl bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg">
               <button
                 type="button"
                 onClick={() => {
@@ -356,7 +362,7 @@ export default function LoginPage() {
           )}
 
           {/* Form Card */}
-          <div className="p-6 rounded-2xl bg-zinc-900/80 border border-zinc-800 shadow-lg backdrop-blur-sm space-y-5">
+          <div className="p-6 rounded-2xl bg-white/[0.07] border border-white/15 shadow-2xl shadow-black/40 backdrop-blur-2xl ring-1 ring-white/10 space-y-5">
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Registration Specific Fields */}
               <AnimatePresence mode="wait">
@@ -378,7 +384,7 @@ export default function LoginPage() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required={mode === "register"}
-                        className="bg-zinc-950/60 border-zinc-800 text-sm"
+                        className="bg-white/[0.05] border-white/10 text-sm placeholder:text-zinc-500 focus-visible:ring-teal-500/50"
                       />
                     </div>
 
@@ -394,7 +400,7 @@ export default function LoginPage() {
                           className={`p-3 rounded-xl border text-left transition-all flex items-center gap-2.5 ${
                             role === "therapist"
                               ? "bg-teal-950/40 border-teal-500 text-teal-200 ring-1 ring-teal-500/50"
-                              : "bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                              : "bg-white/[0.04] border-white/10 text-zinc-400 hover:border-white/25"
                           }`}
                         >
                           <Stethoscope className="w-4 h-4 text-teal-400 shrink-0" />
@@ -410,7 +416,7 @@ export default function LoginPage() {
                           className={`p-3 rounded-xl border text-left transition-all flex items-center gap-2.5 ${
                             role === "client"
                               ? "bg-teal-950/40 border-teal-500 text-teal-200 ring-1 ring-teal-500/50"
-                              : "bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                              : "bg-white/[0.04] border-white/10 text-zinc-400 hover:border-white/25"
                           }`}
                         >
                           <User className="w-4 h-4 text-teal-400 shrink-0" />
@@ -439,7 +445,7 @@ export default function LoginPage() {
                             className={`p-2.5 rounded-lg border text-center transition-all flex flex-col items-center gap-1 ${
                               clientCategory === "adult"
                                 ? "bg-teal-950/50 border-teal-500 text-teal-200"
-                                : "bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                                : "bg-white/[0.04] border-white/10 text-zinc-400 hover:border-white/25"
                             }`}
                           >
                             <User className="w-4 h-4 text-teal-400" />
@@ -453,7 +459,7 @@ export default function LoginPage() {
                             className={`p-2.5 rounded-lg border text-center transition-all flex flex-col items-center gap-1 ${
                               clientCategory === "geriatric" || clientCategory === "old_people"
                                 ? "bg-amber-950/50 border-amber-500 text-amber-200"
-                                : "bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                                : "bg-white/[0.04] border-white/10 text-zinc-400 hover:border-white/25"
                             }`}
                           >
                             <HeartPulse className="w-4 h-4 text-amber-400" />
@@ -467,7 +473,7 @@ export default function LoginPage() {
                             className={`p-2.5 rounded-lg border text-center transition-all flex flex-col items-center gap-1 ${
                               clientCategory === "adolescent"
                                 ? "bg-indigo-950/50 border-indigo-500 text-indigo-200"
-                                : "bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                                : "bg-white/[0.04] border-white/10 text-zinc-400 hover:border-white/25"
                             }`}
                           >
                             <GraduationCap className="w-4 h-4 text-indigo-400" />
@@ -481,7 +487,7 @@ export default function LoginPage() {
                             className={`p-2.5 rounded-lg border text-center transition-all flex flex-col items-center gap-1 ${
                               clientCategory === "pedia"
                                 ? "bg-teal-950/50 border-teal-500 text-teal-200"
-                                : "bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                                : "bg-white/[0.04] border-white/10 text-zinc-400 hover:border-white/25"
                             }`}
                           >
                             <Baby className="w-4 h-4 text-teal-400" />
@@ -509,7 +515,7 @@ export default function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="pl-9 bg-zinc-950/60 border-zinc-800 text-sm"
+                      className="pl-9 bg-white/[0.05] border-white/10 text-sm placeholder:text-zinc-500 focus-visible:ring-teal-500/50"
                     />
                   </div>
                 </div>
@@ -544,7 +550,7 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="pl-9 bg-zinc-950/60 border-zinc-800 text-sm"
+                      className="pl-9 bg-white/[0.05] border-white/10 text-sm placeholder:text-zinc-500 focus-visible:ring-teal-500/50"
                     />
                   </div>
                 </div>
@@ -565,7 +571,7 @@ export default function LoginPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        className="pl-9 bg-zinc-950/60 border-zinc-800 text-sm"
+                        className="pl-9 bg-white/[0.05] border-white/10 text-sm placeholder:text-zinc-500 focus-visible:ring-teal-500/50"
                       />
                     </div>
                   </div>
@@ -582,7 +588,7 @@ export default function LoginPage() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
-                        className="pl-9 bg-zinc-950/60 border-zinc-800 text-sm"
+                        className="pl-9 bg-white/[0.05] border-white/10 text-sm placeholder:text-zinc-500 focus-visible:ring-teal-500/50"
                       />
                     </div>
                   </div>
@@ -646,7 +652,7 @@ export default function LoginPage() {
       </main>
 
       {/* Bottom Footer */}
-      <footer className="border-t border-zinc-800/80 px-6 py-4 text-center text-xs text-zinc-500">
+      <footer className="relative z-10 border-t border-white/10 bg-white/[0.02] backdrop-blur-xl px-6 py-4 text-center text-xs text-zinc-500">
         &copy; 2026 {siteConfig.name}. All rights reserved.
       </footer>
     </div>
