@@ -206,6 +206,20 @@ One phone camera: ±2–3° big joints, ±12° small hand — bad framing suppre
 
 **Try it:** `Tools → Biomechanic Agent` (`/tools/biomech`) or submission → `Analyze biomechanics (Agent)` → ROM cards + overlay. Full steps: [`modal/DEPLOYMENT_GUIDE.md`](modal/DEPLOYMENT_GUIDE.md)
 
+**See it in action:**
+
+<p align="center">
+  <img src="./img/biomech-segmentation.gif" width="100%" alt="Biomechanic Agent: SAM 3.1 segments the movement from a phone video." />
+  <br />
+  <em>SAM 3.1 segments the movement from a phone video</em>
+</p>
+
+<p align="center">
+  <img src="./img/biomechanics-insights.gif" width="100%" alt="Biomechanic Agent: joint angles, ROM, and compensation flags rated Good / Watch / Needs support." />
+  <br />
+  <em>Joint angles, ROM, and compensation flags — rated Good / Watch / Needs support</em>
+</p>
+
 **Reading Modal logs (all of this is normal startup noise, not errors):**
 
 | Log line                                                                 | Meaning                                                                                                                    | Action                                                              |
