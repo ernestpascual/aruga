@@ -640,7 +640,7 @@ export default function LoginPage() {
                       }}
                       className="font-semibold text-teal-400 hover:text-teal-300 hover:underline underline-offset-4 transition-colors"
                     >
-                      Create account & proceed to register
+                      Register
                     </button>
                   </>
                 ) : mode === "register" ? (
