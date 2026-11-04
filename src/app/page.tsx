@@ -93,16 +93,7 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
         className="fixed top-0 inset-x-0 z-50 w-full border-b pt-3 sm:pt-4 pb-2 sm:pb-3"
       >
         <div className="container mx-auto flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] h-12 sm:h-14 px-5 sm:px-6 max-w-7xl">
-          <div className="flex justify-start shrink-0">
-            <Link href="/" className="group flex items-center">
-              <span
-                className="font-aruga text-lg sm:text-xl font-normal text-white tracking-wide hover:text-white/70 transition-colors duration-200"
-                style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}
-              >
-                Aruga
-              </span>
-            </Link>
-          </div>
+          <div className="flex justify-start shrink-0" aria-hidden />
           <div className="hidden md:block" aria-hidden />
           <div className="flex justify-end items-center gap-2.5 sm:gap-3 shrink-0 ml-auto md:ml-0">
             {user ? (
@@ -113,7 +104,7 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
               </Link>
             ) : (
               <Link href="/login">
-                <span className="bg-black text-white rounded-full px-4 py-1.5 flex items-center gap-1.5 text-[11px]">Sign in <span className="bg-white text-black rounded-full w-4 h-4 flex items-center justify-center">→</span></span>
+                <span className="bg-white/10 text-white border border-white/25 backdrop-blur-xl rounded-full px-4 py-1.5 flex items-center gap-1.5 text-[11px] shadow-lg hover:bg-white/20 transition-colors">Sign in <span className="bg-white text-black rounded-full w-4 h-4 flex items-center justify-center">→</span></span>
               </Link>
             )}
           </div>
@@ -159,7 +150,7 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
                 style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}
                 className="text-[clamp(1.25rem,4vw,3.25rem)] font-normal leading-[1.1] whitespace-nowrap text-white"
               >
-                Therapy doesn&apos;t stop at the clinic door.
+                Aruga
               </h1>
               <p className="text-[13px] md:text-[15px] lg:text-base text-white/80 leading-relaxed max-w-[420px] md:max-w-none md:whitespace-nowrap">It continues in the real world — at home, between visits, with your clinician guiding every step.</p>
             </div>
