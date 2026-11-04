@@ -180,6 +180,10 @@ MODAL_MHR_URL=https://<workspace>--aruga-mhr-infer.modal.run
 
 **How the process works:**
 
+<p align="center">
+  <img src="./public/readme-modal-flow.svg" width="100%" alt="Four steps: Decide (Spark picks concepts), Segment (SAM 3.1 tracks), Measure on Modal (3D Body builds twin), Rate (Next.js grades Good/Watch/Needs support)." />
+</p>
+
 1. **Decide** — Spark reads the activity + age + therapist note, picks 2–8 things to track from a fixed list of 16 (`shoulder, elbow, wrist, hand, trunk, neck…`).
 2. **Segment** — SAM 3.1 follows those concepts through the video (~45 frames) in a single pass.
 3. **Measure (Modal)** — Modal downloads frames via signed URL, crops by SAM box (skips ViTDet), runs SAM 3D Body + One-Euro smoothing → shoulder/elbow/trunk/neck/wrist angles, finger aperture (mm), balance (CoM/BoS), plus flags.

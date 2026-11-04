@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" font-family="Inter, system-ui, sans-serif">
+  <rect width="1200" height="300" rx="16" fill="#09090b"/>
+  <rect x="1" y="1" width="1198" height="298" rx="15" fill="none" stroke="#27272a" stroke-width="2"/>
+  <text x="600" y="34" text-anchor="middle" font-size="18" font-weight="800" fill="#f4f4f5">From phone video to movement rating in 4 steps</text>
+
+  <defs><marker id="m" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#71717a"/></marker></defs>
+
+  <!-- step 1 -->
+  <rect x="30" y="70" width="250" height="190" rx="12" fill="#0b1514" stroke="#14b8a6" stroke-width="1.5"/>
+  <text x="155" y="100" text-anchor="middle" font-size="15" font-weight="800" fill="#14b8a6">1 · DECIDE</text>
+  <text x="155" y="124" text-anchor="middle" font-size="12" font-weight="700" fill="#f4f4f5">Spark picks what to track</text>
+  <text x="155" y="148" text-anchor="middle" font-size="11" fill="#a1a1aa">2–8 concepts from a fixed</text>
+  <text x="155" y="164" text-anchor="middle" font-size="11" fill="#a1a1aa">list of 16 (e.g. shoulder,</text>
+  <text x="155" y="180" text-anchor="middle" font-size="11" fill="#a1a1aa">wrist, trunk, neck…)</text>
+  <text x="155" y="208" text-anchor="middle" font-size="11" font-weight="700" fill="#14b8a6">Input: activity + age</text>
+  <text x="155" y="232" text-anchor="middle" font-size="11" font-weight="700" fill="#14b8a6">+ therapist note</text>
+
+  <!-- step 2 -->
+  <rect x="325" y="70" width="250" height="190" rx="12" fill="#0e1424" stroke="#0284c7" stroke-width="1.5"/>
+  <text x="450" y="100" text-anchor="middle" font-size="15" font-weight="800" fill="#7dd3fc">2 · SEGMENT</text>
+  <text x="450" y="124" text-anchor="middle" font-size="12" font-weight="700" fill="#f4f4f5">SAM 3.1 follows the body</text>
+  <text x="450" y="148" text-anchor="middle" font-size="11" fill="#a1a1aa">One streaming pass over</text>
+  <text x="450" y="164" text-anchor="middle" font-size="11" fill="#a1a1aa">~45 frames — boxes for</text>
+  <text x="450" y="180" text-anchor="middle" font-size="11" fill="#a1a1aa">each concept, same clip</text>
+  <text x="450" y="208" text-anchor="middle" font-size="11" font-weight="700" fill="#7dd3fc">Output: boxes per frame</text>
+  <text x="450" y="232" text-anchor="middle" font-size="11" font-weight="700" fill="#7dd3fc">(skips slow detector)</text>
+
+  <!-- step 3 -->
+  <rect x="620" y="70" width="250" height="190" rx="12" fill="#141021" stroke="#8b5cf6" stroke-width="1.5"/>
+  <text x="745" y="100" text-anchor="middle" font-size="15" font-weight="800" fill="#a78bfa">3 · MEASURE (Modal)</text>
+  <text x="745" y="124" text-anchor="middle" font-size="12" font-weight="700" fill="#f4f4f5">3D Body builds the twin</text>
+  <text x="745" y="148" text-anchor="middle" font-size="11" fill="#a1a1aa">70 joints → angles, ROM,</text>
+  <text x="745" y="164" text-anchor="middle" font-size="11" fill="#a1a1aa">aperture, balance + flags</text>
+  <text x="745" y="180" text-anchor="middle" font-size="11" fill="#a1a1aa">One-Euro smoothing</text>
+  <text x="745" y="208" text-anchor="middle" font-size="11" font-weight="700" fill="#a78bfa">One call per clip</text>
+  <text x="745" y="232" text-anchor="middle" font-size="11" font-weight="700" fill="#a78bfa">views reuse the result</text>
+
+  <!-- step 4 -->
+  <rect x="915" y="70" width="255" height="190" rx="12" fill="#160f14" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="1042" y="100" text-anchor="middle" font-size="15" font-weight="800" fill="#fbbf24">4 · RATE</text>
+  <text x="1042" y="124" text-anchor="middle" font-size="12" font-weight="700" fill="#f4f4f5">Next.js grades vs target</text>
+  <circle cx="972" cy="158" r="10" fill="#14b8a6"/><text x="972" y="162" text-anchor="middle" font-size="9" font-weight="800" fill="#09090b">G</text>
+  <circle cx="1042" cy="158" r="10" fill="#f59e0b"/><text x="1042" y="162" text-anchor="middle" font-size="9" font-weight="800" fill="#09090b">W</text>
+  <circle cx="1112" cy="158" r="10" fill="#f43f5e"/><text x="1112" y="162" text-anchor="middle" font-size="9" font-weight="800" fill="#fff">N</text>
+  <text x="1042" y="186" text-anchor="middle" font-size="11" fill="#a1a1aa">Good · Watch · Needs support</text>
+  <text x="1042" y="208" text-anchor="middle" font-size="11" font-weight="700" fill="#fbbf24">+ adherence + trend</text>
+  <text x="1042" y="232" text-anchor="middle" font-size="11" font-weight="700" fill="#fbbf24">Therapist approves</text>
+
+  <line x1="280" y1="165" x2="325" y2="165" stroke="#71717a" stroke-width="2" marker-end="url(#m)"/>
+  <line x1="575" y1="165" x2="620" y2="165" stroke="#71717a" stroke-width="2" marker-end="url(#m)"/>
+  <line x1="870" y1="165" x2="915" y2="165" stroke="#71717a" stroke-width="2" marker-end="url(#m)"/>
+  <text x="600" y="284" text-anchor="middle" font-size="12" fill="#71717a">Phone video in → therapist-approved rating out. Every step is inspectable; nothing is a black box.</text>
+</svg>
