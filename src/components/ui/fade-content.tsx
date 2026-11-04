@@ -37,7 +37,7 @@ export function FadeContent({
       className={className}
       initial={{ opacity: initialOpacity, y: distance, filter: `blur(${blur}px)` }}
       whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      viewport={{ once: true, amount: threshold }}
+      viewport={{ once: false, amount: threshold }}
       transition={{ duration, delay, ease: [0.22, 1, 0.36, 1] }}
     >
       {children}

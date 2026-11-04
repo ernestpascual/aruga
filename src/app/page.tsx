@@ -24,6 +24,7 @@ import {
 import { Grainient } from "@/components/ui/grainient";
 import { FadeContent } from "@/components/ui/fade-content";
 import { Parallax } from "@/components/ui/parallax";
+import { ScrollRevealText } from "@/components/ui/scroll-reveal-text";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { siteConfig } from "@/config/site";
 
@@ -139,7 +140,7 @@ function LandingContent() {
 
           {/* Below hero — full width + full height */}
           <div className="w-full min-h-screen bg-[#F6F3EF] px-5 sm:px-8 lg:px-12 py-10 sm:py-14 flex flex-col justify-center">
-            <h2 className="mt-3 text-[22px] sm:text-[30px] font-bold leading-[1.1] tracking-[-0.02em] text-black max-w-xl">A simple, supervised home-program — for people and practitioners.</h2>
+            <h2 className="mt-3 text-[22px] sm:text-[30px] font-bold leading-[1.1] tracking-[-0.02em] text-black max-w-xl"><ScrollRevealText segments={[{ text: "A simple, supervised home-program — for people and practitioners." }]} /></h2>
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
               {/* Step 1 — New Program form */}
               <div className="rounded-2xl overflow-hidden border border-black/5 bg-white flex flex-col">
@@ -215,9 +216,13 @@ function LandingContent() {
         <Parallax speed={70}>
         <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black">
-            <span className="block text-3xl sm:text-5xl lg:text-6xl">Built for OT, PT</span>
-            <span className="block text-3xl sm:text-5xl lg:text-6xl text-black/30">and Speech —</span>
-            <span className="block text-3xl sm:text-5xl lg:text-6xl">one workflow.</span>
+            <ScrollRevealText
+              segments={[
+                { text: "Built for OT, PT", className: "block text-3xl sm:text-5xl lg:text-6xl" },
+                { text: "and Speech —", className: "block text-3xl sm:text-5xl lg:text-6xl text-black/30" },
+                { text: "one workflow.", className: "block text-3xl sm:text-5xl lg:text-6xl" },
+              ]}
+            />
           </h2>
           <p className="mt-6 max-w-2xl text-xs sm:text-sm text-black/50 leading-relaxed">
             Same simple steps for every clinic. You stay in control.
@@ -262,8 +267,12 @@ function LandingContent() {
         <Parallax speed={70}>
         <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black">
-            <span className="block text-3xl sm:text-5xl lg:text-6xl">Save time.</span>
-            <span className="block text-3xl sm:text-5xl lg:text-6xl text-black/30">Keep care going.</span>
+            <ScrollRevealText
+              segments={[
+                { text: "Save time.", className: "block text-3xl sm:text-5xl lg:text-6xl" },
+                { text: "Keep care going.", className: "block text-3xl sm:text-5xl lg:text-6xl text-black/30" },
+              ]}
+            />
           </h2>
           <p className="mt-4 max-w-2xl text-xs sm:text-sm text-black/50 leading-relaxed">
             Aruga turns small clinic minutes into consistent home care — less busywork, fewer extra visits, clearer follow-through.
@@ -314,12 +323,19 @@ function LandingContent() {
         <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-12">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
             <div className="shrink-0 max-w-sm">
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-white leading-tight">A little AI.<br/><span className="text-white/40">All human care.</span></h2>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-white leading-tight">
+                <ScrollRevealText
+                  segments={[
+                    { text: "A little AI.", className: "block" },
+                    { text: "All human care.", className: "block text-white/40" },
+                  ]}
+                />
+              </h2>
               <p className="mt-3 text-sm sm:text-base text-white/50 leading-relaxed">Meta AI models help you see more and do more.</p>
             </div>
             <div className="flex-1 lg:max-w-5xl">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                <div className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
+                <Parallax speed={50} className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
                   <div className="h-56 sm:h-64 lg:h-72 overflow-hidden rounded-xl bg-white/[0.03] flex items-center justify-center">
                     <img src="/pegs/understanding-videos-inspired.svg" alt="Understanding videos illustration" className="w-full h-full object-contain scale-110" />
                   </div>
@@ -327,8 +343,8 @@ function LandingContent() {
                     <div className="text-sm sm:text-base font-semibold text-white">Understanding videos</div>
                     <p className="text-xs sm:text-sm text-white/50 leading-relaxed mt-1.5">AI spots key moments so you can give quick, clear feedback.</p>
                   </div>
-                </div>
-                <div className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
+                </Parallax>
+                <Parallax speed={100} className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
                   <div className="h-56 sm:h-64 lg:h-72 overflow-hidden rounded-xl bg-white/[0.03] flex items-center justify-center">
                     <img src="/pegs/performance-tracking-inspired.svg" alt="Performance tracking illustration" className="w-full h-full object-contain scale-110" />
                   </div>
@@ -336,8 +352,8 @@ function LandingContent() {
                     <div className="text-sm sm:text-base font-semibold text-white">Dynamic insights</div>
                     <p className="text-xs sm:text-sm text-white/50 leading-relaxed mt-1.5">Get tailored tracking based on your clinician's goal.</p>
                   </div>
-                </div>
-                <div className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
+                </Parallax>
+                <Parallax speed={150} className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
                   <div className="h-56 sm:h-64 lg:h-72 overflow-hidden rounded-xl bg-white/[0.03] flex items-center justify-center">
                     <img src="/pegs/activity-sheets-inspired.svg" alt="Activity sheets illustration" className="w-full h-full object-contain scale-110" />
                   </div>
@@ -345,7 +361,7 @@ function LandingContent() {
                     <div className="text-sm sm:text-base font-semibold text-white">Made for you</div>
                     <p className="text-xs sm:text-sm text-white/50 leading-relaxed mt-1.5">Activity sheets made just for you, based on your progress.</p>
                   </div>
-                </div>
+                </Parallax>
               </div>
             </div>
           </div>
@@ -359,7 +375,14 @@ function LandingContent() {
       <section id="lifespan" className="bg-white border-b border-black/10 w-full min-h-screen flex flex-col justify-center">
         <Parallax speed={70}>
         <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
-          <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">Adapted for every<br/><span className="text-black/25">milestone & generation.</span></h2>
+          <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">
+            <ScrollRevealText
+              segments={[
+                { text: "Adapted for every", className: "block" },
+                { text: "milestone & generation.", className: "block text-black/25" },
+              ]}
+            />
+          </h2>
           <p className="mt-4 max-w-2xl text-xs sm:text-sm text-black/50 leading-relaxed">Aruga keeps therapy going at home — simple steps, quick photo or clip, and clear feedback from your clinician.</p>
           <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-0 border border-black/10 divide-y md:divide-y-0 md:divide-x divide-black/10">
             {[
@@ -393,7 +416,14 @@ function LandingContent() {
       <section id="soap-notes" className="bg-white border-b border-black/10 w-full min-h-screen flex flex-col justify-center">
         <Parallax speed={70}>
         <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
-          <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">Clinical notes.<br/><span className="text-black/25">Telehealth & assessments.</span></h2>
+          <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">
+            <ScrollRevealText
+              segments={[
+                { text: "Clinical notes.", className: "block" },
+                { text: "Telehealth & assessments.", className: "block text-black/25" },
+              ]}
+            />
+          </h2>
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-0 border border-black/10 divide-y lg:divide-y-0 lg:divide-x divide-black/10">
             <div className="p-6 sm:p-8 space-y-4">
               <img src="/pegs/soap-notes.svg" alt="SOAP notes" className="w-16 h-12 object-contain" />
@@ -438,7 +468,14 @@ function LandingContent() {
         <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-12">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
             <div className="shrink-0">
-              <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-tight">Safe and private<br/><span className="text-white/40">by design.</span></h2>
+              <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-tight">
+                <ScrollRevealText
+                  segments={[
+                    { text: "Safe and private", className: "block" },
+                    { text: "by design.", className: "block text-white/40" },
+                  ]}
+                />
+              </h2>
               <p className="mt-2 text-[11px] tracking-[0.1em] uppercase text-white/30">HIPAA-compliant infrastructure</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 flex-1 lg:max-w-3xl">
