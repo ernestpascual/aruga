@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   AlertCircle,
   CheckCircle2,
+  KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -360,6 +361,20 @@ export default function LoginPage() {
               <span>{successMessage}</span>
             </motion.div>
           )}
+
+          {/* For judges running locally — Meta key setup, above the two demo flows */}
+          <div className="p-4 rounded-2xl bg-amber-950/20 border border-amber-500/30 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-amber-200">
+              <KeyRound className="w-4 h-4 text-amber-400 shrink-0" />
+              For judges — running this locally?
+            </div>
+            <p className="text-[11px] text-zinc-400 leading-relaxed">
+              Add your Meta API key to <span className="font-mono text-zinc-300">.env.local</span>, then restart <span className="font-mono text-zinc-300">npm run dev</span>. That is all the two demos below need — no login, no Supabase.
+            </p>
+            <pre className="rounded-lg bg-zinc-950/80 border border-white/10 px-3 py-2 text-[11px] font-mono text-teal-300 overflow-x-auto">MODEL_API_KEY=your-meta-api-key
+AI_MODE=live</pre>
+            <p className="text-[11px] text-zinc-500">The key stays on your server (never sent to the browser).</p>
+          </div>
 
           {/* Judge demo entries — no account or Supabase needed. Replay tool intentionally not linked here (behind auth, Tools menu). */}
           <div className="grid sm:grid-cols-2 gap-3">
