@@ -132,8 +132,8 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
                 type="linear"
                 angle={60}
                 bands={1}
-                speed={0.8}
-                flow={0.85}
+                speed={0.25}
+                flow={0.35}
                 scale={1.15}
                 softness={0.9}
                 silk={0.25}
@@ -142,19 +142,11 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
                 contrast={1.15}
                 saturation={1.15}
                 interactive={true}
-                stir={2.5}
+                stir={0.8}
                 clickSwirl={true}
                 className="w-full h-full"
               />
             </div>
-            {/* AI-generated hero photo (OT fine-motor grasp) — public/hero-therapy.jpg */}
-            <img
-              src="/hero-therapy.jpg"
-              alt=""
-              aria-hidden
-              onError={(e) => { e.currentTarget.style.display = "none"; }}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
             {/* Dark overlay for text legibility like peg's eye photo */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/5 to-black/45" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-transparent" />
