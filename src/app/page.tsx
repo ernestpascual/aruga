@@ -297,7 +297,7 @@ function LandingContent() {
           </p>
 
           <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-0 border border-black/10 divide-y md:divide-y-0 md:divide-x divide-black/10 bg-white">
-            <Parallax speed={50} pop className="p-6 sm:p-8 space-y-3">
+            <div className="p-6 sm:p-8 space-y-3">
               <img src="/pegs/optimize-time.svg" alt="Saves time" className="w-16 h-12 object-contain" />
               <h3 className="text-sm font-semibold text-black">Saves time for clinicians</h3>
               <p className="text-xs text-black/60 leading-relaxed">Write a short goal and get a clear draft in seconds. Schedule up to 10 dates at once. Review all submissions in one place.</p>
@@ -306,8 +306,8 @@ function LandingContent() {
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />One program covers many days</li>
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />Publish feedback in one tap</li>
               </ul>
-            </Parallax>
-            <Parallax speed={100} pop popDelay={0.12} className="p-6 sm:p-8 space-y-3">
+            </div>
+            <div className="p-6 sm:p-8 space-y-3">
               <img src="/pegs/optimize-resources.svg" alt="Uses resources wisely" className="w-16 h-12 object-contain" />
               <h3 className="text-sm font-semibold text-black">Uses resources wisely</h3>
               <p className="text-xs text-black/60 leading-relaxed">No new apps to manage. Photos and videos live in your private cloud. Reuse activities and messages instead of extra visits and calls.</p>
@@ -316,8 +316,8 @@ function LandingContent() {
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />Activity Studio: reusable worksheets</li>
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />Messaging and handover in one place</li>
               </ul>
-            </Parallax>
-            <Parallax speed={150} pop popDelay={0.24} className="p-6 sm:p-8 space-y-3">
+            </div>
+            <div className="p-6 sm:p-8 space-y-3">
               <img src="/pegs/optimize-care.svg" alt="Better care at home" className="w-16 h-12 object-contain" />
               <h3 className="text-sm font-semibold text-black">Better care at home</h3>
               <p className="text-xs text-black/60 leading-relaxed">Clients send a photo or short clip — or skip with a reason when tired. You see it clearly and reply in plain language.</p>
@@ -326,7 +326,7 @@ function LandingContent() {
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />Visual support highlights what matters</li>
                 <li className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />SOAP + plain summary families understand</li>
               </ul>
-            </Parallax>
+            </div>
           </div>
           <p className="mt-6 text-[11px] text-black/40 leading-relaxed max-w-3xl">Every step stays clinician-approved. AI helps draft, you decide. Families see only what you publish.</p>
         </FadeContent>
