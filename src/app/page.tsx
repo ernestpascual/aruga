@@ -314,8 +314,8 @@ function LandingContent() {
         <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-12">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
             <div className="shrink-0 max-w-sm">
-              <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-tight">A little AI.<br/><span className="text-white/40">All human care.</span></h2>
-              <p className="mt-3 text-xs text-white/50 leading-relaxed">Muse Spark helps you see more. You stay in control.</p>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-white leading-tight">A little AI.<br/><span className="text-white/40">All human care.</span></h2>
+              <p className="mt-3 text-sm sm:text-base text-white/50 leading-relaxed">Muse Spark helps you see more. You stay in control.</p>
             </div>
             <div className="flex-1 lg:max-w-5xl">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
