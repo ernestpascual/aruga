@@ -3,9 +3,9 @@
 </p>
 
 <h1 align="center">Aruga</h1>
-<p align="center"><b>Clinician-directed home-program companion for PT / OT / SLP</b></p>
+<p align="center"><b>Clinician-directed home-program companion for Physical Therapy, Occupational Therapy, and Speech-Language Pathology</b></p>
 
-<p align="center">Built for the <b>Meta Global AI Developer Hackathon</b> — <b>Build for Your World</b> · Next.js 16 · Meta Model API · Supabase · Modal</p>
+<p align="center">Built for the <b>Meta Global AI Developer Hackathon</b> — <b>Build for Your World</b></p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Meta-AI_Developer_Hackathon-14b8a6?style=flat-square" alt="Meta Global AI Developer Hackathon" />
@@ -19,8 +19,8 @@
   <a href="#about-aruga">About</a> ·
   <a href="#what-it-does">What it does</a> ·
   <a href="#who-uses-it">Who uses it</a> ·
-  <a href="#the-5-agents-1-line-each">Agents</a> ·
-  <a href="#modal-solution--sam-3d-body-backend-required-for-biomechanics">Biomech backend</a> ·
+  <a href="#the-5-agents">Agents</a> ·
+  <a href="#use-of-modal">Biomech backend</a> ·
   <a href="#describe-your-use-of-meta-products">Meta products</a> ·
   <a href="#why-are-metas-models-important-to-your-solution">Why Meta</a> ·
   <a href="#run-it">Run it</a> ·
@@ -40,6 +40,15 @@ The name is the idea. In Filipino, *aruga* is what a caregiver does — staying 
 The loop is simple. A therapist writes the home program in shorthand — Aruga turns it into clear, ordered steps, with an **optional worksheet illustrated for that one patient** (big print for grandma, playful for kids, or just the steps alone). The client practices and records a short video per step — that video becomes **evidence**. **SAM 3.1 segments the movement**, and a **SAM 3D Body stage on Modal computes joint angles, ROM, and compensation flags**, forming a per-patient **movement twin** — kinematic, never diagnostic. Every submission updates the twin; every judgment is read from it.
 
 **Four bounded agents do the prep work** — Activity drafts steps and worksheets, Biomechanic rates movement **Good / Watch / Needs support**, Goal Tracking re-validates every goal after every session, Highlights curates the month's best seven — **each produces only a draft**. **Nothing reaches a patient until the therapist taps Approve or Publish.** Aruga never treats, diagnoses, or advises; it exists to **help therapists give their best care**, where clients actually live.
+
+### Quick glossary
+
+- **Home program** — the set of exercises a therapist prescribes for a client to practice between clinic visits, with a schedule and per-step instructions.
+- **OT (Occupational Therapy)** — therapy focused on daily activities: grasp, self-care, dressing, feeding, handwriting, and returning to meaningful routines.
+- **PT (Physical Therapy)** — therapy focused on movement: strength, balance, gait, transfers, and getting around safely.
+- **SLP (Speech-Language Pathology)** — therapy focused on communication, speech, language, and swallowing.
+- **SOAP note** — the therapist's chart format: Subjective (what the client reports), Objective (what was measured), Assessment (clinical read), Plan (what's next).
+- **ROM** — range of motion: how far a joint moves, measured here in degrees from phone video.
 
 ---
 
@@ -95,40 +104,31 @@ Each product carries one wall: SAM sees, Spark reasons, Image illustrates, open 
 
 ### How each user type uses AI
 
-| Agent | Therapist | Client (+ caregiver) |
-|---|---|---|
-| **Activity** | Clicks `Draft with Agent` per step (`therapist/clients/[id]/programs/new`) → Spark 1.3 drafts instructions + visual brief, Muse Image 1.0 renders line art → Attach / Edit / Regenerate / Reject. Auto-draft on edit (debounced, pending approval). | Draws/colors the assigned sheet (`StepActivityWorksheet`), prints or uploads a photo. No generation — completes what therapist attached. |
-| **Biomechanic** | Clicks `Analyze biomechanics` per video (`therapist/submissions/[id]`) or opens playground (`/tools/biomech`, U1–U11 intent) → Spark picks 2–8/16 concepts → SAM 3.1 segments → Modal SAM 3D Body measures ROM/flags → `Good / Watch / Needs support` + `Insert into Objective`. Sees all dates per program, not just latest. | Records the video; reads the published numbers in plain words (`shoulder 142° → 158°`) via review/SOAP summary. No analysis button — consumes therapist-published result. |
-| **Goal Tracking** | Clicks `Check goals` (`therapist/clients/[id]` header) → Spark 1.3 reasons over STG/LTG + SOAP + MHR + adherence (chunked 5/batch) → draft verdicts `on_track / at_risk / behind / achieved / gap` → Publish. | Sees published verdicts + `Insert suggestion into Plan` outcome in their program; sees `gap` explanation (`No ROM measurement yet`) instead of raw signals. |
-| **Highlights** | Clicks `Generate highlights` (or monthly auto 1st) → Spark 1.3 curates best 7 slots (Goals, Movement, Steady progress, Keep going, Neck & posture, Program fit, Next step) → draft strip → Publish to client dashboard. | Views published 7-moment strip on dashboard (`HighlightsStrip`, `w` weights + `↑/→/↓` vs last month). Never sees the curation prompt — just the story. |
-| **Aruga Guide** | Uses same chat (`/aruga-guide`) with client context (profile + program brief) → grounded answers with References → `Send to clinician` verification gate. Model picker (Spark 1.2 / 1.3 / Wonder). | Primary user: asks everyday-words questions, attaches photo/video frames → gets explanation + `Send to clinician` to verify. 6/7 Meta compliant, web_search grounded. |
-| **Helpers** | `draftHomeProgram` (shorthand → steps), `analyzeStepVideo` (video → observations + timestamps), `draftTherapistFeedback` (S/O/A/P draft), SOAP `client_summary` (first view generates, later views `<15ms` cached). | Reads the plain-English family summary (`SoapSummaryCard`, `See Summary`), per-date `View feedback` (`?date=&submissionId=`) even while program is ongoing. |
+Think of it as one shared story with two sides. The therapist runs the tools; the client lives the practice.
 
-Rule: the 4 program agents produce a **draft** — nothing reaches the client until therapist taps **Approve / Publish**. Guide is conversational but **never silently writes to chart**.
+**The therapist's side.** She starts with a blank step and taps `Draft with Agent` — the Activity agent turns her shorthand into clear instructions and, if she wants one, a custom worksheet for that exact patient. She attaches what fits, edits or regenerates the rest. When videos come in, she taps `Analyze biomechanics` and gets joint angles and flags she can drop straight into her Objective notes. She taps `Check goals` to see which short- and long-term goals are on track, generates the month's 7 highlights in one tap, and chats with Aruga Guide when she needs a grounded second opinion. Everything lands as a draft she reviews.
 
-## Together
+**The client's side.** They open their program, follow the steps, and — only if their therapist attached one — color a worksheet or print it. They record a short video per step, add a quick note, and submit. Later they read what their therapist published: plain-words feedback, goal updates, the month's best moments, and a simple family summary. If they have a question, they ask Aruga Guide and tap `Send to clinician` to get it verified.
 
-Shared program → video → review loop: therapist assigns, client submits, therapist publishes feedback. Plus messaging with `@routine` mentions, notification bell, published highlights strip on the client dashboard, per-client Care Guide, and Aruga Guide with `Send to clinician` verification.
+**The rule that holds it together:** the program agents only ever produce a **draft** — nothing reaches the client until the therapist taps **Approve / Publish**. Guide answers questions but **never silently writes to the chart**.
 
 ---
 
-## The 5 agents (1 line each)
+## The 5 agents
 
-| Agent | Who | What it drafts | Result means |
+| Agent | Who uses it | What it does | What happens next |
 |---|---|---|---|
-| **Activity** | Therapist | Worksheet per step (instructions + line art) | Attach to step, or Edit / Regenerate / Reject |
-| **Biomechanic** | Both (playground) · Therapist (clinical review) | ROM + compensation from video | `Good` = on target · `Watch` = cue it · `Needs support` = re-grade (see Modal section) |
-| **Goal Tracking** | Therapist (client sees published) | STG/LTG verdict `on_track / at_risk / behind / achieved / gap` | Insert suggestion into Plan, or Publish |
-| **Highlights** | Therapist publishes · Client views | Best 7 data points of the month | Publish strip to client dashboard |
-| **Aruga Guide** | Both | Everyday-words answers + References | Client taps `Send to clinician` to verify |
+| **Activity** | Therapist creates, client completes | Turns shorthand into clear steps, plus an optional custom worksheet (line art) for that one patient | Therapist attaches, edits, or regenerates; client colors or prints only if one is attached |
+| **Biomechanic** | Therapist runs, client reads the result | Measures joint angles, ROM, and compensation flags from a short phone video | Each metric is rated `Good` (on target), `Watch` (cue technique), or `Needs support` (re-prescribe) |
+| **Goal Tracking** | Therapist runs, client sees published verdicts | Re-checks every short- and long-term goal against the latest session evidence | Verdicts like `on_track`, `at_risk`, or `achieved` become Plan suggestions the therapist approves |
+| **Highlights** | Therapist publishes, client views | Picks the 7 most meaningful moments of the month — progress, effort, steady streaks | Published as a story strip on the client dashboard, with trends vs last month |
+| **Aruga Guide** | Both, mainly the client | Answers everyday-words questions with cited, grounded explanations | Client taps `Send to clinician` so a human verifies anything that matters |
 
 ## More AI workflows
 
 Behind the five agents, smaller helpers do the repetitive drafting inside the main screens — each one turns rough input into a reviewable draft, never a final answer:
 
 - **Program drafting (`draftHomeProgram`)** — the therapist types shorthand ("cup lift 5x, hold 3s, both hands") → Spark returns ordered steps with reps, hold times, and precautions, flagging anything ambiguous instead of guessing. Saves structuring every program from scratch.
-- **Video observation (`analyzeStepVideo`)** — a submitted clip → timestamped observable actions ("cylindrical grasp, lift 3 in at 0:04") plus the single clearest object concept to hand to SAM 3.1. Gives the therapist a scannable timeline instead of rewatching the whole video.
-- **Feedback drafting (`draftTherapistFeedback`)** — rough therapist notes plus confirmed observations → a structured Subjective / Objective / Assessment / Plan draft. The therapist edits, confirms, and publishes — the AI never writes directly to the record.
 - **Plain-English family summaries (`client_summary`)** — clinical SOAP notes → a warm 2–3 sentence takeaway at family reading level. The first view generates it once and caches it in Postgres; every later view returns in <15ms with no regeneration needed. The family gets the same truth, in their own words, instantly.
 
 ---
@@ -147,7 +147,7 @@ npx tsc --noEmit && npm run build && npm test  # 93 tests
 
 ---
 
-## Modal solution — SAM 3D Body backend (required for biomechanics)
+## Use of Modal
 
 **Why Modal:** SAM 3D Body is a 1.69 GB PyTorch model (ViT-H + MHR head, `ffmpeg`/`opencv` stack). It can't run on Vercel (10s limit, no GPU, no volume) or in the browser. Modal gives us a CPU container (`cpu=2.0`, `timeout=300`) with a persistent volume for checkpoints and a public `/infer` endpoint. A 30s clip resolves in ~90–130s (warm runs much faster). We run on CPU because we did not receive Modal credits — which doubles as a scalability proof: if the full pipeline resolves on two shared CPU cores, it only gets faster on GPU. The Biomechanic agent requires it — without `MODAL_MHR_URL` set, analysis calls fail with `503 MODAL_NOT_CONFIGURED`.
 
@@ -189,11 +189,17 @@ What matters is what comes *after* those lines: a completed execution with durat
 
 ---
 
-## Supabase (optional — app runs without it)
+## Use of Baseten
 
-Supabase adds login, database, and file storage. Without it, Aruga still runs in demo mode (mock patients, local flows, AI via Meta API still works).
+Baseten runs our open-weights development loop — it is not in the patient-facing path. Our coding agent harness (`opencode.jsonc`) points at Baseten's OpenAI-compatible endpoint (`inference.baseten.co/v1`, model `meta-models/muse-spark-open-1026`) to prototype prompts, audit code, and test ideas against Muse Spark Open before anything ships. Runtime patient features always go through the Meta Model API; Baseten is where we iterate safely and cheaply during development.
 
-- **Without Supabase:** browse `/tools/biomech`, `/activity-agent-playground`, `/sam-test`. No login, no saving.
+---
+
+## Supabase
+
+Supabase adds login, database, and file storage.
+
+- **Demo versions (no Supabase, demo purposes only):** browse `/tools/biomech`, `/activity-agent-playground`, `/sam-test`. No login, no saving.
 - **With Supabase:** add these to `.env.local` for full therapist/client accounts + saving programs, videos, and reviews:
   ```env
   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
@@ -206,9 +212,4 @@ Supabase adds login, database, and file storage. Without it, Aruga still runs in
 
 ## Stack
 
-Next.js 16 · React 19 · Tailwind v4 · Zod · `@meta-sam/parser` · Recharts · Vitest (93) · Supabase (optional, see above) · Modal (SAM 3D Body backend)
-
-## Docs
-
-- [Agents Guide](docs/AGENTS_GUIDE.md) · [Meta Integration](docs/META_INTEGRATION.md) · [Demo](docs/DEMO.md) · [Evaluation](docs/EVALUATION.md)
-- [Audits](audit/) · [Pitch](docs/PITCH_PRESENTATION.md)
+Next.js 16 · React 19 · Tailwind v4 · Zod · `@meta-sam/parser` · Recharts · Vitest (93) · Supabase (see above) · Modal (SAM 3D Body backend)
