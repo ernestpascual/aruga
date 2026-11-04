@@ -235,10 +235,10 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
       </section>
 
       {/* SECTION 2 — Peg's section 2 style: numbered header + big headline + 3 cols */}
-      <section id="disciplines" className="bg-white border-b border-black/10">
+      <section id="disciplines" className="bg-white border-b border-black/10 w-full min-h-screen flex flex-col justify-center">
 
         {/* Big headline like "Protein Sequencing by Expansion" */}
-        <div className="container mx-auto px-5 sm:px-6 max-w-7xl py-10 sm:py-14">
+        <div className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black">
             <span className="block text-3xl sm:text-5xl lg:text-6xl">Built for OT, PT</span>
             <span className="block text-3xl sm:text-5xl lg:text-6xl text-black/30">and Speech —</span>
@@ -282,8 +282,8 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
       <div className="h-px w-full bg-black/10" />
 
       {/* OPTIMIZE — new features framed as care / time / resources */}
-      <section id="optimize" className="bg-[#F6F3EF] border-b border-black/10">
-        <div className="container mx-auto px-5 sm:px-6 max-w-7xl py-10 sm:py-14">
+      <section id="optimize" className="bg-[#F6F3EF] border-b border-black/10 w-full min-h-screen flex flex-col justify-center">
+        <div className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black">
             <span className="block text-3xl sm:text-5xl lg:text-6xl">Save time.</span>
             <span className="block text-3xl sm:text-5xl lg:text-6xl text-black/30">Keep care going.</span>
@@ -331,8 +331,8 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
       <div className="h-px w-full bg-black/10" />
 
       {/* META SPARK — black breaker, hand-drawn style */}
-      <section id="meta-spark" className="bg-black border-y border-white/10">
-        <div className="container mx-auto px-5 sm:px-6 max-w-7xl py-10 sm:py-12">
+      <section id="meta-spark" className="bg-black border-y border-white/10 w-full min-h-screen flex flex-col justify-center">
+        <div className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-12">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
             <div className="shrink-0 max-w-sm">
               <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-tight">A little AI.<br/><span className="text-white/40">All human care.</span></h2>
@@ -376,8 +376,8 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
       <div className="h-px w-full bg-black/10" />
 
       {/* LIFESPAN — editorial */}
-      <section id="lifespan" className="bg-white border-b border-black/10">
-        <div className="container mx-auto px-5 sm:px-6 max-w-7xl py-10 sm:py-14">
+      <section id="lifespan" className="bg-white border-b border-black/10 w-full min-h-screen flex flex-col justify-center">
+        <div className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">Adapted for every<br/><span className="text-black/25">milestone & generation.</span></h2>
           <p className="mt-4 max-w-2xl text-xs sm:text-sm text-black/50 leading-relaxed">Aruga keeps therapy going at home — simple steps, quick photo or clip, and clear feedback from your clinician.</p>
           <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-0 border border-black/10 divide-y md:divide-y-0 md:divide-x divide-black/10">
@@ -408,8 +408,8 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
       <div className="h-px w-full bg-black/10" />
 
       {/* SOAP */}
-      <section id="soap-notes" className="bg-white border-b border-black/10">
-        <div className="container mx-auto px-5 sm:px-6 max-w-7xl py-10 sm:py-14">
+      <section id="soap-notes" className="bg-white border-b border-black/10 w-full min-h-screen flex flex-col justify-center">
+        <div className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">Clinical notes.<br/><span className="text-black/25">Telehealth & assessments.</span></h2>
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-0 border border-black/10 divide-y lg:divide-y-0 lg:divide-x divide-black/10">
             <div className="p-6 sm:p-8 space-y-4">
@@ -449,8 +449,8 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
       <div className="h-px w-full bg-black/10" />
 
       {/* SAFETY — breaker */}
-      <section id="safety" className="bg-black border-y border-white/10">
-        <div className="container mx-auto px-5 sm:px-6 max-w-7xl py-10 sm:py-12">
+      <section id="safety" className="bg-black border-y border-white/10 w-full min-h-screen flex flex-col justify-center">
+        <div className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-12">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
             <div className="shrink-0">
               <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-tight">Safe and private<br/><span className="text-white/40">by design.</span></h2>
