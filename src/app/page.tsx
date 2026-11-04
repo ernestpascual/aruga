@@ -155,8 +155,11 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
 
             {/* Headline — centered */}
             <div className="absolute inset-0 flex flex-col justify-center items-center text-center z-10 px-6 sm:px-8 lg:px-12 gap-6">
-              <h1 className="text-[32px] sm:text-[44px] lg:text-[52px] font-semibold leading-[0.9] tracking-[-0.02em] text-white max-w-[560px]">
-                Therapy doesn&apos;t<br />stop at the<br />clinic door.
+              <h1
+                style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}
+                className="text-[clamp(1.25rem,4vw,3.25rem)] font-normal leading-[1.1] whitespace-nowrap text-white"
+              >
+                Therapy doesn&apos;t stop at the clinic door.
               </h1>
               <p className="text-[13px] sm:text-sm text-white/80 leading-relaxed max-w-[420px]">It continues in the real world — at home, between visits, with your clinician guiding every step.</p>
             </div>
