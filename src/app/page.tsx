@@ -161,7 +161,7 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
               >
                 Therapy doesn&apos;t stop at the clinic door.
               </h1>
-              <p className="text-[13px] sm:text-sm text-white/80 leading-relaxed max-w-[420px]">It continues in the real world — at home, between visits, with your clinician guiding every step.</p>
+              <p className="text-[13px] md:text-[15px] lg:text-base text-white/80 leading-relaxed max-w-[420px] md:max-w-none md:whitespace-nowrap">It continues in the real world — at home, between visits, with your clinician guiding every step.</p>
             </div>
 
 
