@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="./public/readme-hero.svg" width="100%" alt="Aruga — clinician-directed home-program companion for PT, OT and SLP. Five agents (Activity, Biomechanic, Goals, Highlights, Guide) turn a home program from prescription to performance to progress, with the therapist always approving." />
+  <img src="./public/aruga.png" width="100%" alt="Aruga — clinician-directed home-program companion for PT, OT and SLP. Five agents (Activity, Biomechanic, Goals, Highlights, Guide) turn a home program from prescription to performance to progress, with the therapist always approving." />
 </p>
-
-<h1 align="center">Aruga</h1>
 <p align="center"><b>Clinician-directed home-program companion for Physical Therapy, Occupational Therapy, and Speech-Language Pathology</b></p>
 
 <p align="center">Built for the <b>Meta Global AI Developer Hackathon</b> — <b>Build for Your World</b></p>
@@ -13,17 +11,6 @@
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square" alt="TypeScript 5" />
   <img src="https://img.shields.io/badge/tests-93_passing-brightgreen?style=flat-square" alt="93 tests passing" />
-</p>
-
-<p align="center">
-  <a href="#about-aruga">About</a> ·
-  <a href="#who-uses-it">Who uses it</a> ·
-  <a href="#the-5-agents">Agents</a> ·
-  <a href="#use-of-modal">Biomech backend</a> ·
-  <a href="#describe-your-use-of-meta-products">Meta products</a> ·
-  <a href="#why-are-metas-models-important-to-your-solution">Why Meta</a> ·
-  <a href="#run-it">Run it</a> ·
-  <a href="docs/AGENTS_GUIDE.md">Agents guide</a>
 </p>
 
 > ⚠️ **Important:** Aruga does not replace therapy — it cannot diagnose, treat, or give medical advice. It only measures movement, drafts materials, and organizes the home program; a licensed therapist reviews and approves everything.
