@@ -168,9 +168,10 @@ npx tsc --noEmit && npm run build && npm test  # 93 tests
 **How to deploy it:**
 
 ```bash
-pip install modal && modal token new
-modal volume put sam3db-ckpts /path/to/model.ckpt /sam-3d-body-vith/model.ckpt
-modal volume put sam3db-ckpts /path/to/mhr_model.pt /sam-3d-body-vith/assets/mhr_model.pt
+pip install modal huggingface_hub && modal token new
+# 1. Request access to the gated repo: https://huggingface.co/facebookresearch/sam-3d-body
+# 2. Create a read token: https://huggingface.co/settings/tokens
+HF_TOKEN=hf_... python modal/fetch_ckpts.py --upload   # downloads + puts both ckpts
 modal deploy modal/app.py   # copy the https://...modal.run URL
 ```
 

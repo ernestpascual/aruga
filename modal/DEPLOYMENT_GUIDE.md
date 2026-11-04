@@ -31,11 +31,11 @@ modal token new      # one-time browser login
 modal token current  # verify
 ```
 
-Upload checkpoints once (from gated `facebookresearch/sam-3d-body`):
+Fetch checkpoints with the script (gated `facebookresearch/sam-3d-body` — request access first, then `HF_TOKEN=hf_...`):
 
 ```bash
-modal volume put sam3db-ckpts /path/to/model.ckpt /sam-3d-body-vith/model.ckpt
-modal volume put sam3db-ckpts /path/to/mhr_model.pt /sam-3d-body-vith/assets/mhr_model.pt
+pip install huggingface_hub
+HF_TOKEN=hf_... python modal/fetch_ckpts.py --upload   # downloads + puts both ckpts
 modal volume ls sam3db-ckpts   # verify
 ```
 
