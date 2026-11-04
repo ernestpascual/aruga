@@ -103,6 +103,16 @@ Each product carries one wall: SAM sees, Spark reasons, Image illustrates, open 
 - **Therapist** — the one in charge. She manages her caseload, writes home programs in shorthand, and lets the agents draft the rest: steps, worksheets, SOAP notes, movement ratings. She reviews client videos, taps Approve or Publish, and sends care guides. Nothing reaches a client without her.
 - **Client (+ caregiver)** — the one doing the work. They open their program, follow the steps, color the sheet if one was attached, and record a short video per step with a quick note. Later they read their therapist's published feedback, see their goal progress and monthly highlights, and get a plain-words family summary. A caregiver can help record, read, and practice alongside.
 
+## The 5 agents
+
+| Agent | Who uses it | What it does | What happens next |
+|---|---|---|---|
+| **Activity** | Therapist creates, client completes | Turns shorthand into clear steps, plus an optional custom worksheet (line art) for that one patient | Therapist attaches, edits, or regenerates; client colors or prints only if one is attached |
+| **Biomechanic** | Therapist runs, client reads the result | Measures joint angles, ROM, and compensation flags from a short phone video | Each metric is rated `Good` (on target), `Watch` (cue technique), or `Needs support` (re-prescribe) |
+| **Goal Tracking** | Therapist runs, client sees published verdicts | Re-checks every short- and long-term goal against the latest session evidence | Verdicts like `on_track`, `at_risk`, or `achieved` become Plan suggestions the therapist approves |
+| **Highlights** | Therapist publishes, client views | Picks the 7 most meaningful moments of the month — progress, effort, steady streaks | Published as a story strip on the client dashboard, with trends vs last month |
+| **Aruga Guide** | Both, mainly the client | Answers everyday-words questions with cited, grounded explanations | Client taps `Send to clinician` so a human verifies anything that matters |
+
 ### How each user type uses AI
 
 <p align="center">
@@ -118,18 +128,6 @@ Each product carries one wall: SAM sees, Spark reasons, Image illustrates, open 
 | **Aruga Guide** | Same chat with client context for grounded second opinions | Asks everyday-words questions, gets cited answers, taps `Send to clinician` to verify |
 
 **The rule that holds it together:** every agent produces a **draft** — nothing reaches the client until the therapist taps **Approve / Publish**. Guide answers questions but **never silently writes to the chart**.
-
----
-
-## The 5 agents
-
-| Agent | Who uses it | What it does | What happens next |
-|---|---|---|---|
-| **Activity** | Therapist creates, client completes | Turns shorthand into clear steps, plus an optional custom worksheet (line art) for that one patient | Therapist attaches, edits, or regenerates; client colors or prints only if one is attached |
-| **Biomechanic** | Therapist runs, client reads the result | Measures joint angles, ROM, and compensation flags from a short phone video | Each metric is rated `Good` (on target), `Watch` (cue technique), or `Needs support` (re-prescribe) |
-| **Goal Tracking** | Therapist runs, client sees published verdicts | Re-checks every short- and long-term goal against the latest session evidence | Verdicts like `on_track`, `at_risk`, or `achieved` become Plan suggestions the therapist approves |
-| **Highlights** | Therapist publishes, client views | Picks the 7 most meaningful moments of the month — progress, effort, steady streaks | Published as a story strip on the client dashboard, with trends vs last month |
-| **Aruga Guide** | Both, mainly the client | Answers everyday-words questions with cited, grounded explanations | Client taps `Send to clinician` so a human verifies anything that matters |
 
 ## More AI workflows
 
