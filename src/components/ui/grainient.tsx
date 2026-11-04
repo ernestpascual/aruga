@@ -426,6 +426,7 @@ export const Grainient = ({
     let introClock = settingsRef.current.intro && !reduce ? 0 : 1;
     let frameSeed = 0;
     let grainClock = 0;
+    let grainAccum = 0;
     let raf = 0;
     let last = 0;
     let visible = true;
@@ -580,7 +581,11 @@ export const Grainient = ({
       if (introClock < 1) introClock = Math.min(1, introClock + dt / INTRO_SECONDS);
       if (s.grainAnimated && !reduce) {
         grainClock += dt;
-        frameSeed = (frameSeed + 1) % 97;
+        grainAccum += dt;
+        if (grainAccum >= 1 / 15) {
+          grainAccum = 0;
+          frameSeed = (frameSeed + 1) % 97;
+        }
       }
       updateTouches(dt, view.width / view.height);
       draw();
