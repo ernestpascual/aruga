@@ -853,12 +853,6 @@ export default function AskOtPage() {
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 text-teal-300 border border-zinc-700 shadow-sm">
             <Sparkles className="w-3.5 h-3.5" /> Aruga Guide AI Agent
           </span>
-          <Link
-            href="/sam-test"
-            className="inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
-          >
-            SAM 3.1 Test
-          </Link>
         </div>
 
         {/* Intro + safety — generous padding, aligned icon/text */}

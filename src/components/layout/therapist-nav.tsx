@@ -11,7 +11,6 @@ import {
   LogOut,
   Stethoscope,
   HeartHandshake,
-  Scan,
   Activity,
   Palette,
   Wrench,
@@ -74,7 +73,6 @@ export function TherapistNav() {
       children: [
         { href: "/therapist/guide", label: "How to use Aruga", icon: BookOpen },
         { href: "/aruga-guide", label: "Aruga Guide AI Agent", icon: HeartHandshake },
-        { href: "/sam-test", label: "SAM Test", icon: Scan },
         { href: "/tools/biomech", label: "Biomechanic Agent", icon: Activity },
       ],
     },

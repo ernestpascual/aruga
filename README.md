@@ -199,7 +199,7 @@ Baseten runs our open-weights development loop — it is not in the patient-faci
 
 Supabase adds login, database, and file storage.
 
-- **Demo versions (no Supabase, demo purposes only):** browse `/tools/biomech`, `/activity-agent-playground`, `/sam-test`. No login, no saving.
+- **Demo versions (no Supabase, demo purposes only):** browse `/tools/biomech`, `/activity-agent-playground`. No login, no saving.
 - **With Supabase:** add these to `.env.local` for full therapist/client accounts + saving programs, videos, and reviews:
   ```env
   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co

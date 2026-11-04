@@ -8,7 +8,6 @@ import {
   Clock,
   Sparkles,
   Bot,
-  Scan,
   MessageSquare,
   ArrowRight,
   TrendingUp,
@@ -356,22 +355,6 @@ export default function TherapistDashboardPage() {
                     </div>
                     <div className="text-[11px] text-zinc-400">
                       Query evidence-based clinical guidance, adaptive strategies, or exercise adaptations.
-                    </div>
-                  </div>
-                </div>
-              </Link>
-
-              <Link href="/sam-test" className="block p-3 rounded-xl bg-zinc-950/60 border border-zinc-800 hover:border-teal-500/50 transition-colors group">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-teal-950/80 text-teal-400 group-hover:scale-105 transition-transform">
-                    <Scan className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-zinc-100 group-hover:text-teal-300 transition-colors">
-                      SAM 3.1 Video Test
-                    </div>
-                    <div className="text-[11px] text-zinc-400">
-                      Track objects and fine-motor items across video frames with segmentation masks.
                     </div>
                   </div>
                 </div>

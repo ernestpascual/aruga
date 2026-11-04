@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   BookOpen, UserPlus, Play, Video, MessageSquare, Star, CheckCircle2, ArrowRight, HelpCircle, ShieldCheck,
-  LayoutDashboard, Home, Palette, History, Search, Layers, FileCheck, Clock, HeartHandshake, Wrench, Bot, Scan, ChevronDown, ChevronUp, User, LogOut, Edit3, Plus
+  LayoutDashboard, Home, Palette, History, Search, Layers, FileCheck, Clock, HeartHandshake, Wrench, Bot, ChevronDown, ChevronUp, User, LogOut, Edit3, Plus
 } from "lucide-react";
 
 type Section = { id: string; label: string; icon: React.ElementType };
@@ -276,7 +276,6 @@ export default function ClientGuidePage() {
                 <CardHeader className="p-6 pb-3"><CardTitle className="text-base text-zinc-100 flex items-center gap-2"><Wrench className="w-5 h-5 text-teal-400" /> Tools</CardTitle></CardHeader>
                 <CardContent className="p-6 pt-0 grid sm:grid-cols-2 gap-3 text-xs">
                   <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800"><b className="text-zinc-100 flex items-center gap-1"><Bot className="w-3.5 h-3.5 text-teal-400" /> Aruga Guide AI Agent</b><span className="text-zinc-400"> Ask any rehab question. Add a photo. It shows References (web articles). Tap “Send to clinician to verify.”</span><br /><Link href="/aruga-guide" className="text-teal-400 hover:underline">Open →</Link></div>
-                  <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800"><b className="text-zinc-100 flex items-center gap-1"><Scan className="w-3.5 h-3.5 text-sky-400" /> SAM Test</b><span className="text-zinc-400"> Play with image cut-outs. Upload a photo, tap an object, see the mask.</span><br /><Link href="/sam-test" className="text-teal-400 hover:underline">Open →</Link></div>
                   <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800"><b className="text-zinc-100 flex items-center gap-1"><BookOpen className="w-3.5 h-3.5 text-zinc-300" /> Care Guide</b><span className="text-zinc-400"> Home Program → Care Guide. Tips for daily care from your therapist.</span></div>
                   <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800"><b className="text-zinc-100 flex items-center gap-1"><HeartHandshake className="w-3.5 h-3.5 text-amber-400" /> How to use Aruga</b><span className="text-zinc-400"> You are here! Use the left menu to jump to any section.</span></div>
                 </CardContent>

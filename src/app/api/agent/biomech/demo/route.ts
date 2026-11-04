@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Modal SAM3D failed: ${modalRes.status} ${txt.slice(0, 800)}`, code: modalRes.status === 401 ? "MODAL_UNAUTHORIZED" : "MODAL_FAILED", samPersonMeta: { boxes: samResult.boxes.length } }, { status: 502 });
     }
     const mhr = await modalRes.json();
-    // Expose full SAM segmentation for /sam-test video overlay (masks + boxes) alongside MHR motion
+    // Expose full SAM segmentation (masks + boxes) alongside MHR motion
     return NextResponse.json({ ...mhr, concepts, intent: intent.toUpperCase(), source: "sam3.1+modal:env", samPersonMeta: { boxes: samResult.boxes.length, tracks: samResult.tracks.length, billedRequests: samResult.billedRequests, latencyMs: samResult.latencyMs, failures: samResult.failures }, samBoxes: samResult.boxes, samSvgPaths: samResult.svgPaths, samTracks: samResult.tracks, samConcepts: samResult.conceptsRequested });
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });

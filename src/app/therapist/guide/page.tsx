@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Users, ClipboardList, FileCheck2, MessageSquare, Palette, Scan, CheckCircle2, ArrowRight, HelpCircle, ShieldCheck,
+  Users, ClipboardList, FileCheck2, MessageSquare, Palette, CheckCircle2, ArrowRight, HelpCircle, ShieldCheck,
   Stethoscope, LayoutDashboard, Search, Plus, Video, Bell, Wrench, BookOpen, Bot, FileText, Calendar, Target,
   Sparkles, History, Layers, ChevronDown, ChevronUp, Eye, Edit3
 } from "lucide-react";
@@ -331,7 +331,6 @@ export default function TherapistGuidePage() {
                 <CardHeader className="p-6 pb-3"><CardTitle className="text-base text-zinc-100 flex items-center gap-2"><Wrench className="w-5 h-5 text-teal-400" /> Tools</CardTitle></CardHeader>
                 <CardContent className="p-6 pt-0 grid sm:grid-cols-2 gap-3 text-xs">
                   <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800"><b className="text-zinc-100 flex items-center gap-1"><Bot className="w-3.5 h-3.5 text-teal-400" /> Aruga Guide AI Agent</b><span className="text-zinc-400"> Ask rehab questions. Add a photo for better help. Answers show References (web articles). Clients tap “Send to clinician to verify” to ask you to check an answer.</span><br /><Link href="/aruga-guide" className="text-teal-400 hover:underline">Open →</Link></div>
-                  <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800"><b className="text-zinc-100 flex items-center gap-1"><Scan className="w-3.5 h-3.5 text-sky-400" /> SAM Test</b><span className="text-zinc-400"> Try image cut-outs. Upload a photo, tap to mark an object, see the mask.</span><br /><Link href="/sam-test" className="text-teal-400 hover:underline">Open →</Link></div>
                   <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800"><b className="text-zinc-100 flex items-center gap-1"><Palette className="w-3.5 h-3.5 text-amber-400" /> Activities</b><span className="text-zinc-400"> Make worksheets. See Activities section above.</span></div>
                   <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800"><b className="text-zinc-100 flex items-center gap-1"><FileText className="w-3.5 h-3.5 text-zinc-300" /> Assessment</b><span className="text-zinc-400"> Create and view SOAP notes. See Assessments above.</span></div>
                 </CardContent>

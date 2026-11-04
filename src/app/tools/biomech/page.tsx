@@ -208,7 +208,7 @@ export default function BiomechPlaygroundPage() {
     finally { setIsRunning(false); }
   }
 
-  // Overlay computations — parity with sam-test/page.tsx
+  // Overlay computations
   const overlayBoxes: SamBoxOut[] = result?.sam?.boxes ?? [];
   const overlayPaths: SamPathOut[] = result?.sam?.svgPaths ?? [];
   const overlayConcepts: string[] = result?.concepts ?? [];
@@ -295,7 +295,6 @@ export default function BiomechPlaygroundPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Link href="/sam-test" className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100"><Eye className="w-3.5 h-3.5" /> SAM Test</Link>
             <a href="/docs/BIOMECHANICAL_DATAPOINTS.md" target="_blank" className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100"><Info className="w-3.5 h-3.5" /> Datapoints</a>
           </div>
         </div>
@@ -570,9 +569,8 @@ export default function BiomechPlaygroundPage() {
           </Card>
         )}
 
-        <Card className="p-4 border-zinc-800 bg-zinc-900/50 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <Card className="p-4 border-zinc-800 bg-zinc-900/50">
           <div className="text-xs text-zinc-500"><span className="font-semibold text-zinc-300">Playground only</span> — isolated route <code className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-[11px]">/tools/biomech</code>, no DB writes. Try presets + re-run, Save as previous to see trend.</div>
-          <Link href="/sam-test" className="text-xs font-medium text-teal-400 hover:text-teal-300 inline-flex items-center gap-1">Go to SAM Test <ArrowLeft className="w-3 h-3 rotate-180" /></Link>
         </Card>
       </main>
       {guideOpen && (

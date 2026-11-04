@@ -12,7 +12,6 @@ import {
   User,
   Palette,
   Bot,
-  Scan,
   Activity,
   HeartHandshake,
   ChevronDown,
@@ -82,7 +81,6 @@ export function ClientNav() {
       children: [
         { href: "/client/guide", label: "How to use Aruga", icon: BookOpen },
         { href: "/aruga-guide", label: "Aruga Guide AI Agent", icon: Bot },
-        { href: "/sam-test", label: "SAM Test", icon: Scan },
         { href: "/tools/biomech", label: "Biomechanic Agent", icon: Activity },
       ],
     },
