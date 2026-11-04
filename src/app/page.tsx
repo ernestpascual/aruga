@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion, useScroll, useTransform } from "motion/react";
+import { motion, useScroll, useTransform, useMotionValueEvent } from "motion/react";
 import {
   Hand,
   ArrowRight,
@@ -77,14 +77,26 @@ function LandingContent() {
   const heroContentY = useTransform(scrollYProgress, [0, 1], [0, 140]);
   const heroContentOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
 
+  // Start pill shows over the hero only — fades once scrolled past it.
+  const { scrollY } = useScroll();
+  const [pastHero, setPastHero] = useState(false);
+  useMotionValueEvent(scrollY, "change", (v) =>
+    setPastHero(v > window.innerHeight * 0.8)
+  );
+
   return (
     <div className="min-h-screen bg-[#F6F3EF] text-black selection:bg-black selection:text-white scroll-smooth">
-      {/* Floating Start pill — topmost, always visible */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+      {/* Floating Start pill — visible over the hero only */}
+      <motion.div
+        animate={{ opacity: pastHero ? 0 : 1, y: pastHero ? -12 : 0, scale: pastHero ? 0.9 : 1 }}
+        transition={{ duration: 0.3 }}
+        style={{ x: "-50%", pointerEvents: pastHero ? "none" : "auto" }}
+        className="fixed top-4 left-1/2 z-50"
+      >
         <Link href="/login">
           <span className="inline-flex items-center gap-2 bg-white/10 text-white border border-white/25 backdrop-blur-md rounded-full pl-6 pr-2 py-2 text-xs sm:text-sm font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] hover:bg-white/20 transition-colors">Start Here <span className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-sm">→</span></span>
         </Link>
-      </div>
+      </motion.div>
 
       {/* HERO — peg e6373c full-bleed, no card frame */}
       <section ref={heroRef} id="overview" className="w-full min-h-screen flex flex-col bg-white">
@@ -335,7 +347,7 @@ function LandingContent() {
             </div>
             <div className="flex-1 lg:max-w-5xl">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                <Parallax speed={50} className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
+                <Parallax speed={50} pop className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
                   <div className="h-56 sm:h-64 lg:h-72 overflow-hidden rounded-xl bg-white/[0.03] flex items-center justify-center">
                     <img src="/pegs/understanding-videos-inspired.svg" alt="Understanding videos illustration" className="w-full h-full object-contain scale-110" />
                   </div>
@@ -344,7 +356,7 @@ function LandingContent() {
                     <p className="text-xs sm:text-sm text-white/50 leading-relaxed mt-1.5">AI spots key moments so you can give quick, clear feedback.</p>
                   </div>
                 </Parallax>
-                <Parallax speed={100} className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
+                <Parallax speed={100} pop popDelay={0.12} className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
                   <div className="h-56 sm:h-64 lg:h-72 overflow-hidden rounded-xl bg-white/[0.03] flex items-center justify-center">
                     <img src="/pegs/performance-tracking-inspired.svg" alt="Performance tracking illustration" className="w-full h-full object-contain scale-110" />
                   </div>
@@ -353,7 +365,7 @@ function LandingContent() {
                     <p className="text-xs sm:text-sm text-white/50 leading-relaxed mt-1.5">Get tailored tracking based on your clinician's goal.</p>
                   </div>
                 </Parallax>
-                <Parallax speed={150} className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
+                <Parallax speed={150} pop popDelay={0.24} className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
                   <div className="h-56 sm:h-64 lg:h-72 overflow-hidden rounded-xl bg-white/[0.03] flex items-center justify-center">
                     <img src="/pegs/activity-sheets-inspired.svg" alt="Activity sheets illustration" className="w-full h-full object-contain scale-110" />
                   </div>
