@@ -22,6 +22,7 @@ import {
   Video,
 } from "lucide-react";
 import { Grainient } from "@/components/ui/grainient";
+import { FadeContent } from "@/components/ui/fade-content";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { siteConfig } from "@/config/site";
 
@@ -208,7 +209,7 @@ function LandingContent() {
       <section id="disciplines" className="bg-white border-b border-black/10 w-full min-h-screen flex flex-col justify-center">
 
         {/* Big headline like "Protein Sequencing by Expansion" */}
-        <div className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
+        <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black">
             <span className="block text-3xl sm:text-5xl lg:text-6xl">Built for OT, PT</span>
             <span className="block text-3xl sm:text-5xl lg:text-6xl text-black/30">and Speech —</span>
@@ -247,13 +248,13 @@ function LandingContent() {
             ))}
           </div>
           <div className="mt-8 h-px w-full bg-black/10" />
-        </div>
+        </FadeContent>
       </section>
       <div className="h-px w-full bg-black/10" />
 
       {/* OPTIMIZE — new features framed as care / time / resources */}
       <section id="optimize" className="bg-[#F6F3EF] border-b border-black/10 w-full min-h-screen flex flex-col justify-center">
-        <div className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
+        <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black">
             <span className="block text-3xl sm:text-5xl lg:text-6xl">Save time.</span>
             <span className="block text-3xl sm:text-5xl lg:text-6xl text-black/30">Keep care going.</span>
@@ -295,14 +296,14 @@ function LandingContent() {
             </div>
           </div>
           <p className="mt-6 text-[11px] text-black/40 leading-relaxed max-w-3xl">Every step stays clinician-approved. AI helps draft, you decide. Families see only what you publish.</p>
-        </div>
+        </FadeContent>
       </section>
 
       <div className="h-px w-full bg-black/10" />
 
       {/* META SPARK — black breaker, hand-drawn style */}
       <section id="meta-spark" className="bg-black border-y border-white/10 w-full min-h-screen flex flex-col justify-center">
-        <div className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-12">
+        <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-12">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
             <div className="shrink-0 max-w-sm">
               <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-tight">A little AI.<br/><span className="text-white/40">All human care.</span></h2>
@@ -310,8 +311,8 @@ function LandingContent() {
             </div>
             <div className="flex-1 lg:max-w-5xl">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                <div className="overflow-hidden">
-                  <div className="h-56 sm:h-64 lg:h-72 overflow-hidden bg-transparent flex items-center justify-center">
+                <div className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
+                  <div className="h-56 sm:h-64 lg:h-72 overflow-hidden rounded-xl bg-white/[0.03] flex items-center justify-center">
                     <img src="/pegs/understanding-videos-inspired.svg" alt="Understanding videos illustration" className="w-full h-full object-contain scale-110" />
                   </div>
                   <div className="pt-4">
@@ -319,8 +320,8 @@ function LandingContent() {
                     <p className="text-xs sm:text-sm text-white/50 leading-relaxed mt-1.5">AI spots key moments so you can give quick, clear feedback.</p>
                   </div>
                 </div>
-                <div className="overflow-hidden">
-                  <div className="h-56 sm:h-64 lg:h-72 overflow-hidden bg-transparent flex items-center justify-center">
+                <div className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
+                  <div className="h-56 sm:h-64 lg:h-72 overflow-hidden rounded-xl bg-white/[0.03] flex items-center justify-center">
                     <img src="/pegs/performance-tracking-inspired.svg" alt="Performance tracking illustration" className="w-full h-full object-contain scale-110" />
                   </div>
                   <div className="pt-4">
@@ -328,8 +329,8 @@ function LandingContent() {
                     <p className="text-xs sm:text-sm text-white/50 leading-relaxed mt-1.5">Get tailored tracking based on your clinician's goal.</p>
                   </div>
                 </div>
-                <div className="overflow-hidden">
-                  <div className="h-56 sm:h-64 lg:h-72 overflow-hidden bg-transparent flex items-center justify-center">
+                <div className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
+                  <div className="h-56 sm:h-64 lg:h-72 overflow-hidden rounded-xl bg-white/[0.03] flex items-center justify-center">
                     <img src="/pegs/activity-sheets-inspired.svg" alt="Activity sheets illustration" className="w-full h-full object-contain scale-110" />
                   </div>
                   <div className="pt-4">
@@ -340,14 +341,14 @@ function LandingContent() {
               </div>
             </div>
           </div>
-        </div>
+        </FadeContent>
       </section>
 
       <div className="h-px w-full bg-black/10" />
 
       {/* LIFESPAN — editorial */}
       <section id="lifespan" className="bg-white border-b border-black/10 w-full min-h-screen flex flex-col justify-center">
-        <div className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
+        <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">Adapted for every<br/><span className="text-black/25">milestone & generation.</span></h2>
           <p className="mt-4 max-w-2xl text-xs sm:text-sm text-black/50 leading-relaxed">Aruga keeps therapy going at home — simple steps, quick photo or clip, and clear feedback from your clinician.</p>
           <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-0 border border-black/10 divide-y md:divide-y-0 md:divide-x divide-black/10">
@@ -371,7 +372,7 @@ function LandingContent() {
             ))}
           <div className="mt-8 h-px w-full bg-black/10" />
           </div>
-        </div>
+        </FadeContent>
       </section>
 
       {/* Breaker */}
@@ -379,7 +380,7 @@ function LandingContent() {
 
       {/* SOAP */}
       <section id="soap-notes" className="bg-white border-b border-black/10 w-full min-h-screen flex flex-col justify-center">
-        <div className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
+        <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">Clinical notes.<br/><span className="text-black/25">Telehealth & assessments.</span></h2>
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-0 border border-black/10 divide-y lg:divide-y-0 lg:divide-x divide-black/10">
             <div className="p-6 sm:p-8 space-y-4">
@@ -413,14 +414,14 @@ function LandingContent() {
             </div>
           <div className="mt-8 h-px w-full bg-black/10" />
           </div>
-        </div>
+        </FadeContent>
       </section>
 
       <div className="h-px w-full bg-black/10" />
 
       {/* SAFETY — breaker */}
       <section id="safety" className="bg-black border-y border-white/10 w-full min-h-screen flex flex-col justify-center">
-        <div className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-12">
+        <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-12">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
             <div className="shrink-0">
               <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-tight">Safe and private<br/><span className="text-white/40">by design.</span></h2>
@@ -446,7 +447,7 @@ function LandingContent() {
               <span className="inline-flex items-center gap-2 bg-white text-black text-sm font-semibold px-8 py-3 rounded-full hover:bg-zinc-100 transition-colors">Sign up <ArrowRight className="w-4 h-4" /></span>
             </Link>
           </div>
-        </div>
+        </FadeContent>
       </section>
 
       <footer className="bg-white py-10 px-5 sm:px-6 border-t border-black/10">
