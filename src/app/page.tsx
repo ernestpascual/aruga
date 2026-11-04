@@ -129,7 +129,7 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
             <div className="absolute inset-0">
               <Grainient
                 colors={["#ffffff", "#f0f7ff", "#1e3a8a", "#2563eb", "#0284c7", "#38bdf8", "#93c5fd"]}
-                type="linear"
+                type="radial"
                 angle={60}
                 bands={1}
                 speed={0.8}
@@ -137,8 +137,8 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
                 scale={1.15}
                 softness={0.9}
                 silk={0.25}
-                grainAmount={0}
-                grainSize={1.3}
+                grainAmount={0.03}
+                grainSize={0.5}
                 contrast={1.15}
                 saturation={1.15}
                 interactive={true}
