@@ -110,6 +110,11 @@ function LandingContent() {
 
             {/* Headline — centered */}
             <div className="absolute inset-0 flex flex-col justify-center items-center text-center z-10 px-6 sm:px-8 lg:px-12 gap-6">
+              <div>
+                <Link href="/login">
+                  <span className="inline-flex items-center gap-2 bg-white/10 text-white border border-white/25 backdrop-blur-xl rounded-full pl-6 pr-2 py-2 text-xs sm:text-sm font-semibold shadow-xl hover:bg-white/20 transition-colors">Start Here <span className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-sm">→</span></span>
+                </Link>
+              </div>
               <h1 className="text-[clamp(2.5rem,9vw,7rem)] font-normal leading-[1.1] whitespace-nowrap text-white">
                 <VariableProximity
                   label="Aruga"
@@ -121,11 +126,6 @@ function LandingContent() {
                   style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}
                 />
               </h1>
-              <div>
-                <Link href="/login">
-                  <span className="inline-flex items-center gap-2.5 bg-white/10 text-white border border-white/25 backdrop-blur-xl rounded-full pl-7 pr-2.5 py-2.5 text-sm sm:text-base font-semibold shadow-xl hover:bg-white/20 transition-colors">Start your recovery <span className="bg-white text-black rounded-full w-8 h-8 flex items-center justify-center text-base">→</span></span>
-                </Link>
-              </div>
             </div>
 
 
