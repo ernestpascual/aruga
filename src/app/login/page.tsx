@@ -361,6 +361,20 @@ export default function LoginPage() {
             </motion.div>
           )}
 
+          {/* Judge demo entries — no account or Supabase needed. Replay tool intentionally not linked here (behind auth, Tools menu). */}
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Link href="/demo/homeprogram" className="block p-4 rounded-2xl bg-teal-950/30 border border-teal-500/30 hover:border-teal-400/60 transition-colors">
+              <div className="text-xs font-bold text-teal-200">Guided demo — full flow</div>
+              <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">Create a home program, do it with preloaded clips, submit, get feedback, and replay the biomech analysis. No login; live Meta AI when a key is set.</p>
+              <span className="text-[11px] font-semibold text-teal-300 mt-2 inline-block">Start guided demo →</span>
+            </Link>
+            <Link href="/demo/insights" className="block p-4 rounded-2xl bg-violet-950/20 border border-violet-500/30 hover:border-violet-400/60 transition-colors">
+              <div className="text-xs font-bold text-violet-200">Insights playground</div>
+              <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">Run the real Goal Tracking and Monthly Highlights agents on sample patient data with your Meta API key. Edit goals and re-run.</p>
+              <span className="text-[11px] font-semibold text-violet-300 mt-2 inline-block">Try the agents →</span>
+            </Link>
+          </div>
+
           {/* Form Card */}
           <div className="p-6 rounded-2xl bg-white/[0.07] border border-white/15 shadow-2xl shadow-black/40 backdrop-blur-2xl ring-1 ring-white/10 space-y-5">
             <form onSubmit={handleSubmit} className="space-y-4">

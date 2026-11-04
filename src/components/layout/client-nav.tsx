@@ -13,6 +13,7 @@ import {
   Palette,
   Bot,
   Activity,
+  PlayCircle,
   HeartHandshake,
   ChevronDown,
   FolderArchive,
@@ -82,6 +83,7 @@ export function ClientNav() {
         { href: "/client/guide", label: "How to use Aruga", icon: BookOpen },
         { href: "/aruga-guide", label: "Aruga Guide AI Agent", icon: Bot },
         { href: "/tools/biomech", label: "Biomechanic Agent", icon: Activity },
+        { href: "/tools/replay", label: "Biomech Replay", icon: PlayCircle },
       ],
     },
   ];

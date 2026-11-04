@@ -211,13 +211,13 @@ One phone camera: ±2–3° big joints, ±12° small hand — bad framing suppre
 <p align="center">
   <img src="./img/biomech-segmentation.gif" width="100%" alt="Biomechanic Agent: SAM 3.1 segments the movement from a phone video." />
   <br />
-  <em>SAM 3.1 segments the movement from a phone video</em>
+  <em>SAM 3.1 segments and processed SAM 3D Body inference tracking the video real time</em>
 </p>
 
 <p align="center">
   <img src="./img/biomechanics-insights.gif" width="100%" alt="Biomechanic Agent: joint angles, ROM, and compensation flags rated Good / Watch / Needs support." />
   <br />
-  <em>Joint angles, ROM, and compensation flags — rated Good / Watch / Needs support</em>
+  <em>Additonal insights coming from SAM responses</em>
 </p>
 
 **Reading Modal logs (all of this is normal startup noise, not errors):**

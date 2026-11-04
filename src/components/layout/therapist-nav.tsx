@@ -12,6 +12,7 @@ import {
   Stethoscope,
   HeartHandshake,
   Activity,
+  PlayCircle,
   Palette,
   Wrench,
   ChevronDown,
@@ -74,6 +75,7 @@ export function TherapistNav() {
         { href: "/therapist/guide", label: "How to use Aruga", icon: BookOpen },
         { href: "/aruga-guide", label: "Aruga Guide AI Agent", icon: HeartHandshake },
         { href: "/tools/biomech", label: "Biomechanic Agent", icon: Activity },
+        { href: "/tools/replay", label: "Biomech Replay", icon: PlayCircle },
       ],
     },
   ];
