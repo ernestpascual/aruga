@@ -96,15 +96,11 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
           <div className="flex justify-start shrink-0" aria-hidden />
           <div className="hidden md:block" aria-hidden />
           <div className="flex justify-end items-center gap-2.5 sm:gap-3 shrink-0 ml-auto md:ml-0">
-            {user ? (
+            {user && (
               <Link href={dashboardHref}>
                 <Button size="sm" className="text-xs bg-white hover:bg-zinc-100 text-black font-semibold rounded-none px-5">
                   Dashboard <ArrowRight className="w-3.5 h-3.5 ml-1" />
                 </Button>
-              </Link>
-            ) : (
-              <Link href="/login">
-                <span className="bg-white/10 text-white border border-white/25 backdrop-blur-xl rounded-full px-4 py-1.5 flex items-center gap-1.5 text-[11px] shadow-lg hover:bg-white/20 transition-colors">Sign in <span className="bg-white text-black rounded-full w-4 h-4 flex items-center justify-center">→</span></span>
               </Link>
             )}
           </div>
@@ -148,19 +144,22 @@ function LandingContent({ dashboardHref }: { dashboardHref: string }) {
             <div className="absolute inset-0 flex flex-col justify-center items-center text-center z-10 px-6 sm:px-8 lg:px-12 gap-6">
               <h1
                 style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}
-                className="text-[clamp(1.25rem,4vw,3.25rem)] font-normal leading-[1.1] whitespace-nowrap text-white"
+                className="text-[clamp(2.5rem,9vw,7rem)] font-normal leading-[1.1] whitespace-nowrap text-white"
               >
                 Aruga
               </h1>
               <p className="text-[13px] md:text-[15px] lg:text-base text-white/80 leading-relaxed max-w-[420px] md:max-w-none md:whitespace-nowrap">It continues in the real world — at home, between visits, with your clinician guiding every step.</p>
+              <Link href="/login">
+                <span className="inline-flex items-center gap-2.5 bg-white/10 text-white border border-white/25 backdrop-blur-xl rounded-full pl-7 pr-2.5 py-2.5 text-sm sm:text-base font-semibold shadow-xl hover:bg-white/20 transition-colors">Start your recovery <span className="bg-white text-black rounded-full w-8 h-8 flex items-center justify-center text-base">→</span></span>
+              </Link>
             </div>
 
 
 
 
 
-            <motion.div style={{ opacity: arrowOpacity }} className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 hidden sm:flex">
-              <a href="#disciplines" className="w-7 h-7 rounded-full bg-white/15 border border-white/20 flex items-center justify-center text-white/70 hover:text-white"><ChevronDown className="w-3.5 h-3.5" /></a>
+            <motion.div style={{ opacity: arrowOpacity }} className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 hidden sm:flex">
+              <a href="#disciplines" className="w-9 h-9 rounded-full bg-white/10 border border-white/25 backdrop-blur-xl shadow-lg flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-colors"><ChevronDown className="w-4 h-4" /></a>
             </motion.div>
           </div>
 
