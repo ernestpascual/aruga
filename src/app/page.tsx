@@ -315,7 +315,7 @@ function LandingContent() {
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
             <div className="shrink-0 max-w-sm">
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-white leading-tight">A little AI.<br/><span className="text-white/40">All human care.</span></h2>
-              <p className="mt-3 text-sm sm:text-base text-white/50 leading-relaxed">Muse Spark helps you see more. You stay in control.</p>
+              <p className="mt-3 text-sm sm:text-base text-white/50 leading-relaxed">Meta AI models help you see more and do more.</p>
             </div>
             <div className="flex-1 lg:max-w-5xl">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
