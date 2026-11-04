@@ -67,10 +67,12 @@ export function VariableProximity({
     const container = containerRef.current;
     if (!container) return;
     let raf = 0;
+    let lastActive = -Infinity;
 
     const onMove = (e: PointerEvent) => {
       const r = container.getBoundingClientRect();
       mouseRef.current = { x: e.clientX - r.left, y: e.clientY - r.top };
+      lastActive = performance.now();
     };
     const onLeave = () => {
       mouseRef.current = { x: -9999, y: -9999 };
@@ -78,7 +80,14 @@ export function VariableProximity({
 
     const tick = () => {
       const r = container.getBoundingClientRect();
-      const { x: mx, y: my } = mouseRef.current;
+      // Idle stroll: when the pointer has been still for a while, a virtual
+      // focal point wanders across the text so the effect plays on its own.
+      let { x: mx, y: my } = mouseRef.current;
+      if (performance.now() - lastActive > 2500) {
+        const t = performance.now() / 1000;
+        mx = r.width / 2 + Math.sin(t * 0.7) * r.width * 0.4;
+        my = r.height / 2 + Math.cos(t * 0.45) * r.height * 0.3;
+      }
       for (const el of charsRef.current) {
         if (!el) continue;
         const c = el.getBoundingClientRect();

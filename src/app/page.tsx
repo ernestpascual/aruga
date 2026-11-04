@@ -75,6 +75,13 @@ function LandingContent() {
 
   return (
     <div className="min-h-screen bg-[#F6F3EF] text-black selection:bg-black selection:text-white scroll-smooth">
+      {/* Floating Start pill — topmost, always visible */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+        <Link href="/login">
+          <span className="inline-flex items-center gap-2 bg-black/30 text-white border border-white/25 backdrop-blur-xl rounded-full pl-6 pr-2 py-2 text-xs sm:text-sm font-semibold shadow-xl hover:bg-black/50 transition-colors">Start Here <span className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-sm">→</span></span>
+        </Link>
+      </div>
+
       {/* HERO — peg e6373c full-bleed, no card frame */}
       <section ref={heroRef} id="overview" className="w-full min-h-screen flex flex-col bg-white">
         <div className="w-full flex-1 flex flex-col overflow-hidden">
@@ -110,11 +117,6 @@ function LandingContent() {
 
             {/* Headline — centered */}
             <div className="absolute inset-0 flex flex-col justify-center items-center text-center z-10 px-6 sm:px-8 lg:px-12 gap-6">
-              <div>
-                <Link href="/login">
-                  <span className="inline-flex items-center gap-2 bg-white/10 text-white border border-white/25 backdrop-blur-xl rounded-full pl-6 pr-2 py-2 text-xs sm:text-sm font-semibold shadow-xl hover:bg-white/20 transition-colors">Start Here <span className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-sm">→</span></span>
-                </Link>
-              </div>
               <h1 className="text-[clamp(2.5rem,9vw,7rem)] font-normal leading-[1.1] whitespace-nowrap text-white">
                 <VariableProximity
                   label="Aruga"
