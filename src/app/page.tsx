@@ -89,7 +89,7 @@ function LandingContent() {
             {/* Blue grainient — same animation, black replaced with white */}
             <div className="absolute inset-0">
               <Grainient
-                colors={["#ffffff", "#f0f7ff", "#1e3a8a", "#2563eb", "#0284c7", "#38bdf8", "#93c5fd"]}
+                colors={["#ffffff", "#f0f7ff", "#3b82f6", "#2563eb", "#0284c7", "#38bdf8", "#93c5fd"]}
                 type="linear"
                 angle={60}
                 bands={1}
