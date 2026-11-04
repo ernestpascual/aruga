@@ -17,7 +17,6 @@
 
 <p align="center">
   <a href="#about-aruga">About</a> ·
-  <a href="#what-it-does">What it does</a> ·
   <a href="#who-uses-it">Who uses it</a> ·
   <a href="#the-5-agents">Agents</a> ·
   <a href="#use-of-modal">Biomech backend</a> ·
@@ -37,48 +36,58 @@
 
 The name is the idea. In Filipino, *aruga* is what a caregiver does — staying close, guiding the hands, watching the small reps no one else sees. That's the gap Aruga fills: clinic gains fade unless they survive real life, but most practice happens alone and unseen. **Unobserved practice silently fails 50–65% of the time**<sup>[1](#studies-cited)</sup> — not for lack of effort, but **invisibility**.
 
-The loop is simple. The therapist writes the program in shorthand — Aruga turns it into clear steps, with an **optional illustrated worksheet** for that patient. The client practices, records a short video per step, and that video becomes **evidence**: measured for angles, ROM, and compensation flags — never diagnosis.
+The loop is simple: the therapist writes shorthand, Aruga turns it into clear steps (worksheet optional), and the client records a short video per step. That video becomes **evidence** — measured for angles, ROM, and compensation, never diagnosis.
 
-**Four agents prep, two help assess.** Activity drafts steps and worksheets, Biomechanic rates movement **Good / Watch / Needs support**, Goal Tracking re-checks every goal, Highlights curates the month's best seven. Aruga Guide and the drafting helpers then help the therapist assess and explain. **Every output is a draft — nothing reaches a patient until the therapist taps Approve or Publish.** Aruga never treats, diagnoses, or advises.
+**Four agents prep, two help assess.** Activity, Biomechanic, Goal Tracking, and Highlights each draft one thing — steps, movement ratings, goal checks, monthly bests. Aruga Guide and the drafting helpers then help the therapist assess and explain. **Every output is a draft — nothing reaches a patient until the therapist taps Approve or Publish.** Aruga never treats, diagnoses, or advises.
 
 ### Quick glossary
 
-- **Home program** — the set of exercises a therapist prescribes for a client to practice between clinic visits, with a schedule and per-step instructions.
-- **OT (Occupational Therapy)** — therapy focused on daily activities: grasp, self-care, dressing, feeding, handwriting, and returning to meaningful routines.
-- **PT (Physical Therapy)** — therapy focused on movement: strength, balance, gait, transfers, and getting around safely.
-- **SLP (Speech-Language Pathology)** — therapy focused on communication, speech, language, and swallowing.
-- **SOAP note** — the therapist's chart format: Subjective (what the client reports), Objective (what was measured), Assessment (clinical read), Plan (what's next).
-- **ROM** — range of motion: how far a joint moves, measured here in degrees from phone video.
+| Term | What it means |
+|---|---|
+| **Home program** | Exercises a therapist prescribes for practice between clinic visits, with a schedule and per-step instructions |
+| **OT (Occupational Therapy)** | Therapy for daily activities: grasp, self-care, dressing, feeding, handwriting, returning to routines |
+| **PT (Physical Therapy)** | Therapy for movement: strength, balance, gait, transfers, getting around safely |
+| **SLP (Speech-Language Pathology)** | Therapy for communication, speech, language, and swallowing |
+| **STG / LTG** | Short-term and long-term goals set with the therapist — small milestones vs big outcomes |
+| **SOAP note** | The therapist's chart: Subjective (what the client reports), Objective (what was measured), Assessment (clinical read), Plan (what's next) |
+| **ROM** | Range of motion — how far a joint moves, measured here in degrees from phone video |
+| **Compensation / flag** | A workaround the body uses (e.g. leaning the trunk because the shoulder is weak) — Aruga flags it so the therapist can cue it |
+| **Movement twin** | A per-patient digital twin of how someone moves, rebuilt from each video — used to review progress, never to diagnose |
+| **Draft** | Anything AI produces in Aruga — always needs therapist Approve / Publish before a client sees it |
+| **Adherence** | How much of the prescribed program was actually done, and how well — measured, not self-reported |
 
 ---
 
 ## Describe your use of Meta products
 
-Every model call runs through the Meta Model API (`https://api.meta.ai/v1`); open weights run on Modal and Baseten.
+Every runtime model call runs through the Meta Model API; open weights run on Modal and Baseten.
 
-- **Muse Spark 1.3** — the reasoning core of all five agents: activity drafts, biomech concept planning, 7-signal goal verdicts, best-7 highlights, SOAP drafts and family summaries. Strict `json_schema` outputs, `reasoning:medium/high`, prompt caching, and multi-turn `previous_response_id` chains.
-- **Responses API + built-in tools** — one agentic loop per agent (`parallel_tool_calls`, cached prompts); server-side `web_search` grounds Aruga Guide answers with citations instead of hallucinated references.
-- **Muse Spark 1.2-contributor + Muse Wonder 1.0** — selectable chat models in Aruga Guide; Wonder reserved for max-reasoning escalation.
-- **Muse Image 1.0** — printable line-art worksheets rendered per patient from the agent's visual brief (toggleable per step).
-- **SAM 3.1** — temporal segmentation of 2–8 body concepts per clip via streaming Responses + `@meta-sam/parser`; one pass regardless of concept count.
+| Meta product | Exactly what we use it for |
+|---|---|
+| **Muse Spark 1.3** | Reasoning core of all five agents — activity drafts, biomech concept planning, 7-signal goal verdicts, best-7 highlights, SOAP drafts, family summaries. Strict `json_schema` outputs, `reasoning:medium/high`, prompt caching, multi-turn `previous_response_id` chains |
+| **Responses API + built-in tools** | One agentic loop per agent (`parallel_tool_calls`, cached prompts); server-side `web_search` grounds Aruga Guide answers with citations |
+| **Muse Spark 1.2-contributor + Muse Wonder 1.0** | Selectable chat models in Aruga Guide; Wonder reserved for max-reasoning escalation |
+| **Muse Image 1.0** | Printable line-art worksheets per patient from the agent's visual brief (toggleable per step) |
+| **SAM 3.1** | Temporal segmentation of 2–8 body concepts per clip via streaming Responses + `@meta-sam/parser`; one pass regardless of concept count |
+
 ### Open weights via partners
 
-Meta's open models do the heavy lifting through our two inference partners:
-
-- **SAM 3D Body via Modal** — open-weights 3D pose model, served from a Modal volume + endpoint for joint angles and ROM. We run it on CPU (no GPU credits), and the same container scales straight onto GPU for ~10× speed.
-- **Muse Spark Open 1026 via Baseten** — open-weights model run through Baseten inference for testing ideas, plus coding help and code auditing (human-reviewed).
+| Partner | Exactly what runs there |
+|---|---|
+| **SAM 3D Body via Modal** | Open-weights 3D pose model on a Modal volume + endpoint for joint angles and ROM — it builds each patient's **digital movement twin** used for simulation and review. Same container on CPU today, ~10× faster on GPU. |
+| **Muse Spark Open via Baseten** | Open-weights model for prototyping prompts, auditing code, and testing ideas before anything ships. Dev loop only — runtime patient features stay on the Meta Model API. |
 
 ## Why are Meta's models important to your solution?
 
 Home rehab fails on two halves: nobody can *see* the practice, and nobody has time to *reason* over it. Meta is the stack that covers both halves behind one API — remove any piece and the loop breaks back into invisible practice.
 
-- **Seeing: vision models turn a phone into a measurement device.** SAM 3.1 tracks the body through ordinary video — no wearables, no depth cameras, no clinic hardware — and SAM 3D Body open weights convert those tracks into joint angles and ROM. That matters because the literature is blunt: non-adherence reaches 50–65% in general musculoskeletal cohorts and 50–70% in low-back-pain cohorts<sup>[1](#studies-cited)</sup>; one Ethiopian outpatient cohort found just 35.3% adherent<sup>[2](#studies-cited)</sup>. And self-report diaries — the field's standard instrument — test as unreliable against objective measures, with only ~35% of patients highly adherent even under individualized programs<sup>[3](#studies-cited)</sup>. Video proof-of-work replaces the diary, and smartphone markerless measurement now validates at roughly ±4–6° joint-angle error<sup>[4](#studies-cited)</sup> — trend-grade, honest about its bands, therapist-reviewed before use. Without Meta's vision stack, Aruga would be another exercise library; with it, practice becomes evidence.
-- **Reasoning: language models turn evidence into drafts a clinician can approve.** Every agent output is a draft pending approval — worksheets, verdicts, highlights, summaries. That pattern only works if the model reliably emits valid, evidence-cited, structured output. Spark's strict JSON schemas, reasoning-effort dial, and prompt caching are what make hundreds of reviewable drafts per clinic practical instead of a formatting lottery.
-- **Grounding: answers carry citations, not vibes.** Aruga Guide's server-side web search returns references with every answer, and the *Send to clinician* gate keeps a human in the loop — the difference between a health chatbot and a clinical companion.
-- **Turnaround: the whole loop resolves in minutes.** SAM segmentation completes in one streaming pass, open-weights 3D inference resolves a 30s clip in ~90–130s on a small Modal CPU (warm runs much faster), and cached Spark reasoning drafts instantly — measurement and judgment both land inside a therapist's async review window. Slow measurement is what kept tele-assessment in labs; this stack puts it on a mid-range phone.
+- **Seeing: vision models turn a phone into a measurement device.** SAM 3.1 tracks the body through ordinary video — no wearables, no depth cameras, no clinic hardware — and the open-weights 3D Body model converts those tracks into a per-patient **digital movement twin for simulation** and review: joint angles and ROM, rebuilt from every submission. That matters because the literature is blunt: non-adherence reaches 50–65% in general musculoskeletal cohorts and 50–70% in low-back-pain cohorts<sup>[1](#studies-cited)</sup>; one Ethiopian outpatient cohort found just 35.3% adherent<sup>[2](#studies-cited)</sup>. And self-report diaries — the field's standard instrument — test as unreliable against objective measures, with only ~35% of patients highly adherent even under individualized programs<sup>[3](#studies-cited)</sup>. Video proof-of-work replaces the diary, and smartphone markerless measurement now validates at roughly ±4–6° joint-angle error<sup>[4](#studies-cited)</sup> — trend-grade, honest about its bands, therapist-reviewed before use. Without Meta's vision stack, Aruga would be another exercise library; with it, practice becomes evidence.
+- **Reasoning: Spark doesn't just write text — it runs each agent's loop.** Every agent follows a real agentic cycle: read the evidence (video metrics, SOAP, adherence, goals), reason over it at the right effort (`reasoning:medium/high`, escalating to Wonder when it matters), and emit a strict `json_schema` draft the therapist can approve, edit, or reject. Goal Tracking chunks goals 5 at a time and carries context across turns (`previous_response_id`); Biomechanic plans which concepts to track before measuring; Highlights weighs 7 signals before curating. Prompt caching keeps this affordable at clinic scale — hundreds of reviewable drafts, not a formatting lottery.
+- **Grounding: every claim points at something real.** The Biomechanic agent is grounded twice: its ratings (`Good / Watch / Needs support`) are computed from measured movement-twin numbers against per-activity targets — never from vibes — and its evidence frames cite the exact timestamps to rewatch. Aruga Guide is grounded in the client's own data (program, videos, published reviews) plus server-side web search citations, and the *Send to clinician* gate keeps a human verifying anything that matters. That's the difference between a health chatbot and a clinical companion.
+- **Turnaround: the whole loop resolves in minutes.** SAM segmentation completes in one streaming pass, 3D Body inference resolves a 30s clip in ~90–130s on a small Modal CPU (warm runs much faster, ~10× on GPU), and cached Spark reasoning drafts instantly — measurement and judgment both land inside a therapist's async review window. Slow measurement is what kept tele-assessment in labs; this stack puts it on a mid-range phone.
 - **Fit: async, phone-first, no new hardware.** The evidence converges on asynchronous, low-bandwidth care — a single submitted video, reviewed later. Meta's models accept exactly that input: no live streaming, no sensors, no appointments. The models fit the care model instead of forcing care to fit the tech.
 
-Each product carries one wall: SAM sees, Spark reasons, Image illustrates, open weights do the heavy 3D lifting.
+Each product carries one wall: SAM sees, Spark reasons, Image illustrates, open weights build the twin.
 
 ### Studies cited
 
@@ -89,28 +98,26 @@ Each product carries one wall: SAM sees, Spark reasons, Image illustrates, open 
 
 ---
 
-## What it does
-
-1. **Therapist prescribes in seconds** — types "Cup lift, hold 3s" and gets back a full step plus a worksheet drawn for that exact patient: big print for grandma, playful for kids.
-2. **Client practices at home, on camera** — colors the sheet, records each step on any phone, adds a quick note ("wrist felt tight on rep 4").
-3. **AI turns video into answers** — joint angles, ROM, and flags; goals re-checked against evidence; the month distilled into 7 highlights; questions answered in plain words with sources.
-
-1 button per agent. Every AI output is a **draft pending approval** — never auto-published.
-
 ## Who uses it
 
-- **Therapist** — manages caseload, prescribes home programs, drafts worksheets, writes SOAP notes, reviews client videos, runs biomech/goal/highlight agents, publishes reviews, sends care guides.
-- **Client (+ caregiver)** — follows the program, draws/colors sheets, records videos, adds comments, reads published reviews + highlights + plain-English summaries, chats with Aruga Guide.
+- **Therapist** — the one in charge. She manages her caseload, writes home programs in shorthand, and lets the agents draft the rest: steps, worksheets, SOAP notes, movement ratings. She reviews client videos, taps Approve or Publish, and sends care guides. Nothing reaches a client without her.
+- **Client (+ caregiver)** — the one doing the work. They open their program, follow the steps, color the sheet if one was attached, and record a short video per step with a quick note. Later they read their therapist's published feedback, see their goal progress and monthly highlights, and get a plain-words family summary. A caregiver can help record, read, and practice alongside.
 
 ### How each user type uses AI
 
-Think of it as one shared story with two sides. The therapist runs the tools; the client lives the practice.
+<p align="center">
+  <img src="./public/readme-ai-flow.svg" width="100%" alt="Flow: therapist prescribes and approves, AI drafts and measures, client practices and reads feedback." />
+</p>
 
-**The therapist's side.** She starts with a blank step and taps `Draft with Agent` — the Activity agent turns her shorthand into clear instructions and, if she wants one, a custom worksheet for that exact patient. She attaches what fits, edits or regenerates the rest. When videos come in, she taps `Analyze biomechanics` and gets joint angles and flags she can drop straight into her Objective notes. She taps `Check goals` to see which short- and long-term goals are on track, generates the month's 7 highlights in one tap, and chats with Aruga Guide when she needs a grounded second opinion. Everything lands as a draft she reviews.
+| Agent | Therapist taps | Client experiences |
+|---|---|---|
+| **Activity** | `Draft with Agent` → Spark drafts steps + an optional worksheet for that exact patient → Attach, Edit, or Regenerate | Follows the steps; colors the sheet only if one was attached — otherwise just the steps |
+| **Biomechanic** | `Analyze biomechanics` → Spark picks concepts, SAM 3.1 tracks, 3D Body measures → `Good / Watch / Needs support` to drop into Objective notes | Records the video; later reads their numbers in plain words (e.g. shoulder 142° → 158°) |
+| **Goal Tracking** | `Check goals` → Spark re-checks every goal against that client's own SOAP + movement + adherence — benchmarks adapt per person, not static cutoffs | Sees published verdicts in plain words, with what to keep practicing |
+| **Highlights** | `Generate highlights` → Spark curates that client's best 7 moments from their own month of data — progress and streaks picked for them, not a template | Views their personal story strip on the dashboard, with trends vs last month |
+| **Aruga Guide** | Same chat with client context for grounded second opinions | Asks everyday-words questions, gets cited answers, taps `Send to clinician` to verify |
 
-**The client's side.** They open their program, follow the steps, and — only if their therapist attached one — color a worksheet or print it. They record a short video per step, add a quick note, and submit. Later they read what their therapist published: plain-words feedback, goal updates, the month's best moments, and a simple family summary. If they have a question, they ask Aruga Guide and tap `Send to clinician` to get it verified.
-
-**The rule that holds it together:** the program agents only ever produce a **draft** — nothing reaches the client until the therapist taps **Approve / Publish**. Guide answers questions but **never silently writes to the chart**.
+**The rule that holds it together:** every agent produces a **draft** — nothing reaches the client until the therapist taps **Approve / Publish**. Guide answers questions but **never silently writes to the chart**.
 
 ---
 
@@ -149,7 +156,14 @@ npx tsc --noEmit && npm run build && npm test  # 93 tests
 
 ## Use of Modal
 
-**Why Modal:** SAM 3D Body is a 1.69 GB PyTorch model (ViT-H + MHR head, `ffmpeg`/`opencv` stack). It can't run on Vercel (10s limit, no GPU, no volume) or in the browser. Modal gives us a CPU container (`cpu=2.0`, `timeout=300`) with a persistent volume for checkpoints and a public `/infer` endpoint. A 30s clip resolves in ~90–130s (warm runs much faster). We run on CPU because we did not receive Modal credits — which doubles as a scalability proof: if the full pipeline resolves on two shared CPU cores, it only gets faster on GPU. The Biomechanic agent requires it — without `MODAL_MHR_URL` set, analysis calls fail with `503 MODAL_NOT_CONFIGURED`.
+**Why Modal:**
+
+| Problem | How Modal solves it |
+|---|---|
+| 1.69 GB PyTorch model (ViT-H + MHR head, `ffmpeg`/`opencv`) | Persistent volume holds checkpoints; container pulls them once, warm runs reuse |
+| Vercel caps at 10s, no GPU, no volume | Modal CPU container (`cpu=2.0`, `timeout=300`) + public `/infer` endpoint; a 30s clip resolves in ~90–130s |
+| Need a growth path | Same container scales straight to GPU for ~10× speed — CPU today is the scalability proof |
+| Missing backend | Without `MODAL_MHR_URL` set, analysis calls fail with `503 MODAL_NOT_CONFIGURED` |
 
 **How to deploy it:**
 
@@ -171,17 +185,30 @@ MODAL_MHR_URL=https://<workspace>--aruga-mhr-infer.modal.run
 3. **Measure (Modal)** — Modal downloads frames via signed URL, crops by SAM box (skips ViTDet), runs SAM 3D Body + One-Euro smoothing → shoulder/elbow/trunk/neck/wrist angles, finger aperture (mm), balance (CoM/BoS), plus flags.
 4. **Rate** — Next.js compares each number to the target for *that* activity → `Good / Watch / Needs support` + adherence + trend. One Modal call per clip; switching views reuses the same result.
 
-**How to read it:** `Good (teal)` = inside target (e.g. trunk ≤8°) → maintain. `Watch (amber)` = close but off (trunk 8–14°) → cue technique. `Needs support (red)` = clearly off (trunk >14°) → re-prescribe. Adherence ≥80/60% = Good/Watch, else Needs support. Flags (`forward head >25°`, `shoulder hike`, `high sway`) bump risk to `moderate_fall`. One phone camera: ±2–3° big joints, ±12° small hand — bad framing suppresses instead of guessing.
+**How to read it:**
+
+| Rating | Meaning | Therapist action |
+|---|---|---|
+| `Good` (teal) | Inside target (e.g. trunk ≤8°) | Maintain — program is working |
+| `Watch` (amber) | Close but off (e.g. trunk 8–14°) | Cue technique, re-check next session |
+| `Needs support` (red) | Clearly off (e.g. trunk >14°) | Re-prescribe or regress the task |
+| Adherence ≥80 / ≥60 | Share of metrics on target | `Good / Watch`, else `Needs support` |
+| Flags | `forward head >25°`, `shoulder hike`, `high sway` | Bump risk to `moderate_fall`, address the compensation |
+
+One phone camera: ±2–3° big joints, ±12° small hand — bad framing suppresses instead of guessing.
 
 **Try it:** `Tools → Biomechanic Agent` (`/tools/biomech`) or submission → `Analyze biomechanics (Agent)` → ROM cards + overlay. Full steps: [`modal/DEPLOYMENT_GUIDE.md`](modal/DEPLOYMENT_GUIDE.md)
 
 **Reading Modal logs (all of this is normal startup noise, not errors):**
-- `Momentum is not enabled` / `No Flash Attention` / `timm ... deprecated` — library chatter on import. Ignore.
-- `model and loaded state dict do not match` + `missing keys ...` — the checkpoint ships without optional heads (face-expression model, hand pose correctives, character mesh/texture extras). The loader skips them and runs on the body-pose weights. Caveat: fine finger articulation is approximated, not fully modeled — trust wrist-ROM-level insights, don't over-claim finger-joint precision.
-- `No human detector is used` — intentional: we bypass ViTDet and feed it SAM boxes directly (that's the ~10× per-frame saving).
-- `Mask-condition inference is not supported` — it runs in box-conditioned mode, which is what we send. Fine.
-- `No FOV estimator ... default FOV` — focal length falls back to a default. Affects absolute depth scale slightly; joint *angles* (what the insights use) are essentially unaffected.
-- `Please make sure the input image is in RGB format` — informational; frames are converted BGR→RGB before inference.
+
+| Log line | Meaning | Action |
+|---|---|---|
+| `Momentum is not enabled` / `No Flash Attention` / `timm ... deprecated` | Library chatter on import | Ignore |
+| `model and loaded state dict do not match` + `missing keys ...` | Checkpoint ships without optional heads (face-expression, hand correctives, mesh extras); loader runs on body-pose weights | Trust wrist-ROM-level insights, don't over-claim fine finger joints |
+| `No human detector is used` | Intentional — we bypass ViTDet and feed SAM boxes directly | That's the ~10× per-frame saving |
+| `Mask-condition inference is not supported` | Runs in box-conditioned mode, which is what we send | Fine |
+| `No FOV estimator ... default FOV` | Focal length falls back to a default; affects depth scale slightly | Joint *angles* (what insights use) are essentially unaffected |
+| `Please make sure the input image is in RGB format` | Informational | Frames are converted BGR→RGB before inference |
 
 What matters is what comes *after* those lines: a completed execution with duration (first run after deploy includes ~60–120s model load; allow ~2 min, warm runs are much faster) vs. an actual `timed out`/`internal error`, which means per-request inference was too slow — trim to a ≤15s clip and re-run.
 
