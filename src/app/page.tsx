@@ -241,19 +241,19 @@ function LandingContent() {
           </p>
 
           <div className="mt-10 border-y border-black/10 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-black/10">
-            <Parallax speed={30} pop>
+            <Parallax speed={30}>
             <div className="py-6 px-6 flex gap-4 items-start text-left">
               <span className="text-xs font-mono text-black/20 shrink-0">01</span>
               <div className="text-left"><div className="text-xs font-semibold text-black">You set the plan</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Write a short goal. Check the draft.</div></div>
             </div>
             </Parallax>
-            <Parallax speed={30} pop popDelay={0.1}>
+            <Parallax speed={30}>
             <div className="py-6 px-6 flex gap-4 items-start text-left">
               <span className="text-xs font-mono text-black/20 shrink-0">02</span>
               <div className="text-left"><div className="text-xs font-semibold text-black">They practice at home</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">They send a photo or short clip.</div></div>
             </div>
             </Parallax>
-            <Parallax speed={30} pop popDelay={0.2}>
+            <Parallax speed={30}>
             <div className="py-6 px-6 flex gap-4 items-start text-left">
               <span className="text-xs font-mono text-black/20 shrink-0">03</span>
               <div className="text-left"><div className="text-xs font-semibold text-black">You review it</div><div className="text-[11px] text-black/50 mt-1 leading-relaxed">Send clear next steps.</div></div>
@@ -266,12 +266,12 @@ function LandingContent() {
               { img: "/pegs/ot-inspired.svg", title: "Occupational Therapy", desc: "Turn fine motor goals into simple home steps. Families follow and share a quick photo." },
               { img: "/pegs/pt-inspired.svg", title: "Physical Therapy", desc: "Keep strength and balance going at home. Clients rest when needed." },
               { img: "/pegs/sp-inspired.svg", title: "Speech-Language Pathology", desc: "Send short speech practice for home. You listen and reply — no auto scores." },
-            ].map((d, i) => (
-              <Parallax key={d.title} speed={50 + i * 50} pop popDelay={i * 0.12} className="p-8 flex flex-col items-start text-left space-y-3">
+            ].map((d) => (
+              <div key={d.title} className="p-8 flex flex-col items-start text-left space-y-3">
                 <img src={d.img} alt={d.title} className="w-20 h-16 object-contain" />
                 <h3 className="text-sm font-semibold text-black">{d.title}</h3>
                 <p className="text-xs text-black/60 leading-relaxed">{d.desc}</p>
-              </Parallax>
+              </div>
             ))}
           </div>
           <div className="mt-8 h-px w-full bg-black/10" />
@@ -353,7 +353,7 @@ function LandingContent() {
             </div>
             <div className="flex-1 lg:max-w-5xl">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                <Parallax speed={50} pop className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
+                <Parallax speed={50} className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
                   <div className="h-56 sm:h-64 lg:h-72 overflow-hidden rounded-xl bg-white/[0.03] flex items-center justify-center">
                     <img src="/pegs/understanding-videos-inspired.svg" alt="Understanding videos illustration" className="w-full h-full object-contain scale-110" />
                   </div>
@@ -362,7 +362,7 @@ function LandingContent() {
                     <p className="text-xs sm:text-sm text-white/50 leading-relaxed mt-1.5">AI spots key moments so you can give quick, clear feedback.</p>
                   </div>
                 </Parallax>
-                <Parallax speed={100} pop popDelay={0.12} className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
+                <Parallax speed={100} className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
                   <div className="h-56 sm:h-64 lg:h-72 overflow-hidden rounded-xl bg-white/[0.03] flex items-center justify-center">
                     <img src="/pegs/performance-tracking-inspired.svg" alt="Performance tracking illustration" className="w-full h-full object-contain scale-110" />
                   </div>
@@ -371,7 +371,7 @@ function LandingContent() {
                     <p className="text-xs sm:text-sm text-white/50 leading-relaxed mt-1.5">Get tailored tracking based on your clinician's goal.</p>
                   </div>
                 </Parallax>
-                <Parallax speed={150} pop popDelay={0.24} className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
+                <Parallax speed={150} className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 hover:bg-white/[0.09] hover:border-white/20 transition-colors">
                   <div className="h-56 sm:h-64 lg:h-72 overflow-hidden rounded-xl bg-white/[0.03] flex items-center justify-center">
                     <img src="/pegs/activity-sheets-inspired.svg" alt="Activity sheets illustration" className="w-full h-full object-contain scale-110" />
                   </div>
@@ -503,7 +503,7 @@ function LandingContent() {
                 { Icon: Lock, t: "De-identified", d: "Names are removed before any AI help." },
                 { Icon: FileText, t: "Private storage", d: "Videos stay in your private, secure space." },
               ].map((f, i) => (
-                <Parallax key={f.t} speed={40 + i * 40} pop popDelay={i * 0.1} className="space-y-2 border-t border-white/10 pt-4">
+                <Parallax key={f.t} speed={40 + i * 40} className="space-y-2 border-t border-white/10 pt-4">
                   <div className="flex items-center gap-2"><f.Icon className="w-4 h-4 text-white/60" /><h3 className="text-xs font-semibold text-white">{f.t}</h3></div>
                   <p className="text-[11px] text-white/50 leading-relaxed">{f.d}</p>
                 </Parallax>
