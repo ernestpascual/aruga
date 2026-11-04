@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Grainient } from "@/components/ui/grainient";
 import { FadeContent } from "@/components/ui/fade-content";
+import { Parallax } from "@/components/ui/parallax";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { siteConfig } from "@/config/site";
 
@@ -72,6 +73,8 @@ function LandingContent() {
   });
 
   const arrowOpacity = useTransform(scrollYProgress, [0, 0.25], [1, 0]);
+  const heroContentY = useTransform(scrollYProgress, [0, 1], [0, 140]);
+  const heroContentOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
 
   return (
     <div className="min-h-screen bg-[#F6F3EF] text-black selection:bg-black selection:text-white scroll-smooth">
@@ -116,14 +119,14 @@ function LandingContent() {
 
 
             {/* Headline — centered */}
-            <div className="absolute inset-0 flex flex-col justify-center items-center text-center z-10 px-6 sm:px-8 lg:px-12 gap-6">
+            <motion.div style={{ y: heroContentY, opacity: heroContentOpacity }} className="absolute inset-0 flex flex-col justify-center items-center text-center z-10 px-6 sm:px-8 lg:px-12 gap-6">
               <h1
                 style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}
                 className="text-[clamp(2.5rem,9vw,7rem)] font-normal leading-[1.1] whitespace-nowrap text-white"
               >
                 Aruga
               </h1>
-            </div>
+            </motion.div>
 
 
 
@@ -209,6 +212,7 @@ function LandingContent() {
       <section id="disciplines" className="bg-white border-b border-black/10 w-full min-h-screen flex flex-col justify-center">
 
         {/* Big headline like "Protein Sequencing by Expansion" */}
+        <Parallax speed={70}>
         <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black">
             <span className="block text-3xl sm:text-5xl lg:text-6xl">Built for OT, PT</span>
@@ -249,11 +253,13 @@ function LandingContent() {
           </div>
           <div className="mt-8 h-px w-full bg-black/10" />
         </FadeContent>
+        </Parallax>
       </section>
       <div className="h-px w-full bg-black/10" />
 
       {/* OPTIMIZE — new features framed as care / time / resources */}
       <section id="optimize" className="bg-[#F6F3EF] border-b border-black/10 w-full min-h-screen flex flex-col justify-center">
+        <Parallax speed={70}>
         <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black">
             <span className="block text-3xl sm:text-5xl lg:text-6xl">Save time.</span>
@@ -297,12 +303,14 @@ function LandingContent() {
           </div>
           <p className="mt-6 text-[11px] text-black/40 leading-relaxed max-w-3xl">Every step stays clinician-approved. AI helps draft, you decide. Families see only what you publish.</p>
         </FadeContent>
+        </Parallax>
       </section>
 
       <div className="h-px w-full bg-black/10" />
 
       {/* META SPARK — black breaker, hand-drawn style */}
       <section id="meta-spark" className="bg-black border-y border-white/10 w-full min-h-screen flex flex-col justify-center">
+        <Parallax speed={70}>
         <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-12">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
             <div className="shrink-0 max-w-sm">
@@ -342,12 +350,14 @@ function LandingContent() {
             </div>
           </div>
         </FadeContent>
+        </Parallax>
       </section>
 
       <div className="h-px w-full bg-black/10" />
 
       {/* LIFESPAN — editorial */}
       <section id="lifespan" className="bg-white border-b border-black/10 w-full min-h-screen flex flex-col justify-center">
+        <Parallax speed={70}>
         <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">Adapted for every<br/><span className="text-black/25">milestone & generation.</span></h2>
           <p className="mt-4 max-w-2xl text-xs sm:text-sm text-black/50 leading-relaxed">Aruga keeps therapy going at home — simple steps, quick photo or clip, and clear feedback from your clinician.</p>
@@ -373,6 +383,7 @@ function LandingContent() {
           <div className="mt-8 h-px w-full bg-black/10" />
           </div>
         </FadeContent>
+        </Parallax>
       </section>
 
       {/* Breaker */}
@@ -380,6 +391,7 @@ function LandingContent() {
 
       {/* SOAP */}
       <section id="soap-notes" className="bg-white border-b border-black/10 w-full min-h-screen flex flex-col justify-center">
+        <Parallax speed={70}>
         <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-14">
           <h2 className="font-black tracking-[-0.04em] leading-[0.9] text-black text-3xl sm:text-5xl">Clinical notes.<br/><span className="text-black/25">Telehealth & assessments.</span></h2>
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-0 border border-black/10 divide-y lg:divide-y-0 lg:divide-x divide-black/10">
@@ -415,12 +427,14 @@ function LandingContent() {
           <div className="mt-8 h-px w-full bg-black/10" />
           </div>
         </FadeContent>
+        </Parallax>
       </section>
 
       <div className="h-px w-full bg-black/10" />
 
       {/* SAFETY — breaker */}
       <section id="safety" className="bg-black border-y border-white/10 w-full min-h-screen flex flex-col justify-center">
+        <Parallax speed={70}>
         <FadeContent className="w-full px-5 sm:px-8 lg:px-12 py-10 sm:py-12">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
             <div className="shrink-0">
@@ -448,6 +462,7 @@ function LandingContent() {
             </Link>
           </div>
         </FadeContent>
+        </Parallax>
       </section>
 
       <footer className="bg-white py-10 px-5 sm:px-6 border-t border-black/10">
