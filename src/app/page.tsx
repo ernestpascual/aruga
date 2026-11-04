@@ -409,7 +409,7 @@ function LandingContent() {
               { label: "Adult  18–64", title: "Neuro & Orthopedic Recovery", desc: "Aruga brings rehab routines home after stroke or injury. Short clips help you adjust daily tasks.", points: ["Daily tasks made simple","You adjust based on video","Pacing that respects fatigue"], img: "/pegs/lifespan-adult.svg" },
               { label: "Geriatrics  65+", title: "Dynamic Balance & Fall Prevention", desc: "Aruga supports safe movement at home. Simple steps and family follow-through help prevent falls.", points: ["Safer movement at home","Family-friendly steps","Easy to read and use"], img: "/pegs/lifespan-geriatric.svg" },
             ].map((c, i) => (
-              <Parallax key={i} speed={40 + i * 40} pop popDelay={i * 0.1} className="p-6 sm:p-8 space-y-4 bg-white">
+              <div key={i} className="p-6 sm:p-8 space-y-4 bg-white">
                 <div className="flex items-center justify-between">
                   <img src={c.img} alt={c.label} className="w-14 h-10 object-contain" />
                   <span className="text-[10px] tracking-[0.14em] uppercase border border-black/10 px-2.5 py-1 text-black/40">{c.label}</span>
@@ -419,7 +419,7 @@ function LandingContent() {
                 <ul className="pt-3 border-t border-black/10 space-y-1.5 text-xs text-black/55">
                   {c.points.map(p => <li key={p} className="flex gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-black/25 shrink-0 mt-0.5" />{p}</li>)}
                 </ul>
-              </Parallax>
+              </div>
             ))}
           <div className="mt-8 h-px w-full bg-black/10" />
           </div>
