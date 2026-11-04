@@ -78,7 +78,7 @@ function LandingContent() {
       {/* Floating Start pill — topmost, always visible */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
         <Link href="/login">
-          <span className="inline-flex items-center gap-2 bg-black/30 text-white border border-white/25 backdrop-blur-xl rounded-full pl-6 pr-2 py-2 text-xs sm:text-sm font-semibold shadow-xl hover:bg-black/50 transition-colors">Start Here <span className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-sm">→</span></span>
+          <span className="inline-flex items-center gap-2 bg-black/30 text-white border border-white/25 backdrop-blur-xl rounded-full pl-6 pr-2 py-2 text-xs sm:text-sm font-semibold hover:bg-black/50 transition-colors">Start Here <span className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-sm">→</span></span>
         </Link>
       </div>
 
