@@ -6,7 +6,7 @@
 **Working tree at audit time:** dirty — `README.md` hero swap (+ untracked `public/readme-hero.svg`), 2 modified `src/` files, untracked audit/docs pairs. Scores below use the working tree where noted (hero visual, §5-D6) and committed code everywhere else; `npm test` re-run this session (93/93, ~1 s).
 **Edition trigger (participant, 2026-11-04):** *Create my own self-audit score based on Hackathon Winning Conditions — a new version adapted to **Track 1**, rubric redesigned as we wish.*
 **Previous edition:** [HACKATHON_WINNING_CONDITIONS_1103261848.md](old/HACKATHON_WINNING_CONDITIONS_1103261848.md) (official-weight holistic, judge-local, **7.90/10**) — archived to `old/` this cycle.
-**Companions:** [WATTMIND_METRICS_AUDIT_1104260059.md](WATTMIND_METRICS_AUDIT_1104260059.md) (participant-supplied Track-2-shaped binary rubric, **6.0/10**) · [audit_report_1103261642.md](audit_report_1103261642.md) · [LLM_AUDIT_1103260036.md](LLM_AUDIT_1103260036.md)
+**Companions:** Companion audits (WattMind metrics 6.0/10, general & LLM audits) retained in the team's private archive — removed from public history 2026-11-04
 **Interactive Companion:** [HACKATHON_WINNING_CONDITIONS_1104260104.html](HACKATHON_WINNING_CONDITIONS_1104260104.html)
 
 **Status: ✅ STAGE ONE: PASS (Track 1) · Self-audit score 8.15 / 10 under the Track 1 rubric designed in §2 · Shadow scores held constant: 6.0 (WattMind binary) · 7.90 (official holistic) · Projected 9.7 with the §7 sprint · DEADLINE today Wed Nov 4, 9:00 PM EST (6:00 PM PST)**
@@ -117,7 +117,7 @@ Scoring rule for this edition: items may earn **partial credit in 0.05 steps whe
 |---|---|---|---|---|
 | A1 | Base active repository | 0.6 | **0.6** | 20 commits Oct 28–Nov 3; build green |
 | A2 | Named beneficiary & lived problem | 0.5 | **0.5** | Therapists (PT/OT/SLP) prescribing home programs + clients/caregivers performing them (`README.md:22-26`); named personas with conditions and caseload (`docs/DEMO.md:11-21`); pain = 14–20 min manual review per submission (`docs/EVALUATION.md` §3) |
-| A3 | Canonical domain — Healthcare | 0.4 | **0.4** | Top tier; HIPAA-audited production posture (`HIPAA_COMPLIANCE_AUDIT_1103261642.md`) |
+| A3 | Canonical domain — Healthcare | 0.4 | **0.4** | Top tier; HIPAA-audited production posture (private HIPAA audit, retained offline) |
 | A4 | Quantified benefit | 0.4 | **0.4** | ~73% review-time reduction (14–20 → 3.7–5.5 min), program structuring −75%, SOAP −72%, family summary −88% (`docs/EVALUATION.md` §3); biomech cost ~$0.001–0.002/clip, SAM pass ~$0.009 (`README.md:94,112`) |
 | A5 | Trust design | 0.4 | **0.4** | "Every AI output is a **draft pending approval** — never auto-published" (`README.md:20`); per-agent Approve/Publish gates (`README.md:38`); fail-loud typed 503s, no fabricated results (1848 audit §3.3); `Send to clinician` verification gate for the Guide (`README.md:35`) |
 | A6 | Evaluation evidence (graded) | 0.4 | **0.3** | Latency table + 75% clinician-confirmation + failure modes (`docs/EVALUATION.md` §§1,2,5) + 93/93 hermetic tests re-run this session. **Docked 0.1:** doc header still pins commit `e5a7bd6` / "80 tests" — one refresh from full marks |
@@ -228,4 +228,4 @@ Bonus-prize fit (unchanged from 1848, Track 1 lens): Best Agentic — the locall
 
 **Bottom line:** On a rubric honestly redesigned for Track 1 — with every adaptation disclosed, both shadow scores (6.0 binary, 7.90 holistic) left standing, and the video still weighted as the largest single item — Aruga scores **8.15/10**, maxing Meta Tooling and near-maxing Impact and Craft. The entire remaining gap is a film, a URL, and three small files. **Projected 9.7/10 by tonight, with no new product capability required.**
 
-*Generated for `aruga@4a9a1b4a2db7c1548bcb5b87bd913705443b13ed` (+ working-tree changes noted in the header) — Family: `HACKATHON_WINNING_CONDITIONS` · Previous: `old/HACKATHON_WINNING_CONDITIONS_1103261848.*` (official holistic 7.90/10) · Stable copy: `docs/HACKATHON_WINNING_CONDITIONS_LATEST.*` · Rubric: participant-designed Track 1 self-audit rubric (§2), bridge-audited against `WATTMIND_METRICS_AUDIT_1104260059.md` (6.0/10) · Self-audit bias guards: §0.*
+*Generated for `aruga@4a9a1b4a2db7c1548bcb5b87bd913705443b13ed` (+ working-tree changes noted in the header) — Family: `HACKATHON_WINNING_CONDITIONS` · Previous: `old/HACKATHON_WINNING_CONDITIONS_1103261848.*` (official holistic 7.90/10) · Stable copy: `docs/HACKATHON_WINNING_CONDITIONS_LATEST.*` · Rubric: participant-designed Track 1 self-audit rubric (§2), bridge-audited against the private WattMind metrics audit (6.0/10, retained offline) · Self-audit bias guards: §0.*
