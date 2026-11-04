@@ -30,7 +30,9 @@ import {
   FileVideo,
   CheckCircle2,
   Wand2,
+  Download,
 } from "lucide-react";
+import { buildBiomechExport, downloadBiomechJson } from "@/lib/demo/biomech-payload";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -260,6 +262,20 @@ export default function BiomechPlaygroundPage() {
   // Save current as previous for comparison
   function saveAsPrevious(){ if(result?.mhr) { setPreviousRun(result); setError(null); } }
 
+  // Download everything (plan, concepts, SAM boxes/masks, full 3D frames, insights)
+  // as one JSON in the shared format — loadable in /demo/homeprogram, the review
+  // modal, /tools/replay, or as public/demo/analysis/latest.json seed.
+  function handleDownloadJson(){
+    if(!result) return;
+    downloadBiomechJson(
+      buildBiomechExport({
+        result,
+        activity: { title: prescribedTitle, instructions: prescribedInstructions, therapistNeed, ageBand },
+      }),
+      "biomech-analysis-playground.json"
+    );
+  }
+
   const plan: PlannerResult | null = result?.plan ?? null;
   const analysis: { movementAnalysis?: string; targets?: Array<{ metric?: string; direction?: string; expectedRange?: string; why?: string }>; watchFor?: string[] } | null = (result as any)?.analysis ?? null;
   const insights: Insight[] = result?.insights ?? [];
@@ -442,6 +458,7 @@ export default function BiomechPlaygroundPage() {
           <div className="ml-auto flex items-center gap-2 shrink-0">
             {previousRun && <span className="text-[11px] text-zinc-500">Previous run saved • will compare</span>}
             {result && <Button variant="outline" size="sm" onClick={saveAsPrevious} className="h-8 text-xs border-zinc-700 bg-zinc-800 text-zinc-300 gap-1.5"><Copy className="w-3 h-3" /> Save as previous</Button>}
+            {result && <Button size="sm" onClick={handleDownloadJson} className="h-8 text-xs bg-teal-600 hover:bg-teal-500 text-white font-semibold gap-1.5" title="Download the full analysis (segmentation + 3D frames + insights) as one JSON file — load it later in the demo or review modal, no re-run needed"><Download className="w-3 h-3" /> Download JSON</Button>}
           </div>
         </Card>
 
@@ -551,10 +568,12 @@ export default function BiomechPlaygroundPage() {
             <Card className="p-4 border-zinc-800 bg-zinc-900/70">
               <h3 className="text-xs font-semibold tracking-wide uppercase text-zinc-300 flex items-center gap-2"><Eye className="w-3.5 h-3.5 text-teal-400" /> Step 4 — Moving Segmentation + Measurements</h3>
               <p className="text-xs text-zinc-400 mt-1">Video above shows <b className="text-zinc-300">SAM 3.1 boxes</b> (0.75s window) + <b className="text-zinc-300">SAM 3D Body skeleton</b> + <b className="text-zinc-300">HUD</b> scrubbed to <span className="font-mono text-teal-300">{currentTime.toFixed(2)}s</span>. Use Play/Pause, tap chips to isolate, Boxes/Skeleton/HUD toggles. Same scrub model as SAM Test.</p>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 <Badge variant="teal" className="text-[11px] font-mono">SAM boxes: {result.sam?.boxes?.length} total • {visibleActiveBoxes.length} active @ {currentTime.toFixed(2)}s</Badge>
                 <Badge variant="amber" className="text-[11px] font-mono">MHR frames: {mhr?.frames?.length} • {result.sam?.billedRequests} billed</Badge>
                 <Badge variant="outline" className="text-[11px] font-mono">Latency {result.meta?.processingMs} ms</Badge>
+                <Button size="sm" onClick={handleDownloadJson} className="ml-auto h-8 text-xs bg-teal-600 hover:bg-teal-500 text-white font-semibold gap-1.5"><Download className="w-3 h-3" /> Download JSON</Button>
+                <span className="w-full text-[11px] text-zinc-600">Downloads everything as one file — save it as <span className="font-mono">public/demo/analysis/latest.json</span> to seed the demo, or Load it in /demo/homeprogram / the review modal to view it again without re-running.</span>
               </div>
             </Card>
           </div>

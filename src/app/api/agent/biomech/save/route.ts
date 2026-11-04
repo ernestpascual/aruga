@@ -70,13 +70,13 @@ export async function POST(req: NextRequest) {
         ? ((r.meta as Record<string, unknown>).processingMs as number)
         : null;
 
-    // Slim the payload before storage: full per-frame 3D keypoints + SVG masks are
-    // megabytes of JSON and blow past Postgres statement timeouts on upsert.
-    // Keep everything the review UI actually renders (summary, flags, angles,
-    // insights, adherence, plan) and drop the heavy replay blobs.
-    // Segmentation boxes + masks are STRIDE-SAMPLED across the whole clip
-    // (never head-sliced): a head slice keeps only the first ~2s, so a reloaded
-    // analysis would show HUD everywhere but boxes nowhere past the opening.
+    // Storage-first slimming: the Postgres row must stay small and CONSTANT-size
+    // (<~90 KB) no matter how long the clip is, or the upsert hits statement
+    // timeouts. So the row carries NO replay blobs at all — no SAM boxes, no SVG
+    // mask paths, no tracks, no 3D keypoints. Those live only in the Storage
+    // artifact (AGENT.json) and are merged back over the row on load
+    // (see mergeBiomechArtifact). The row keeps what lists/summaries render:
+    // summary, flags, angles-only frames (stride-sampled), insights, plan.
     function sampleEvery<T>(arr: T[], max: number): T[] {
       if (arr.length <= max) return arr;
       const step = arr.length / max;
@@ -99,35 +99,29 @@ export async function POST(req: NextRequest) {
       if (Array.isArray(input.concepts)) out.concepts = (input.concepts as unknown[]).map(String).slice(0, 8);
       if (input.sam && typeof input.sam === "object") {
         const s = input.sam as Record<string, unknown>;
-        const allBoxes = Array.isArray(s.boxes) ? (s.boxes as unknown[]) : [];
-        const allPaths = Array.isArray(s.svgPaths) ? (s.svgPaths as unknown[]) : [];
-        const tracks = Array.isArray(s.tracks) ? (s.tracks as unknown[]).slice(0, 20) : [];
         const failures = Array.isArray(s.failures) ? (s.failures as unknown[]).slice(0, 10) : [];
         out.sam = {
           billedRequests: s.billedRequests,
           latencyMs: s.latencyMs,
-          boxes: sampleEvery(allBoxes, 40),
-          svgPaths: sampleEvery(allPaths, 40),
-          tracks,
+          // Counts only — boxes/svgPaths/tracks are replay blobs, Storage-only.
+          boxCount: Array.isArray(s.boxes) ? s.boxes.length : 0,
+          pathCount: Array.isArray(s.svgPaths) ? s.svgPaths.length : 0,
+          trackCount: Array.isArray(s.tracks) ? s.tracks.length : 0,
           failures,
-          boxCount: allBoxes.length,
         };
       }
       if (input.mhr && typeof input.mhr === "object") {
         const m = input.mhr as Record<string, unknown>;
-        const frames = Array.isArray(m.frames)
-          ? (m.frames as Array<Record<string, unknown>>).map((f) => ({
-              frameIndex: f.frameIndex,
-              timestampSeconds: f.timestampSeconds,
-              angles: f.angles,
-              flags: f.flags,
-              motionAnnotations: Array.isArray(f.motionAnnotations)
-                ? (f.motionAnnotations as unknown[]).slice(0, 6)
-                : f.motionAnnotations,
-              confidence: f.confidence,
-            }))
-          : [];
-        out.mhr = { summary: m.summary, flags: m.flags, frames, modelId: m.modelId, processingMs: m.processingMs };
+        const allFrames = Array.isArray(m.frames) ? (m.frames as Array<Record<string, unknown>>) : [];
+        // Angles-only, stride-sampled across the whole clip (never head-sliced).
+        const frames = sampleEvery(allFrames, 24).map((f) => ({
+          frameIndex: f.frameIndex,
+          timestampSeconds: f.timestampSeconds,
+          angles: f.angles,
+          flags: f.flags,
+          confidence: f.confidence,
+        }));
+        out.mhr = { summary: m.summary, flags: m.flags, frames, frameCount: allFrames.length, modelId: m.modelId, processingMs: m.processingMs };
       }
       if (Array.isArray(input.insights)) out.insights = (input.insights as unknown[]).slice(0, 12);
     if (input.analysis && typeof input.analysis === "object") {
@@ -151,37 +145,54 @@ export async function POST(req: NextRequest) {
     // Heavy replay blobs (full per-frame 3D/2D keypoints + SAM masks) go to Storage —
     // they are megabytes and would blow past Postgres statement timeouts in the row.
     // The row keeps the slim renderable result + a pointer to the artifact.
+    // Oversized artifacts are stride-DOWNSAMPLED to fit instead of failing the save.
+    const tArtifact0 = Date.now();
     let artifact: { bucket: string; path: string } | null = null;
     let artifactError: string | null = null;
+    let heavyBytes = 0;
     try {
-      const heavy = {
-        version: 1,
-        frames: (r.mhr as any)?.frames ?? [],
-        sam: {
-          boxes: (r.sam as any)?.boxes ?? [],
-          svgPaths: (r.sam as any)?.svgPaths ?? [],
-          tracks: (r.sam as any)?.tracks ?? [],
-        },
-      };
-      const bytes = Buffer.from(JSON.stringify(heavy));
+      let heavyFrames: unknown[] = Array.isArray((r.mhr as any)?.frames) ? (r.mhr as any).frames : [];
+      let heavyBoxes: unknown[] = Array.isArray((r.sam as any)?.boxes) ? (r.sam as any).boxes : [];
+      let heavyPaths: unknown[] = Array.isArray((r.sam as any)?.svgPaths) ? (r.sam as any).svgPaths : [];
+      const heavyTracks: unknown[] = Array.isArray((r.sam as any)?.tracks) ? (r.sam as any).tracks : [];
+      const buildHeavy = () => Buffer.from(JSON.stringify({ version: 1, frames: heavyFrames, sam: { boxes: heavyBoxes, svgPaths: heavyPaths, tracks: heavyTracks } }));
+      let bytes = buildHeavy();
+      let downsampled = false;
+      while (bytes.length > 19_000_000 && (heavyFrames.length > 8 || heavyBoxes.length > 8 || heavyPaths.length > 8)) {
+        heavyFrames = sampleEvery(heavyFrames as never[], Math.max(8, Math.floor(heavyFrames.length / 2)));
+        heavyBoxes = sampleEvery(heavyBoxes as never[], Math.max(8, Math.floor(heavyBoxes.length / 2)));
+        heavyPaths = sampleEvery(heavyPaths as never[], Math.max(8, Math.floor(heavyPaths.length / 2)));
+        downsampled = true;
+        bytes = buildHeavy();
+      }
+      heavyBytes = bytes.length;
       if (bytes.length === 0) {
         artifactError = "nothing to store (empty analysis)";
       } else if (bytes.length > 20_000_000) {
-        artifactError = `3D payload too large (${(bytes.length / 1_000_000).toFixed(1)} MB) — trim the clip and re-run`;
+        artifactError = `3D payload too large even after downsampling (${(bytes.length / 1_000_000).toFixed(1)} MB)`;
       } else {
         const path = `biomech/${stepSubmissionId}/AGENT.json`;
         const { error: upErr } = await admin.storage.from("program-videos").upload(path, bytes, { contentType: "application/json", upsert: true });
         if (upErr) artifactError = upErr.message;
-        else artifact = { bucket: "program-videos", path };
+        else artifact = { bucket: "program-videos", path, ...(downsampled ? { downsampled: true } : {}) } as { bucket: string; path: string };
       }
     } catch (e) {
       artifactError = e instanceof Error ? e.message : String(e);
     }
+    const artifactMs = Date.now() - tArtifact0;
     if (artifactError) console.warn("[biomech-save] artifact not stored:", artifactError);
 
-    // Store slim agent output + activity context so reload needs no re-inference
+    // Store slim agent output + activity context so reload needs no re-inference.
+    // Guarantee the row fits: shrink angles-only frames until under ~90 KB.
+    let slim = slimForStorage(r);
+    let slimBytes = Buffer.byteLength(JSON.stringify(slim));
+    while (slimBytes > 90_000 && Array.isArray((slim.mhr as any)?.frames) && (slim.mhr as any).frames.length > 4) {
+      const m = slim.mhr as Record<string, unknown>;
+      slim = { ...slim, mhr: { ...m, frames: sampleEvery(m.frames as unknown[], Math.max(4, Math.floor((m.frames as unknown[]).length / 2))) } };
+      slimBytes = Buffer.byteLength(JSON.stringify(slim));
+    }
     const mhrResult = {
-      ...slimForStorage(r),
+      ...slim,
       artifact,
       activity: {
         title: String(prescribedTitle || ""),
@@ -192,7 +203,9 @@ export async function POST(req: NextRequest) {
       savedFrom: "review-modal",
       savedAt: new Date().toISOString(),
     };
+    console.info("[biomech-save] sizes", { stepSubmissionId, heavyBytes, slimBytes, artifactMs, artifactSaved: !!artifact });
 
+    const tUpsert0 = Date.now();
     const { data, error } = await admin
       .from("biomech_jobs")
       .upsert(
@@ -209,13 +222,21 @@ export async function POST(req: NextRequest) {
       )
       .select("id, updated_at")
       .single();
+    console.info("[biomech-save] upsert", { stepSubmissionId, upsertMs: Date.now() - tUpsert0, ok: !error });
     if (error) {
       if (/statement timeout|canceling statement/i.test(error.message)) {
-        return NextResponse.json({ error: "Database timed out while saving — retry once. If it persists, run a shorter clip so the result payload is smaller." }, { status: 504 });
+        return NextResponse.json(
+          {
+            error: `Database timed out while saving the ${(slimBytes / 1000).toFixed(0)} KB summary row (3D artifact: ${(heavyBytes / 1_000_000).toFixed(1)} MB, stored separately). This is a database hiccup, not your clip — press Save again. Your analysis is still on screen, and Download JSON below keeps a full copy you can load back anytime.`,
+            code: "DB_STATEMENT_TIMEOUT",
+            sizes: { slimBytes, heavyBytes },
+          },
+          { status: 504 }
+        );
       }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ success: true, saved: data, artifactSaved: !!artifact, artifactError });
+    return NextResponse.json({ success: true, saved: data, artifactSaved: !!artifact, artifactError, sizes: { slimBytes, heavyBytes } });
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }

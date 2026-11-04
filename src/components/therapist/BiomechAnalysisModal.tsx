@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { X, Zap, Loader2, AlertTriangle, Activity, Sparkles, ClipboardCheck, Film, Brain, RefreshCw } from "lucide-react";
+import { X, Zap, Loader2, AlertTriangle, Activity, Sparkles, ClipboardCheck, Film, Brain, RefreshCw, Download, Upload } from "lucide-react";
+import { buildBiomechExport, downloadBiomechJson, biomechExportFilename, parseBiomechImport } from "@/lib/demo/biomech-payload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -62,6 +63,8 @@ export function BiomechAnalysisModal({
   const [artifactWarn, setArtifactWarn] = useState<string | null>(null);
   const [checkingCache, setCheckingCache] = useState(false);
   const [cacheChecked, setCacheChecked] = useState(false);
+  const [loadNote, setLoadNote] = useState<string | null>(null);
+  const loadFileRef = React.useRef<HTMLInputElement>(null);
 
   // Re-prefill every time the modal opens for a (possibly different) step
   useEffect(() => {
@@ -277,6 +280,42 @@ export function BiomechAnalysisModal({
     handleRun();
   }
 
+  function handleDownloadJson() {
+    if (!result) return;
+    downloadBiomechJson(
+      buildBiomechExport({
+        result,
+        activity: { title: prescribedTitle, instructions: prescribedInstructions, therapistNeed, ageBand: band },
+        submissionId,
+        stepSubmissionId,
+      }),
+      biomechExportFilename(stepSubmissionId)
+    );
+  }
+
+  async function handleLoadJsonFile(file: File) {
+    try {
+      const parsed = parseBiomechImport(JSON.parse(await file.text()));
+      setResult(parsed.result);
+      if (parsed.activity) {
+        if (parsed.activity.title) setPrescribedTitle(parsed.activity.title);
+        if (parsed.activity.instructions) setPrescribedInstructions(parsed.activity.instructions);
+        if (parsed.activity.ageBand) setBand(parsed.activity.ageBand);
+      }
+      setDotsTime(0);
+      setError(null);
+      setSaveError(null);
+      setArtifactWarn(null);
+      setArtifactState(Array.isArray((parsed.result as any)?.mhr?.frames?.[0]?.pred_keypoints_3d) ? "ready" : "none");
+      // Loaded from a file, not the DB — therapist reviews, then saves if they want it stored
+      setIsSaved(false);
+      setSavedAt(null);
+      setLoadNote(`Loaded from ${file.name} — nothing was re-run. Review it, then Save to database if you want it stored. You can also drop this file into public/demo/analysis/latest.json to seed the guided demo.`);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
@@ -354,6 +393,24 @@ export function BiomechAnalysisModal({
               </Button>
               <p className="text-xs text-zinc-400">The agent watches the video and measures the movement for you.</p>
             </div>
+          )}
+
+          {/* Load a previously downloaded analysis instead of re-running */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-dashed border-zinc-700 bg-zinc-900/40 p-4">
+            <input
+              ref={loadFileRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLoadJsonFile(f); e.target.value = ""; }}
+            />
+            <Button onClick={() => loadFileRef.current?.click()} variant="outline" className="h-9 gap-2 text-xs border-zinc-600 shrink-0">
+              <Upload className="w-3.5 h-3.5" /> Load downloaded analysis (JSON)
+            </Button>
+            <p className="text-xs text-zinc-500">Have a <span className="font-mono">biomech-analysis-*.json</span> from a previous run? Load it here — segmentation, 3D, and insights replay with no re-analysis.</p>
+          </div>
+          {loadNote && (
+            <Card className="p-3 border-teal-800/50 bg-teal-950/20 text-xs text-teal-200">{loadNote}</Card>
           )}
 
           {error && (
@@ -527,6 +584,9 @@ export function BiomechAnalysisModal({
                 )}
                 <Button onClick={startRerun} disabled={isRunning || isSaving} variant="outline" className="h-9 text-xs gap-1.5 border-zinc-700 text-zinc-300">
                   {isRunning ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /> Analyzing…</>) : (<><RefreshCw className="w-3.5 h-3.5" /> Re-run analysis</>)}
+                </Button>
+                <Button onClick={handleDownloadJson} variant="outline" className="h-9 text-xs gap-1.5 border-teal-700 text-teal-300" title="Download the full analysis (segmentation + 3D + insights) as one JSON file you can load again later or seed the demo with">
+                  <Download className="w-3.5 h-3.5" /> Download JSON
                 </Button>
                 <Button onClick={handleInsert} disabled={!isSaved} title={isSaved ? "Insert into Objective" : "Save first, then insert"} className="h-9 text-xs gap-1.5 bg-teal-600 hover:bg-teal-500 text-white font-semibold disabled:opacity-40">
                   Insert summary into Objective

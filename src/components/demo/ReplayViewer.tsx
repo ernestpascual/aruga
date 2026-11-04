@@ -47,6 +47,7 @@ export function ReplayViewer({
       {videoUrl ? (
         <Card className="p-4 border-zinc-800 bg-zinc-900/70 space-y-2">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-300">Segmentation + skeleton — tracked overlays</h4>
+          <p className="text-[11px] text-zinc-500">Segmentation (SAM 3.1 masks, one colour per concept) is the main overlay — switch it and the skeleton on or off above the video.</p>
           <SamOverlay videoSrc={videoUrl} boxes={result.sam?.boxes ?? []} svgPaths={result.sam?.svgPaths ?? []} mhr={mhr} modelProvenance="SAM 3.1 + SAM 3D Body" />
         </Card>
       ) : null}

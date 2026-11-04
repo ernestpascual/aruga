@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ReplayViewer } from "@/components/demo/ReplayViewer";
 import { useAuth } from "@/lib/supabase/auth-context";
+import { buildBiomechExport, biomechExportFilename } from "@/lib/demo/biomech-payload";
 
 type Job = {
   id: string;
@@ -79,18 +80,22 @@ export default function ToolsReplayPage() {
 
   function payloadForExport() {
     if (!selected) return "";
+    // Same format as the review-modal / demo downloads: loadable via
+    // parseBiomechImport in the demo, the review modal, or as demo seed.
+    const r = (selectedResult || {}) as Record<string, unknown>;
+    const act = ((r as any).activity || {}) as Record<string, string>;
     return JSON.stringify(
-      {
-        exportedFrom: "aruga-tools-replay",
-        exportedAt: new Date().toISOString(),
-        jobId: selected.id,
+      buildBiomechExport({
+        result: r,
+        activity: {
+          title: act.title || selected.activityTitle,
+          instructions: act.instructions || "",
+          therapistNeed: act.therapistNeed || "",
+          ageBand: act.ageBand || "adult",
+        },
         submissionId: selected.submissionId,
         stepSubmissionId: selected.stepSubmissionId,
-        activityTitle: selected.activityTitle,
-        result: selectedResult,
-      },
-      null,
-      2
+      })
     );
   }
 
@@ -107,7 +112,7 @@ export default function ToolsReplayPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `biomech-replay-${selected?.stepSubmissionId?.slice(0, 8) || "analysis"}.json`;
+    a.download = biomechExportFilename(selected?.stepSubmissionId);
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -181,7 +186,7 @@ export default function ToolsReplayPage() {
                   </div>
                 </button>
               ))}
-              <p className="text-[11px] text-zinc-600 px-1 pt-1">Export copies the full payload (slim result + activity) as JSON — save it under <span className="font-mono">public/demo/analysis/</span> to seed the judge demo.</p>
+              <p className="text-[11px] text-zinc-600 px-1 pt-1">Export copies the full payload as JSON in the shared analysis format. Save it as <span className="font-mono">public/demo/analysis/latest.json</span> and /demo/homeprogram replays it automatically — or Load it from the demo / review modal anytime. Tip: wait until the 3D view renders so the export includes the full replay data.</p>
             </Card>
             <div className="min-w-0">
               <ReplayViewer videoUrl={selected?.videoUrl || null} result={selectedResult} />

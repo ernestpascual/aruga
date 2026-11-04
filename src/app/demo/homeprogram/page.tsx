@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Loader2, Play, Sparkles, Send, Wand2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, Eraser, Loader2, Pencil, Play, Sparkles, Send, Trash2, Type, Undo2, Upload, Wand2 } from "lucide-react";
+import { buildBiomechExport, downloadBiomechJson, biomechExportFilename, parseBiomechImport } from "@/lib/demo/biomech-payload";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,42 +11,232 @@ import { Textarea } from "@/components/ui/textarea";
 import { ReplayViewer } from "@/components/demo/ReplayViewer";
 
 const CLIPS = [
-  { src: "/demo/cup_grasp_transfer.mp4", label: "Cup grasp transfer" },
-  { src: "/demo/tabletop_exercise.mp4", label: "Tabletop exercise" },
-  { src: "/demo/block_stacking.mp4", label: "Block stacking" },
-  { src: "/demo/washcloth_supination.mp4", label: "Washcloth supination" },
+  { src: "/videos/tendon-gliding-example.mp4", label: "Tendon gliding example" },
 ] as const;
 
 const FLOW = ["Create program", "Do program", "Submit", "Feedback", "Results & replay"] as const;
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result as string);
-    r.onerror = () => reject(new Error("read failed"));
-    r.readAsDataURL(file);
-  });
-}
+// ---- Writable worksheet: draw / write / type directly on the generated image ----
+type WorksheetItem =
+  | { kind: "stroke"; erase: boolean; color: string; width: number; points: Array<{ x: number; y: number }> }
+  | { kind: "text"; text: string; x: number; y: number; color: string };
 
-async function urlToDataUrl(url: string): Promise<string> {
-  const res = await fetch(url);
-  const blob = await res.blob();
-  return fileToDataUrl(new File([blob], "clip.mp4", { type: blob.type || "video/mp4" }));
+const PEN_COLORS = ["#18181b", "#0d9488", "#7c3aed", "#dc2626", "#d97706"] as const;
+
+function WorksheetWriter({
+  imageUrl,
+  title,
+  items,
+  onItemsChange,
+}: {
+  imageUrl: string;
+  title?: string;
+  items: WorksheetItem[];
+  onItemsChange: (items: WorksheetItem[]) => void;
+}) {
+  const wrapRef = React.useRef<HTMLDivElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const imgRef = React.useRef<HTMLImageElement>(null);
+  const drawingRef = React.useRef(false);
+  const [tool, setTool] = useState<"pen" | "eraser" | "text">("pen");
+  const [color, setColor] = useState<string>("#18181b");
+  const [brush, setBrush] = useState(0.008);
+  const [textValue, setTextValue] = useState("");
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const redraw = React.useCallback(() => {
+    const canvas = canvasRef.current;
+    const wrap = wrapRef.current;
+    if (!canvas || !wrap) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    for (const item of items) {
+      if (item.kind === "text") {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = item.color;
+        ctx.font = `600 ${Math.max(14, w * 0.028)}px Inter, system-ui, sans-serif`;
+        ctx.textBaseline = "top";
+        ctx.fillText(item.text, item.x * w, item.y * h, w * 0.9);
+      } else if (item.points.length) {
+        ctx.globalCompositeOperation = item.erase ? "destination-out" : "source-over";
+        ctx.strokeStyle = item.color;
+        ctx.lineWidth = Math.max(1.5, item.width * w);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        item.points.forEach((pt, i) => {
+          if (i === 0) ctx.moveTo(pt.x * w, pt.y * h);
+          else ctx.lineTo(pt.x * w, pt.y * h);
+        });
+        ctx.stroke();
+      }
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }, [items]);
+
+  // Size canvas to the displayed image and redraw (keeps writing aligned at any screen size)
+  React.useEffect(() => {
+    const wrap = wrapRef.current;
+    const canvas = canvasRef.current;
+    if (!wrap || !canvas) return;
+    const sync = () => {
+      const rect = wrap.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(1, Math.round(rect.width * dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      redraw();
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(wrap);
+    return () => ro.disconnect();
+  }, [redraw, imageUrl]);
+
+  function pointerPos(e: React.PointerEvent) {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    return {
+      x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
+      y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
+    };
+  }
+
+  function handlePointerDown(e: React.PointerEvent) {
+    const pos = pointerPos(e);
+    if (tool === "text") {
+      const text = textValue.trim();
+      if (!text) return;
+      onItemsChange([...items, { kind: "text", text, x: pos.x, y: pos.y, color }]);
+      return;
+    }
+    drawingRef.current = true;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    onItemsChange([...items, { kind: "stroke", erase: tool === "eraser", color, width: brush, points: [pos] }]);
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    if (!drawingRef.current || tool === "text") return;
+    const pos = pointerPos(e);
+    const next = [...items];
+    const last = next[next.length - 1];
+    if (last?.kind === "stroke") next[next.length - 1] = { ...last, points: [...last.points, pos] };
+    onItemsChange(next);
+  }
+
+  function endStroke() {
+    drawingRef.current = false;
+  }
+
+  async function handleDownload() {
+    setExportError(null);
+    try {
+      const img = imgRef.current;
+      if (!img) return;
+      const out = document.createElement("canvas");
+      out.width = img.naturalWidth || 1024;
+      out.height = img.naturalHeight || 1024;
+      const ctx = out.getContext("2d");
+      if (!ctx) return;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, out.width, out.height);
+      ctx.drawImage(img, 0, 0, out.width, out.height);
+      for (const item of items) {
+        if (item.kind === "text") {
+          ctx.fillStyle = item.color;
+          ctx.font = `600 ${Math.max(14, out.width * 0.028)}px Inter, system-ui, sans-serif`;
+          ctx.textBaseline = "top";
+          ctx.fillText(item.text, item.x * out.width, item.y * out.height, out.width * 0.9);
+        } else if (item.points.length) {
+          ctx.globalCompositeOperation = item.erase ? "destination-out" : "source-over";
+          ctx.strokeStyle = item.color;
+          ctx.lineWidth = Math.max(1.5, item.width * out.width);
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.beginPath();
+          item.points.forEach((pt, i) => {
+            if (i === 0) ctx.moveTo(pt.x * out.width, pt.y * out.height);
+            else ctx.lineTo(pt.x * out.width, pt.y * out.height);
+          });
+          ctx.stroke();
+        }
+      }
+      const a = document.createElement("a");
+      a.href = out.toDataURL("image/png");
+      a.download = "worksheet-with-writing.png";
+      a.click();
+    } catch {
+      setExportError("Could not export the image (the picture is hosted cross-origin). Your writing is still on screen — you can screenshot it, and it counts as completed when you submit.");
+    }
+  }
+
+  const toolBtn = (active: boolean) =>
+    `inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[11px] font-semibold border transition-colors ${active ? "bg-teal-600 border-teal-500 text-white" : "bg-zinc-950 border-zinc-700 text-zinc-300 hover:text-white"}`;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => setTool("pen")} className={toolBtn(tool === "pen")}><Pencil className="w-3.5 h-3.5" /> Pen — write / draw</button>
+        <button type="button" onClick={() => setTool("eraser")} className={toolBtn(tool === "eraser")}><Eraser className="w-3.5 h-3.5" /> Eraser</button>
+        <button type="button" onClick={() => setTool("text")} className={toolBtn(tool === "text")}><Type className="w-3.5 h-3.5" /> Type text</button>
+        <span className="flex items-center gap-1.5 ml-1">
+          {PEN_COLORS.map((c) => (
+            <button key={c} type="button" aria-label={`Pen colour ${c}`} onClick={() => { setColor(c); if (tool === "eraser") setTool("pen"); }} className={`w-6 h-6 rounded-full border-2 ${color === c ? "border-white" : "border-zinc-700"}`} style={{ backgroundColor: c }} />
+          ))}
+        </span>
+        <select value={brush} onChange={(e) => setBrush(Number(e.target.value))} className="h-8 rounded-full border border-zinc-700 bg-zinc-950 px-2 text-[11px] text-zinc-200" aria-label="Pen thickness">
+          <option value={0.004}>Thin</option>
+          <option value={0.008}>Medium</option>
+          <option value={0.015}>Thick</option>
+        </select>
+        <span className="flex items-center gap-1.5 ml-auto">
+          <button type="button" onClick={() => onItemsChange(items.slice(0, -1))} disabled={!items.length} className="inline-flex items-center gap-1 h-8 px-2.5 rounded-full text-[11px] border border-zinc-700 text-zinc-300 disabled:opacity-40"><Undo2 className="w-3.5 h-3.5" /> Undo</button>
+          <button type="button" onClick={() => onItemsChange([])} disabled={!items.length} className="inline-flex items-center gap-1 h-8 px-2.5 rounded-full text-[11px] border border-zinc-700 text-zinc-300 disabled:opacity-40"><Trash2 className="w-3.5 h-3.5" /> Clear</button>
+          <button type="button" onClick={handleDownload} className="inline-flex items-center gap-1 h-8 px-2.5 rounded-full text-[11px] font-semibold bg-zinc-800 border border-zinc-700 text-zinc-100"><Download className="w-3.5 h-3.5" /> Download</button>
+        </span>
+      </div>
+
+      {tool === "text" && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input value={textValue} onChange={(e) => setTextValue(e.target.value)} placeholder="Type your answer, then click on the worksheet to place it" className="h-9 flex-1 min-w-[220px] text-xs bg-zinc-950 border-zinc-800" />
+          <span className="text-[11px] text-zinc-500">Then click anywhere on the sheet to stamp the text there.</span>
+        </div>
+      )}
+      {tool !== "text" && <p className="text-[11px] text-zinc-500">Write or draw directly on the worksheet with mouse, touch, or stylus.</p>}
+
+      <div ref={wrapRef} className="relative w-full max-w-xl rounded-xl border border-zinc-700 bg-white overflow-hidden select-none">
+        <img ref={imgRef} src={imageUrl} alt={title || "Generated worksheet — write on it"} className="block w-full h-auto" draggable={false} crossOrigin="anonymous" />
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 h-full w-full touch-none cursor-crosshair"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={endStroke}
+          onPointerCancel={endStroke}
+          onPointerLeave={endStroke}
+        />
+      </div>
+      <p className="text-[11px] text-zinc-500">{items.length ? `${items.length} written mark${items.length === 1 ? "" : "s"} on this worksheet.` : "Nothing written yet."}</p>
+      {exportError && <p className="text-xs text-amber-300">{exportError}</p>}
+    </div>
+  );
 }
 
 export default function DemoHomeProgramPage() {
   const [step, setStep] = useState(0);
   const [title, setTitle] = useState("Tabletop Grasp & Release — Demo Program");
-  const [step1Title, setStep1Title] = useState("Cylindrical Cup Lift — hold 3s");
-  const [step1Instructions, setStep1Instructions] = useState("Lift 8oz cup to mouth height with cylindrical grasp, hold 3 seconds, avoid trunk lean. Lower slowly. Repeat 5 reps.");
+  const [step1Title, setStep1Title] = useState("Perform Tendon Gliding Exercises");
+  const [step1Instructions, setStep1Instructions] = useState("Start with your hand open and fingers straight. Slowly bend your fingers into a hook position. Make a gentle fist. Straighten your fingers and relax. Repeat without forcing the movement. Repetitions: 5–10 times");
   const [worksheetTheme, setWorksheetTheme] = useState("Trace the cup path and color each successful lift. Keep wrist neutral.");
   const [ageBand, setAgeBand] = useState("adult");
   const [worksheet, setWorksheet] = useState<{ imageUrl: string | null; title?: string; instructions?: string } | null>(null);
+  const [worksheetItems, setWorksheetItems] = useState<WorksheetItem[]>([]);
   const [genBusy, setGenBusy] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
 
   const [videoSrc, setVideoSrc] = useState<string>(CLIPS[0].src);
-  const [clientComment, setClientComment] = useState("Felt smoother than last week. Wrist stayed neutral on most reps.");
+  const [clientComment, setClientComment] = useState("2/10 in the middle of the movement");
   const [worksheetDone, setWorksheetDone] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -55,6 +246,81 @@ export default function DemoHomeProgramPage() {
   const [biomech, setBiomech] = useState<any | null>(null);
   const [bioBusy, setBioBusy] = useState(false);
   const [bioError, setBioError] = useState<string | null>(null);
+  const [biomechSource, setBiomechSource] = useState<string | null>(null);
+  const biomechFileRef = React.useRef<HTMLInputElement>(null);
+  const seededTriedRef = React.useRef(false);
+
+  // Seeded analyses sometimes carry SAM boxes in pixel space ([ymin,xmin,ymax,xmax]
+  // at the source video size); the overlay needs normalized 0-1. Normalize only
+  // when values clearly exceed 1, using the source frame size.
+  function normalizeReplayBoxesIfPixels(boxes: any[], w = 1280, h = 720) {
+    if (!Array.isArray(boxes) || boxes.length === 0) return boxes;
+    const looksPixels = boxes.some(
+      (b) => Array.isArray(b?.box) && b.box.some((v: unknown) => typeof v === "number" && v > 1.5)
+    );
+    if (!looksPixels) return boxes;
+    return boxes.map((b) =>
+      Array.isArray(b?.box) && b.box.length === 4
+        ? { ...b, box: [b.box[0] / h, b.box[1] / w, b.box[2] / h, b.box[3] / w] }
+        : b
+    );
+  }
+
+  // Apply a loaded analysis: replay payload + matching activity context (title,
+  // instructions, comment, age band) so the seeded result matches the video.
+  // The full activity context rides on result.activity for replay exports.
+  function applyLoadedAnalysis(data: unknown, sourceLabel: string) {
+    const parsed = parseBiomechImport(data);
+    const result = { ...(parsed.result as Record<string, unknown>) };
+    const sam = (result.sam || {}) as Record<string, any>;
+    if (Array.isArray(sam.boxes)) result.sam = { ...sam, boxes: normalizeReplayBoxesIfPixels(sam.boxes) };
+    setBiomech(result);
+    const ra = (result.activity || {}) as Record<string, any>;
+    const title = (typeof ra.title === "string" && ra.title) || parsed.activity?.title;
+    const instructions = (typeof ra.instructions === "string" && ra.instructions) || parsed.activity?.instructions;
+    const need = typeof ra.therapistNeed === "string" ? ra.therapistNeed : "";
+    if (title) setStep1Title(title);
+    if (instructions) setStep1Instructions(instructions);
+    if (need) setClientComment(need.replace(/^Client comment:\s*/i, ""));
+    const band = (typeof ra.ageBand === "string" && ra.ageBand) || parsed.activity?.ageBand;
+    if (band) setAgeBand(band);
+    setBioError(null);
+    setBiomechSource(sourceLabel);
+  }
+
+  // Seeded demo analysis: public/demo/analysis/latest.json (the tendon-gliding
+  // analysis for /videos/tendon-gliding-example.mp4) replays with no live run,
+  // no key, no Modal.
+  React.useEffect(() => {
+    if (step !== 4 || biomech || seededTriedRef.current) return;
+    seededTriedRef.current = true;
+    fetch("/demo/analysis/latest.json")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("no seed"))))
+      .then((data) => {
+        applyLoadedAnalysis(data, "Seeded tendon-gliding analysis from /demo/analysis/latest.json — segmentation, skeleton, and insights replay with no live run.");
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, biomech]);
+
+  function handleDownloadBiomech() {
+    if (!biomech) return;
+    downloadBiomechJson(
+      buildBiomechExport({
+        result: biomech,
+        activity: { title: step1Title, instructions: step1Instructions, therapistNeed: clientComment, ageBand },
+      }),
+      biomechExportFilename("demo")
+    );
+  }
+
+  async function handleLoadBiomechFile(file: File) {
+    try {
+      applyLoadedAnalysis(JSON.parse(await file.text()), `Loaded from ${file.name} — no re-run. Save a copy as public/demo/analysis/latest.json to make it this demo's default.`);
+    } catch (e) {
+      setBioError(e instanceof Error ? e.message : String(e));
+    }
+  }
 
   async function handleGenerateWorksheet() {
     setGenBusy(true);
@@ -68,36 +334,12 @@ export default function DemoHomeProgramPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Generation failed — check MODEL_API_KEY / AI_MODE=live, or continue without an image.");
       setWorksheet({ imageUrl: data.activity?.base_image_url || null, title: data.activity?.title, instructions: data.activity?.instructions });
+      setWorksheetItems([]);
+      setWorksheetDone(false);
     } catch (e) {
       setGenError(e instanceof Error ? e.message : String(e));
     } finally {
       setGenBusy(false);
-    }
-  }
-
-  async function handleRunBiomech() {
-    setBioBusy(true);
-    setBioError(null);
-    try {
-      const videoDataUrl = await urlToDataUrl(videoSrc);
-      const res = await fetch("/api/tools/biomech/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prescribedTitle: step1Title,
-          prescribedInstructions: step1Instructions,
-          therapistNeed: clientComment,
-          ageBand,
-          videoDataUrl,
-        }),
-      });
-      const data = await res.json().catch(async () => ({ error: (await res.text()).slice(0, 300) }));
-      if (!res.ok) throw new Error(data.error || "Biomech run failed.");
-      setBiomech(data);
-    } catch (e) {
-      setBioError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBioBusy(false);
     }
   }
 
@@ -155,7 +397,10 @@ export default function DemoHomeProgramPage() {
               </div>
               {genError && <p className="text-xs text-amber-300">{genError}</p>}
               {worksheet?.imageUrl ? (
-                <img src={worksheet.imageUrl} alt={worksheet.title || "Generated worksheet"} className="w-full max-w-md rounded-lg border border-zinc-700 bg-white" />
+                <div className="space-y-1.5">
+                  <img src={worksheet.imageUrl} alt={worksheet.title || "Generated worksheet"} className="w-full max-w-md rounded-lg border border-zinc-700 bg-white" />
+                  <p className="text-[11px] text-zinc-500">Your client will be able to write on this sheet in the next step (Do program).</p>
+                </div>
               ) : worksheet ? (
                 <p className="text-xs text-zinc-400">Spec generated ({worksheet.title || "worksheet"}) — image unavailable, instructions will carry the step.</p>
               ) : null}
@@ -179,9 +424,16 @@ export default function DemoHomeProgramPage() {
               <div><label className="text-xs font-semibold text-zinc-300">How it felt (client comment)</label><Textarea value={clientComment} onChange={(e) => setClientComment(e.target.value)} rows={2} className="mt-1 text-xs bg-zinc-950 border-zinc-800 resize-none" /></div>
             </div>
             <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 space-y-2">
-              <p className="text-xs font-semibold text-zinc-300">Step 2 · Worksheet</p>
-              {worksheet?.imageUrl ? <img src={worksheet.imageUrl} alt="Worksheet" className="w-full max-w-md rounded-lg border border-zinc-700 bg-white" /> : <p className="text-xs text-zinc-500">No generated sheet — go back to Step 1 to generate one with Meta AI, or just mark it done here.</p>}
-              <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer"><input type="checkbox" checked={worksheetDone} onChange={(e) => setWorksheetDone(e.target.checked)} className="accent-teal-500" /> Worksheet completed</label>
+              <p className="text-xs font-semibold text-zinc-300">Step 2 · Worksheet — write on it</p>
+              {worksheet?.imageUrl ? (
+                <WorksheetWriter
+                  imageUrl={worksheet.imageUrl}
+                  title={worksheet.title}
+                  items={worksheetItems}
+                  onItemsChange={(items) => { setWorksheetItems(items); if (items.length) setWorksheetDone(true); }}
+                />
+              ) : <p className="text-xs text-zinc-500">No generated sheet — go back to Step 1 to generate one with Meta AI, then you can write on it here. Or just mark it done below.</p>}
+              <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer"><input type="checkbox" checked={worksheetDone} onChange={(e) => setWorksheetDone(e.target.checked)} className="accent-teal-500" /> Worksheet completed{worksheetItems.length ? ` (${worksheetItems.length} written mark${worksheetItems.length === 1 ? "" : "s"})` : ""}</label>
             </div>
             <Button onClick={() => setStep(2)} className="h-10 bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold">Continue to submit →</Button>
           </Card>
@@ -195,7 +447,7 @@ export default function DemoHomeProgramPage() {
             <div className="text-left max-w-md mx-auto rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 space-y-1 text-xs text-zinc-400">
               <p>· Clip: <span className="text-zinc-200 font-mono">{videoSrc.split("/").pop()}</span></p>
               <p>· Comment: “{clientComment.slice(0, 90)}”</p>
-              <p>· Worksheet: {worksheetDone ? "completed" : "not marked done"}</p>
+              <p>· Worksheet: {worksheetDone ? `completed${worksheetItems.length ? ` — ${worksheetItems.length} written mark${worksheetItems.length === 1 ? "" : "s"} on the sheet` : ""}` : "not marked done"}</p>
             </div>
             <Button
               onClick={() => { setSubmitted(true); setStep(3); }}
@@ -223,14 +475,23 @@ export default function DemoHomeProgramPage() {
 
         {step === 4 && (
           <div className="space-y-4">
-            <Card className="p-4 border-zinc-800 bg-zinc-900/70 flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-bold text-zinc-100">5 — Results & replay</h2>
-                <p className="text-xs text-zinc-400 mt-0.5">Replay shows segmentation, skeleton, 3D, and insights without re-running. Run it live once with your Meta key (+ Modal) to populate this screen.</p>
+            <Card className="p-4 border-zinc-800 bg-zinc-900/70 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-sm font-bold text-zinc-100">5 — Results & replay</h2>
+                  <p className="text-xs text-zinc-400 mt-0.5">The latest seeded analysis loads automatically — no live run. Segmentation, skeleton, 3D, and insights replay as saved. To refresh it, load a downloaded analysis JSON, or replace <span className="font-mono">public/demo/analysis/latest.json</span>.</p>
+                </div>
               </div>
-              <Button onClick={handleRunBiomech} disabled={bioBusy} className="h-10 gap-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold shrink-0">
-                {bioBusy ? <><Loader2 className="w-4 h-4 animate-spin" /> Agent analyzing..</> : <><Play className="w-4 h-4" /> Run Biomechanic Agent live</>}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <input ref={biomechFileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLoadBiomechFile(f); e.target.value = ""; }} />
+                <Button onClick={() => biomechFileRef.current?.click()} variant="outline" className="h-9 gap-2 text-xs border-zinc-600">
+                  <Upload className="w-3.5 h-3.5" /> Load analysis JSON
+                </Button>
+                <Button onClick={handleDownloadBiomech} disabled={!biomech} variant="outline" className="h-9 gap-2 text-xs border-teal-700 text-teal-300 disabled:opacity-40" title="Download everything (segmentation + 3D + insights) as one JSON you can load again or seed this demo with">
+                  <Download className="w-3.5 h-3.5" /> Download JSON
+                </Button>
+                {biomechSource && <span className="text-[11px] text-zinc-500 self-center">{biomechSource}</span>}
+              </div>
             </Card>
             {bioError && <Card className="p-3 border-amber-800/40 bg-amber-950/20 text-xs text-amber-200">{bioError} — feedback still replays below; biomech needs MODEL_API_KEY + MODAL_MHR_URL.</Card>}
             <ReplayViewer videoUrl={videoSrc} result={biomech} feedback={published ? { overall: feedback } : null} />

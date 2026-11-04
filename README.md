@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/Next.js-16-black?style=flat-square" alt="Next.js 16" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square" alt="TypeScript 5" />
-  <img src="https://img.shields.io/badge/tests-93_passing-brightgreen?style=flat-square" alt="93 tests passing" />
+  <img src="https://img.shields.io/badge/tests-98_passing-brightgreen?style=flat-square" alt="98 tests passing" />
 </p>
 
 > ⚠️ **Important:** Aruga does not replace therapy — it cannot diagnose, treat, or give medical advice. It only measures movement, drafts materials, and organizes the home program; a licensed therapist reviews and approves everything.
@@ -136,8 +136,69 @@ npm run dev                  # http://localhost:3000
 ```
 
 ```bash
-npx tsc --noEmit && npm run build && npm test  # 93 tests
+npx tsc --noEmit && npm run build && npm test  # 98 tests
 ```
+
+## Demo flows — try it with your own Meta API key
+
+Two self-contained demo flows are linked from `/login`. They need **no login and no Supabase** — they exist so anyone (judges included) can run the real agents locally with only a Meta API key. Nothing in either demo is persisted to a database.
+
+### Setup — add your Meta API key
+
+Put your key in `.env.local` (server-side only — never prefix it with `NEXT_PUBLIC_`, it is never sent to the browser), then restart `npm run dev`:
+
+```env
+MODEL_API_KEY=your-meta-api-key
+AI_MODE=live
+META_API_BASE_URL=https://api.meta.ai/v1
+
+# Only needed for a *live* Biomechanic Agent run in Demo 1 (SAM 3D Body on Modal):
+MODAL_MHR_URL=https://<workspace>--aruga-mhr-infer.modal.run
+```
+
+- `MODEL_API_KEY` (or `META_API_KEY`) powers every live call below: Muse Spark reasoning, Muse Image worksheets, and SAM 3.1 segmentation. Calls are billed to **your** key at actual token usage — the agents chunk large jobs (goals in batches of 5, highlights in 2 slot groups) to stay within the gateway's `max_tokens` limit, so results are complete, not truncated.
+- With no key (or `AI_MODE` not `live`), the demos still open and the flows never dead-end: live buttons return a clear `MISSING_API_KEY` error, and Demo 1 falls back to loading a saved analysis JSON (below).
+- No key? You can still see a full biomech replay: seed one downloaded analysis as `public/demo/analysis/latest.json` (Demo 1, step 5).
+
+### Demo 1 — Guided Home Program (`/demo/homeprogram`)
+
+The whole product loop in five steps, therapist → client → therapist:
+
+| Step | What you do | What your Meta key runs |
+| --- | --- | --- |
+| **1 · Create program** | Edit the program title, the video-step instructions, client age band, and a worksheet brief. Click **Generate worksheet with Meta AI** (optional). | **Activity Agent**: Muse Spark writes the worksheet spec, **Muse Image** draws the printable line-art sheet. No key? Skip it — the flow continues without an image. |
+| **2 · Do program** | Pick one of 4 preloaded exercise clips, add a "how it felt" comment, and **write directly on the generated worksheet** — pen (5 colours, 3 thicknesses), eraser, or type-and-click text stamping, with Undo/Clear. Writing auto-marks the worksheet completed. | Nothing — writing is local canvas over the generated image; marks are counted for the submission. |
+| **3 · Submit** | Review the bundle (clip + comment + worksheet marks) and submit it "to the therapist". | Nothing leaves the browser except Meta calls you trigger. |
+| **4 · Feedback** | Read/edit the sample therapist feedback and **Publish** it. | Nothing — sample text you control. |
+| **5 · Results & replay** | **Run Biomechanic Agent live** on the chosen clip, or **Load analysis JSON**, then explore segmentation + skeleton overlays, the 3D motion projection, insights, ROM summary, and your published feedback — all without re-running. | **Biomechanic Agent** 3-call Spark chain (understand the task → draft what to track → lock the final SAM prompt) → **SAM 3.1** segments the clip → **SAM 3D Body on Modal** measures joint angles/ROM (needs `MODAL_MHR_URL`; use clips ≤15s, first run may cold-start ~1–2 min). |
+
+**Keep and reuse any run:** after a live run, **Download JSON** saves *everything* (SAM boxes/masks, full 3D frames, insights, activity context) as one file in the shared `aruga-biomech-analysis` format (`src/lib/demo/biomech-payload.ts`). Load it back here anytime via **Load analysis JSON** — or save it as `public/demo/analysis/latest.json` and this demo replays it automatically on the Results step, with no key and no Modal. The same file loads in the therapist review popup and is what `/tools/replay` exports.
+
+### Demo 2 — Insights Dashboard (`/demo/insights`)
+
+The two reasoning agents over one fictional patient's month, explained for non-clinicians:
+
+- **The story first:** a bento dashboard introduces the sample patient (adult desk worker recovering from a wrist/hand problem) with plain-English progress tiles — pain 4/10 → 3/10, grip 19 → 21 kg, arm lift 135° → 142°, 86% practice completed — plus a glossary (SOAP note, LTG/STG, ROM…) so every number is readable without a clinical background.
+- **Run the agents** (both buttons in one row, or **Run both**):
+  - **Goal Tracking** — judges each goal against the evidence (2 therapist visit notes, 2 camera movement checks, 4 home practice logs) and returns per-goal verdicts (`achieved / on_track / at_risk / behind`) with confidence, a summary count + progress bar, narrative, and suggested next actions. Goals are editable (one per line, `LTG:`/`STG:`, up to 15) and processed in parallel batches of 5.
+  - **Monthly Highlights** — returns 3–7 evidence-backed wins for the chosen month (never forced to 7), each with a trend arrow and quantitative + qualitative delta. Only the month (`YYYY-MM`) changes the run.
+- **What your key runs:** the same production agents as the full app (`runGoalAgent`, `runHighlightsAgent` on Muse Spark) against fixed dummy evidence (`src/lib/demo/dummy-insights.ts`) via `POST /api/demo/insights`. Sample data only — nothing is saved, and identical inputs give comparable runs so you can edit a goal and watch the verdict change.
+
+### What the demos deliberately don't do
+
+- No accounts, no Supabase, no persistence — refresh loses demo state (Download JSON is the save mechanism).
+- Sample patient/data only; the full app is where real records, therapist approval, and publishing live.
+- Agents draft and measure only — no diagnosis or medical advice, same rule as the product.
+
+### Troubleshooting
+
+| Symptom | Fix |
+| --- | --- |
+| `MISSING_API_KEY` / agents refuse to run | Set `MODEL_API_KEY` + `AI_MODE=live` in `.env.local` and restart the dev server (env is read at boot). |
+| Worksheet generation fails but flow continues | Expected without a key — skip it, or add the key and regenerate. |
+| `MODAL_NOT_CONFIGURED 503` on Run Biomechanic Agent live | Set `MODAL_MHR_URL` (see [Use of Modal](#use-of-modal)), or use Load/seed JSON instead — replay needs no Modal. |
+| Biomech run times out | Clip too long or Modal cold start — use ≤15s and re-run (warm retries are faster). |
+| Loaded JSON shows summaries but no 3D/masks | The file was downloaded before the 3D view finished loading (slim copy) — re-download after segmentation + 3D render, then load again. |
 
 ---
 
@@ -232,19 +293,10 @@ Baseten runs our open-weights development loop — it is not in the patient-faci
 
 ## Supabase
 
-Supabase adds login, database, and file storage.
-
-- **Demo versions (no Supabase, demo purposes only):** browse `/tools/biomech`, `/activity-agent-playground`. No login, no saving.
-- **With Supabase:** add these to `.env.local` for full therapist/client accounts + saving programs, videos, and reviews:
-  ```env
-  NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
-  SUPABASE_SECRET_KEY=your-supabase-secret-key
-  ```
-- **Setup (one time):** run `supabase/all_in_one_setup.sql` in Supabase SQL Editor, then verify with `scripts/verify-rls.sql`.
+Supabase adds login, database, and file storage for production. Enabled via the live link but you can use the 2 demo flows to bypass gating.
 
 ---
 
 ## Stack
 
-Next.js 16 · React 19 · Tailwind v4 · Zod · `@meta-sam/parser` · Recharts · Vitest (93) · Supabase (see above) · Modal (SAM 3D Body backend)
+Next.js 16 · React 19 · Tailwind v4 · Zod · `@meta-sam/parser` · Recharts · Vitest (98) · Supabase (see above) · Modal (SAM 3D Body backend)

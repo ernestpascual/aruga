@@ -1420,6 +1420,9 @@ create table if not exists biomech_jobs (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+-- Save upsert keys on (step_submission_id, intent) — needs a matching unique index
+create unique index if not exists biomech_jobs_step_intent_uidx on public.biomech_jobs (step_submission_id, intent);
+create index if not exists biomech_jobs_step_idx on public.biomech_jobs (step_submission_id);
 create table if not exists agent_runs (
   id uuid primary key default gen_random_uuid(),
   patient_id uuid references patients(id) on delete cascade,
