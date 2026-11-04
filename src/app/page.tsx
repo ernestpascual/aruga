@@ -22,7 +22,6 @@ import {
   Video,
 } from "lucide-react";
 import { Grainient } from "@/components/ui/grainient";
-import { VariableProximity } from "@/components/ui/variable-proximity";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { siteConfig } from "@/config/site";
 
@@ -78,7 +77,7 @@ function LandingContent() {
       {/* Floating Start pill — topmost, always visible */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
         <Link href="/login">
-          <span className="inline-flex items-center gap-2 bg-white/25 text-white border border-white/40 backdrop-blur-xl rounded-full pl-6 pr-2 py-2 text-xs sm:text-sm font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] [text-shadow:0_1px_8px_rgba(0,0,0,0.45)] hover:bg-white/35 transition-colors">Start Here <span className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-sm">→</span></span>
+          <span className="inline-flex items-center gap-2 bg-white/10 text-white border border-white/25 backdrop-blur-md rounded-full pl-6 pr-2 py-2 text-xs sm:text-sm font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] [text-shadow:0_1px_8px_rgba(0,0,0,0.45)] hover:bg-white/20 transition-colors">Start Here <span className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-sm">→</span></span>
         </Link>
       </div>
 
@@ -117,16 +116,11 @@ function LandingContent() {
 
             {/* Headline — centered */}
             <div className="absolute inset-0 flex flex-col justify-center items-center text-center z-10 px-6 sm:px-8 lg:px-12 gap-6">
-              <h1 className="text-[clamp(2.5rem,9vw,7rem)] font-normal leading-[1.1] whitespace-nowrap text-white">
-                <VariableProximity
-                  label="Aruga"
-                  containerRef={heroRef}
-                  fromFontVariationSettings="'wght' 100"
-                  toFontVariationSettings="'wght' 400"
-                  radius={140}
-                  falloff="gaussian"
-                  style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}
-                />
+              <h1
+                style={{ fontFamily: "'Playwrite IT Trad', 'Playwrite Italia Tradizionale', cursive" }}
+                className="text-[clamp(2.5rem,9vw,7rem)] font-normal leading-[1.1] whitespace-nowrap text-white"
+              >
+                Aruga
               </h1>
             </div>
 
